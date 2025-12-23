@@ -3,7 +3,15 @@
 import { useEffect, useState } from "react";
 import api from "@/lib/axios";
 import { useRouter } from "next/navigation";
-import { Zap, Eye, EyeOff, AlertCircle, ArrowRight } from "lucide-react";
+import {
+  Zap,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  ArrowRight,
+  User,
+  Mail,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,48 +24,74 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-export default function LoginPage() {
+export default function SignUpPage() {
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+
+    // Validation
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters long");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      await api.post("/auth/login", { email, password });
+      await api.post("/auth/register", { email, username, password });
       router.push("/");
-    } catch (err) {
-      setError("Incorrect password. Please try again.");
+    } catch (err: any) {
+      console.error("Registration error:", err.response?.data);
+      const errorMessage =
+        err.response?.data?.message ||
+        (Array.isArray(err.response?.data?.message)
+          ? err.response?.data?.message.join(", ")
+          : "Registration failed. Please try again.");
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleGoogleLogin = () => {
+  const handleGoogleSignup = () => {
     window.location.href = `${
       process.env.BACKEND_URL || "http://localhost:3001"
     }/auth/google`;
   };
 
-  const handleFortyTwoLogin = () => {
+  const handleFortyTwoSignup = () => {
     window.location.href = `${
       process.env.BACKEND_URL || "http://localhost:3001"
     }/auth/42`;
   };
 
+  // Only show error when user has filled both fields
+  const passwordsDoNotMatch =
+    password && confirmPassword && password !== confirmPassword;
+
   useEffect(() => {
     setError("");
-  }, [email, password]);
+  }, [email, username, password, confirmPassword]);
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-background p-4 relative overflow-hidden">
-      <Card className="w-full min-w-[320px] max-w-md shadow-lg shadow-black/10 border-border/50 p-0 ">
-        <CardHeader className="text-center pt-8 pb-6 bg-background/50 rounded-br-[25px] rounded-bl-[25px] ">
-          <div className="flex justify-center mb-3  ">
+      <Card className="w-full min-w-[320px] max-w-md shadow-lg shadow-black/10 border-border/50 p-0">
+        <CardHeader className="text-center pt-8 pb-6 bg-background/50 rounded-br-[25px] rounded-bl-[25px]">
+          <div className="flex justify-center mb-3">
             <div
               className="w-14 h-14 bg-linear-to-br from-primary to-primary/70 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 animate-bounce"
               style={{ animationDuration: "2s" }}
@@ -66,58 +100,70 @@ export default function LoginPage() {
             </div>
           </div>
           <CardTitle className="text-3xl font-bold bg-linear-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-            Welcome Back
+            Create Account
           </CardTitle>
           <CardDescription className="text-sm mt-2">
-            Sign in to continue to Hypertube
+            Sign up to start watching on Hypertube
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6 pt-8">
-          <form onSubmit={handleLogin} className="space-y-5">
+          <form onSubmit={handleSignUp} className="space-y-5">
             {/* Email Field */}
             <div className="space-y-2.5">
-              <Label htmlFor="email" className="  text-primary">
+              <Label htmlFor="email" className="text-primary">
                 Email Address
               </Label>
               <div className="relative group">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   id="email"
-                  type="text"
+                  type="email"
                   placeholder="mail@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   disabled={isLoading}
-                  className="h-13 bg-card border-border/60 group-hover:border-border transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary"
+                  className="h-13 bg-card border-border/60 pl-10 group-hover:border-border transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary"
+                />
+              </div>
+            </div>
+
+            {/* Username Field */}
+            <div className="space-y-2.5">
+              <Label htmlFor="username" className="text-primary">
+                Username
+              </Label>
+              <div className="relative group">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="johndoe"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="h-13 bg-card border-border/60 pl-10 group-hover:border-border transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary"
                 />
               </div>
             </div>
 
             {/* Password Field */}
             <div className="space-y-2.5">
-              <Label
-                htmlFor="password"
-                className={`transition-colors ${
-                  error ? "text-destructive" : "text-primary"
-                }`}
-              >
+              <Label htmlFor="password" className="text-primary">
                 Password
               </Label>
               <div className="relative group">
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="****************"
+                  placeholder="Min. 8 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   disabled={isLoading}
-                  className={`h-13 bg-card border-border/60 group-hover:border-border pr-10 transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-primary/50 ${
-                    error
-                      ? "border-destructive/70 focus-visible:ring-destructive/30"
-                      : "focus-visible:border-primary"
-                  }`}
+                  className="h-13 bg-card border-border/60 group-hover:border-border pr-10 transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary"
                 />
                 <button
                   type="button"
@@ -133,27 +179,60 @@ export default function LoginPage() {
                   )}
                 </button>
               </div>
+            </div>
 
-              {/* Error Message */}
-              {error && (
+            {/* Confirm Password Field */}
+            <div className="space-y-2.5">
+              <Label
+                htmlFor="confirmPassword"
+                className={`transition-colors ${
+                  passwordsDoNotMatch ? "text-destructive" : "text-primary"
+                }`}
+              >
+                Confirm Password
+              </Label>
+              <div className="relative group">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Re-enter password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className={`h-13 bg-card border-border/60 group-hover:border-border pr-10 transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-primary/50 ${
+                    passwordsDoNotMatch
+                      ? "border-destructive/70 focus-visible:ring-destructive/30"
+                      : "focus-visible:border-primary"
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  disabled={isLoading}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors duration-200 disabled:opacity-50"
+                  tabIndex={-1}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+
+              {/* Error Message - Only show if passwords don't match or general error */}
+              {(passwordsDoNotMatch || error) && (
                 <div className="flex items-start gap-2 text-destructive text-xs mt-2 p-2 bg-destructive/10 rounded-md border border-destructive/20">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                  <span>{error}</span>
+                  <span>
+                    {passwordsDoNotMatch ? "Passwords do not match" : error}
+                  </span>
                 </div>
               )}
             </div>
 
-            {/* Forgot Password */}
-            <div className="flex justify-end pt-2">
-              <a
-                href="#"
-                className="text-primary mb-2 text-sm font-medium hover:opacity-70 transition-opacity"
-              >
-                Forgot password?
-              </a>
-            </div>
-
-            {/* Sign In Button */}
+            {/* Sign Up Button */}
             <Button
               type="submit"
               disabled={isLoading}
@@ -162,12 +241,12 @@ export default function LoginPage() {
               {isLoading ? (
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Signing in...</span>
+                  <span>Creating account...</span>
                 </div>
               ) : (
-                <div className="flex items-center justify-center gap-2 text-white ">
-                  <span>Sign In</span>
-                  <ArrowRight className="w-4 h-4 while group-hover:translate-x-0.5 transition-transform" />
+                <div className="flex items-center justify-center gap-2 text-white">
+                  <span>Sign Up</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                 </div>
               )}
             </Button>
@@ -188,7 +267,7 @@ export default function LoginPage() {
           {/* OAuth Buttons */}
           <div className="grid grid-cols-2 gap-3">
             <button
-              onClick={handleFortyTwoLogin}
+              onClick={handleFortyTwoSignup}
               disabled={isLoading}
               className="border-border/60 hover:border-primary flex items-center justify-center gap-2 h-11 bg-surface hover:bg-[#2D3B55] text-text-head rounded-xl font-medium text-sm border border-border-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -203,9 +282,9 @@ export default function LoginPage() {
             </button>
 
             <button
-              onClick={handleGoogleLogin}
+              //   onClick={handleGoogleLogin}
               disabled={isLoading}
-              className=" border-border/60 hover:border-primary flex items-center justify-center gap-2 h-11 bg-surface hover:bg-[#2D3B55] text-text-head rounded-xl font-medium text-sm border border-border-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="border-border/60 hover:border-primary flex items-center justify-center gap-2 h-11 bg-surface hover:bg-[#2D3B55] text-text-head rounded-xl font-medium text-sm border border-border-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg
                 className="w-5 h-5"
@@ -235,14 +314,14 @@ export default function LoginPage() {
           </div>
         </CardContent>
 
-        <CardFooter className="flex justify-center py-4  ">
-          <p className="text-muted-foreground text-sm ">
-            Don't have an account?{" "}
+        <CardFooter className="flex justify-center py-4">
+          <p className="text-muted-foreground text-sm">
+            Already have an account?{" "}
             <a
-              href="/signup"
+              href="/login"
               className="text-primary font-bold hover:opacity-70 transition-opacity"
             >
-              Sign Up
+              Sign In
             </a>
           </p>
         </CardFooter>

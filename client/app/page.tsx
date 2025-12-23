@@ -31,11 +31,11 @@ export function DashboardPage() {
 
 export default function Home() {
   return (
-    <body className="antialiased bg-background min-h-screen text-foreground">
+    <div className="antialiased bg-background min-h-screen text-foreground">
       <Navbar />
       <main className="container mx-auto py-6 px-4">
         <DashboardPage />
       </main>
-    </body>
+    </div>
   );
 }
