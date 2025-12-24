@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useRouter } from "next/navigation";
 import api from "@/lib/axios";
-import ModeToggle from "./mode-toggle";
+import ModeToggle from "../shared/mode-toggle";
 import { useEffect, useState } from "react";
 
 export default function Navbar() {

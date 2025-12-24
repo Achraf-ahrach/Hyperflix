@@ -103,7 +103,7 @@ export default function SignUpPage() {
             Create Account
           </CardTitle>
           <CardDescription className="text-sm mt-2">
-            Sign up to start watching on Hypertube
+            Sign up to start watching on Hyperflix
           </CardDescription>
         </CardHeader>
 

@@ -1,5 +1,5 @@
 "use client";
-import Navbar from "@/components/Navbar";
+import Navbar from "@/components/layout/Navbar";
 
 import { useEffect, useState } from "react";
 import api from "@/lib/axios";
@@ -12,7 +12,8 @@ export function DashboardPage() {
   useEffect(() => {
     // 1. Fetch Profile
     // The browser automatically attaches the 'Authentication' cookie here.
-    api.get("/auth/profile")
+    api
+      .get("/auth/profile")
       .then(({ data }) => setUser(data))
       .catch(() => {
         // If the backend says 401 (Unauthorized), redirect to login
@@ -20,13 +21,9 @@ export function DashboardPage() {
       });
   }, [router]);
 
-
   if (!user) return <p className="p-10">Loading...</p>;
 
-  return (
-    <div className="p-10">
-    </div>
-  );
+  return <div className="p-10"></div>;
 }
 
 export default function Home() {
