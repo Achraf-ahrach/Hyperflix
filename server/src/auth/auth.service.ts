@@ -3,7 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
-  constructor(private jwtService: JwtService) {}
+  constructor(private jwtService: JwtService) { }
 
   // Mock user validation (Replace with DB check)
   async validateUser(username: string, pass: string): Promise<any> {
