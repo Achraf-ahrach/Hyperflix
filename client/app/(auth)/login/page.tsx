@@ -3,12 +3,10 @@
 import { useEffect, useState } from "react";
 import api from "@/lib/axios";
 import { useRouter } from "next/navigation";
-import { Zap, Eye, EyeOff, AlertCircle, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, AlertCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import Image from "next/image";
-import logoImg from "@/public/logo.png"; // Ensure this path matches your structure
 import {
   Card,
   CardContent,
@@ -18,7 +16,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-// 1. Import the image directly
 import bgImage from "@/public/hero-bg.jpg";
 
 export default function LoginPage() {
@@ -29,7 +26,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  // ... (handleLogin, handleGoogleLogin, handleFortyTwoLogin, useEffect remain unchanged)
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -67,28 +63,8 @@ export default function LoginPage() {
         backgroundImage: `url(${bgImage.src})`,
       }}
     >
-      {/* Optional: Add a dark overlay so the form pop out more */}
-      {/* <div className="absolute inset-0 bg-background/60 backdrop-blur-xs"></div> */}
-
-      {/* Added z-10 to ensure the card is above the background/overlay */}
       <Card className="w-full min-w-[320px] max-w-md shadow-lg shadow-black/10 border-border/50 p-0 relative z-10 bg-card/90 ">
         <CardHeader className="text-center pt-8 pb-6 bg-background/50 rounded-br-[25px] rounded-bl-[25px] ">
-          {/* ... rest of your component remains exactly the same ... */}
-          <div className="flex justify-center mb-3  ">
-            {/* <Image
-              src={logoImg}
-              alt="Heyperflix Logo"
-              fill
-              className="object-contain"
-              priority // Loads immediately since it's above the fold (LCP)
-            /> */}
-            {/* <div
-              className="w-14 h-14 bg-linear-to-br from-primary to-primary/70 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 animate-bounce"
-              style={{ animationDuration: "2s" }}
-            >
-              <Zap className="w-7 h-7 text-white" fill="white" />
-            </div> */}
-          </div>
           <CardTitle className="text-3xl font-bold bg-linear-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
             Welcome Back
           </CardTitle>

@@ -3,15 +3,7 @@
 import { useEffect, useState } from "react";
 import api from "@/lib/axios";
 import { useRouter } from "next/navigation";
-import {
-  Zap,
-  Eye,
-  EyeOff,
-  AlertCircle,
-  ArrowRight,
-  User,
-  Mail,
-} from "lucide-react";
+import { Eye, EyeOff, AlertCircle, ArrowRight, User, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import bgImage from "@/public/hero-bg.jpg";
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("");
@@ -88,17 +81,14 @@ export default function SignUpPage() {
   }, [email, username, password, confirmPassword]);
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-background p-4 relative overflow-hidden">
-      <Card className="w-full min-w-[320px] max-w-md shadow-lg shadow-black/10 border-border/50 p-0">
+    <div
+      className="min-h-screen w-full flex items-center justify-center p-4 relative overflow-hidden bg-cover bg-center bg-no-repeat"
+      style={{
+        backgroundImage: `url(${bgImage.src})`,
+      }}
+    >
+      <Card className="w-full min-w-[320px] max-w-md shadow-lg shadow-black/10 border-border/50 p-0 relative z-10 bg-card/90">
         <CardHeader className="text-center pt-8 pb-6 bg-background/50 rounded-br-[25px] rounded-bl-[25px]">
-          <div className="flex justify-center mb-3">
-            <div
-              className="w-14 h-14 bg-linear-to-br from-primary to-primary/70 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 animate-bounce"
-              style={{ animationDuration: "2s" }}
-            >
-              <Zap className="w-7 h-7 text-white" fill="white" />
-            </div>
-          </div>
           <CardTitle className="text-3xl font-bold bg-linear-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
             Create Account
           </CardTitle>
@@ -282,7 +272,7 @@ export default function SignUpPage() {
             </button>
 
             <button
-              //   onClick={handleGoogleLogin}
+              onClick={handleGoogleSignup}
               disabled={isLoading}
               className="border-border/60 hover:border-primary flex items-center justify-center gap-2 h-11 bg-surface hover:bg-[#2D3B55] text-text-head rounded-xl font-medium text-sm border border-border-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
