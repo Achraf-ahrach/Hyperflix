@@ -56,6 +56,8 @@ export class UsersService {
       .values({
         email: userData.email,
         username: userData.username,
+        firstName: '',
+        lastName: '',
         passwordHash: userData.passwordHash,
         avatarUrl: userData.avatarUrl || null,
         provider: userData.provider || 'local',
@@ -82,6 +84,8 @@ export class UsersService {
       .values({
         email: oauthData.email,
         username: oauthData.username,
+        firstName: '',
+        lastName: '',
         passwordHash: '', // No password for OAuth users
         avatarUrl: oauthData.avatarUrl || null,
         provider: oauthData.provider,
