@@ -10,7 +10,7 @@ import { AccountSettingsDto } from '../dto/account-settings.dto';
 export class SettingsService {
   constructor(private usersRepository: SettingsRepository) {}
 
-  async updateUserSettings(userId: number, dto: AccountSettingsDto) {
+  async updateUserSettings(dto: AccountSettingsDto) {
     console.log(dto);
     // const user = await this.usersRepository.findById(userId);
     // if (!user) throw new NotFoundException('User not found');
