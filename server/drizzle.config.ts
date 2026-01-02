@@ -9,7 +9,7 @@ const databaseUrl =
   process.env.DATABASE_URL?.replace('@db:', '@localhost:') || '';
 
 export default defineConfig({
-  schema: './src/database/schema.ts',
+  schema: './src/database/schema/index.ts',
   out: './drizzle',
   dialect: 'postgresql',
   dbCredentials: {

@@ -1,3 +1,4 @@
+
 import { pgTable, serial, varchar } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
@@ -11,3 +12,6 @@ export const users = pgTable('users', {
   createdAt: varchar('created_at', { length: 50 }).notNull(),
   updatedAt: varchar('updated_at', { length: 50 }).notNull(),
 });
+
+
+
