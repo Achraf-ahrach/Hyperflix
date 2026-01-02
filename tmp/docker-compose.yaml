@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:15
+    container_name: hypertube-db
+    environment:
+      POSTGRES_USER: hyperuser
+      POSTGRES_PASSWORD: hyperpassword
+      POSTGRES_DB: hypertube
+    ports:
+      - "5432:5432"
+    volumes:
+      - hypertube_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  hypertube_data:
