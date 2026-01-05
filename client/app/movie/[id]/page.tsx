@@ -1,0 +1,187 @@
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+import { useParams } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
+import { Play, Plus, ThumbsUp, Share2, Flag } from "lucide-react";
+
+import api from "@/lib/axios";
+import Navbar from "@/components/layout/Navbar";
+import { Button } from "@/components/ui/button";
+import { Movie } from "@/lib/types/Movie";
+
+export default function MovieDetailsPage() {
+    const { id } = useParams();
+
+    const { data: movie, isLoading } = useQuery<Movie>({
+        queryKey: ["movie", id],
+        queryFn: async () => {
+            const { data } = await api.get(`/movies/${id}`);
+            return data;
+        },
+        enabled: !!id,
+    });
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+                <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+        );
+    }
+
+    if (!movie) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground gap-4">
+                <h1 className="text-2xl font-bold">Movie not found</h1>
+                <Button asChild>
+                    <Link href="/">Go Home</Link>
+                </Button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-[#141414] text-white font-sans">
+            <Navbar />
+
+            {/* Hero Section */}
+            <div className="relative h-[85vh] w-full">
+                {/* Background Image */}
+                <div className="absolute inset-0">
+                    <Image
+                        src={movie.background_image || movie.thumbnail || "/placeholder-hero.jpg"}
+                        alt={movie.title}
+                        fill
+                        className="object-cover"
+                        priority
+                    />
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/20 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#141414] via-[#141414]/40 to-transparent" />
+                </div>
+
+                {/* Play Button (Centered) */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <button
+                        className="w-20 h-20 rounded-full bg-primary/90 hover:bg-primary text-white flex items-center justify-center transition-transform hover:scale-110 shadow-[0_0_40px_rgba(var(--primary),0.5)] pointer-events-auto backdrop-blur-sm"
+                        aria-label="Play"
+                    >
+                        <Play className="w-8 h-8 fill-current ml-1" />
+                    </button>
+                </div>
+
+                {/* Content */}
+                <div className="absolute bottom-0 left-0 w-full p-8 md:p-12 lg:p-16 space-y-6">
+                    <div className="max-w-3xl space-y-4">
+                        <h1 className="text-4xl md:text-6xl font-bold tracking-tight drop-shadow-lg">
+                            {movie.title}
+                        </h1>
+
+                        <div className="flex items-center gap-4 text-sm md:text-base text-gray-200 font-medium">
+                            {movie.mpa_rating && (
+                                <span className="px-2 py-0.5 border border-gray-400 rounded text-xs uppercase">
+                                    {movie.mpa_rating}
+                                </span>
+                            )}
+                            <span>{movie.year}</span>
+                            {movie.runtime && (
+                                <>
+                                    <span>•</span>
+                                    <span>
+                                        {Math.floor(movie.runtime / 60)}h {movie.runtime % 60}m
+                                    </span>
+                                </>
+                            )}
+                            {movie.genres && (
+                                <>
+                                    <span>•</span>
+                                    <span className="text-primary">{Array.isArray(movie.genres) ? movie.genres.join(", ") : movie.genres}</span>
+                                </>
+                            )}
+                        </div>
+
+                        <div className="flex flex-wrap gap-3 pt-2">
+                            <Button variant="secondary" className="gap-2 bg-white/10 hover:bg-white/20 text-white border-none backdrop-blur-md">
+                                <Plus className="w-4 h-4" />
+                                My List
+                            </Button>
+                            <Button variant="secondary" className="gap-2 bg-white/10 hover:bg-white/20 text-white border-none backdrop-blur-md">
+                                <ThumbsUp className="w-4 h-4" />
+                                Like
+                            </Button>
+                            <Button variant="secondary" className="gap-2 bg-white/10 hover:bg-white/20 text-white border-none backdrop-blur-md">
+                                <Share2 className="w-4 h-4" />
+                                Share
+                            </Button>
+                            {/* <Button variant="ghost" className="gap-2 text-gray-400 hover:text-white hover:bg-white/10 ml-auto">
+                                <Flag className="w-4 h-4" />
+                                Report
+                            </Button> */}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Details Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-12 px-8 py-12 md:px-12 lg:px-16 max-w-[1800px] mx-auto">
+                {/* Left Column: Synopsis */}
+                <div className="space-y-8">
+                    <div className="space-y-4">
+                        <h3 className="text-xl font-semibold">Synopsis</h3>
+                        <p className="text-gray-300 leading-relaxed text-lg">
+                            {movie.synopsis || "No synopsis available."}
+                        </p>
+                    </div>
+
+                    {/* Torrent Information (Optional/Tech details) */}
+                    {/* <div className="p-4 rounded-lg bg-white/5 border border-white/10">
+                        <h4 className="text-sm font-medium text-gray-400 mb-2">Available Qualities</h4>
+                        <div className="flex gap-2">
+                            {movie.torrents.map((t, i) => (
+                                <span key={i} className="px-2 py-1 bg-primary/20 text-primary text-xs rounded">
+                                    {t.quality}
+                                </span>
+                            ))}
+                        </div>
+                    </div> */}
+                </div>
+
+                {/* Right Column: Rating & Metadata */}
+                <div className="space-y-8">
+                    <div className="bg-[#1a1a1a] rounded-xl p-6 border border-white/5 space-y-6">
+                        <div>
+                            <h3 className="text-sm text-gray-400 font-medium mb-1">Rating Summary</h3>
+                            <div className="flex items-end gap-3">
+                                <span className="text-5xl font-bold text-white">{movie.rating}</span>
+                                <span className="text-lg text-gray-500 mb-1">/ 10</span>
+                            </div>
+                            <div className="flex gap-1 mt-2 text-yellow-500">
+                                {[...Array(5)].map((_, i) => (
+                                    <Play key={i} className={`w-4 h-4 ${i < Math.round(movie.rating / 2) ? "fill-current" : "fill-gray-700 text-gray-700"} rotate-[-90deg]`} />
+                                ))}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2">Based on IMDb reviews</p>
+                        </div>
+
+                        {/* Rating Bars (Mockup for visual) */}
+                        <div className="space-y-2">
+                            {[5, 4, 3, 2, 1].map((stars) => (
+                                <div key={stars} className="flex items-center gap-3 text-xs">
+                                    <span className="w-3">{stars}</span>
+                                    <div className="h-1.5 flex-1 bg-gray-800 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-primary/60 rounded-full"
+                                            style={{ width: `${stars === 5 ? 80 : stars * 15}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}

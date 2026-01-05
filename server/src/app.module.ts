@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { MoviesModule } from './movies/movies.module';
 import { HttpModule } from '@nestjs/axios';
 import { JwtModule } from '@nestjs/jwt';
+import { CacheModule } from '@nestjs/cache-manager';
 
 @Module({
   imports: [
@@ -16,7 +17,11 @@ import { JwtModule } from '@nestjs/jwt';
       envFilePath: '../.env',
     }),
     HttpModule,
-    
+    CacheModule.register({
+      ttl: 60 * 60 * 1000 * 24, // 24 hours
+      max: 300,
+      isGlobal: true,
+    }),
     AuthModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'default-secret-key',
@@ -28,4 +33,4 @@ import { JwtModule } from '@nestjs/jwt';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

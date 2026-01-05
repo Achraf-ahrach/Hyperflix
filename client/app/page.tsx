@@ -1,113 +1,32 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import api from "@/lib/axios";
 import { useRouter } from "next/navigation";
 import { FilterBar } from "@/components/filter-bar";
 import { MovieCard } from "@/components/movie-card";
 import Navbar from "@/components/layout/Navbar";
 import { useAuth } from "@/lib/hooks/useAuth";
-import LandingPage from "@/components/landing/LandingPage";
+import { useMoviesLibrary } from "@/lib/hooks/useMovies";
+import InfiniteScrollContainer from "@/components/infinite-scroll-container";
 
-// Mock Data
-const MOCK_MOVIES = [
-  {
-    id: 1,
-    title: "Dune: Part Two",
-    year: 2024,
-    rating: 8.9,
-    genre: "Sci-Fi",
-    image: "https://image.tmdb.org/t/p/w500/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg", // Using TMDB placeholders if possible, or generic
-    watched: false,
-  },
-  {
-    id: 2,
-    title: "The Dark Knight",
-    year: 2008,
-    rating: 9.0,
-    genre: "Action",
-    image: "https://image.tmdb.org/t/p/w500/qJ2tW6WMUDux911r6m7haRef0WH.jpg",
-    watched: true,
-  },
-  {
-    id: 3,
-    title: "Interstellar",
-    year: 2014,
-    rating: 8.6,
-    genre: "Sci-Fi",
-    image: "https://image.tmdb.org/t/p/w500/gEU2QniL6C8zt7472vQlVufphM3.jpg",
-    watched: false,
-  },
-  {
-    id: 4,
-    title: "Inception",
-    year: 2010,
-    rating: 8.8,
-    genre: "Sci-Fi",
-    image: "https://image.tmdb.org/t/p/w500/oYuLEt3zVCKqJCZVPr6JnJ7pGLV.jpg",
-    watched: false,
-  },
-  {
-    id: 5,
-    title: "Parasite",
-    year: 2019,
-    rating: 8.5,
-    genre: "Thriller",
-    image: "https://image.tmdb.org/t/p/w500/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg",
-    watched: false,
-  },
-  {
-    id: 6,
-    title: "Civil War",
-    year: 2024,
-    rating: 7.6,
-    genre: "Action",
-    image: "https://image.tmdb.org/t/p/w500/sh7Rg8Er3tFcN9AdeGSxwooglzf.jpg",
-    watched: false,
-  },
-  {
-    id: 7,
-    title: "The Fellowship of the Ring",
-    year: 2001,
-    rating: 8.8,
-    genre: "Adventure",
-    image: "https://image.tmdb.org/t/p/w500/6oom5QYQ2yQTMJIbnvbkBL9cHo6.jpg",
-    watched: true,
-  },
-  {
-    id: 8,
-    title: "Everything Everywhere All At Once",
-    year: 2022,
-    rating: 7.8,
-    genre: "Sci-Fi",
-    image: "https://image.tmdb.org/t/p/w500/w3LxiVYdWWRvEVdn5RYq6jIqkb1.jpg",
-    watched: false,
-  },
-  {
-    id: 9,
-    title: "Fast X",
-    year: 2023,
-    rating: 7.1,
-    genre: "Action",
-    image: "https://image.tmdb.org/t/p/w500/fiVW06jE7z9YnO4trhaMEdclSiC.jpg",
-    watched: false,
-  },
-  {
-    id: 10,
-    title: "Black Adam",
-    year: 2022,
-    rating: 6.8,
-    genre: "Action",
-    image: "https://image.tmdb.org/t/p/w500/pFlaoHTZeyNkG83vxsAJiGzfKWZ.jpg",
-    watched: false,
-  }
-];
 
 export default function Home() {
   const { data: user, isLoading } = useAuth();
   // const [user, setUser] = useState<any>(null);
+  const [page, setPage] = useState(1);
+  const size = 10;
   const router = useRouter();
-  const [movies, setMovies] = useState(MOCK_MOVIES);
+  // const [movies, setMovies] = useState(MOCK_MOVIES);
+
+  const { 
+    data: movies, 
+    isLoading: moviesLoading,
+    hasNextPage,
+    fetchNextPage,
+    isFetching,
+    isFetchingNextPage,
+    refetch
+   } = useMoviesLibrary();
 
   // Filter States
   const [hideWatched, setHideWatched] = useState(false);
@@ -126,13 +45,13 @@ export default function Home() {
      Ideally, we would perform filtering/sorting here or on the backend.
      For this UI demo, we will just pass dummy handlers to the FilterBar. 
   */
-  const handleSortChange = (val: string) => console.log("Sort:", val);
-  const handleGenreChange = (val: string) => console.log("Genre:", val);
-  const handleRatingChange = (val: string) => console.log("Rating:", val);
-  const handleYearChange = (val: string) => console.log("Year:", val);
-  const handleHideWatched = (val: boolean) => setHideWatched(val);
+  // const handleSortChange = (val: string) => console.log("Sort:", val);
+  // const handleGenreChange = (val: string) => console.log("Genre:", val);
+  // const handleRatingChange = (val: string) => console.log("Rating:", val);
+  // const handleYearChange = (val: string) => console.log("Year:", val);
+  // const handleHideWatched = (val: boolean) => setHideWatched(val);
 
-  const filteredMovies = hideWatched ? movies.filter(m => !m.watched) : movies;
+  // const filteredMovies = hideWatched ? movies.filter(m => !m.watched) : movies;
 
   // if (!user) return <p className="p-10">Loading...</p>;
 
@@ -143,18 +62,41 @@ export default function Home() {
         <main className="container mx-auto py-8 px-4 md:px-6 lg:px-8">
 
           <FilterBar
-            onSortChange={handleSortChange}
-            onGenreChange={handleGenreChange}
-            onRatingChange={handleRatingChange}
-            onYearChange={handleYearChange}
-            onHideWatchedChange={handleHideWatched}
+            onSortChange={() => { }}
+            onGenreChange={() => { }}
+            onRatingChange={() => { }}
+            onYearChange={() => { }}
+            onHideWatchedChange={() => { }}
           />
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-            {filteredMovies.map(movie => (
-              <MovieCard key={movie.id} movie={movie} />
-            ))}
-          </div>
+          {moviesLoading ? (
+            <p>Loading...</p>
+          ) : (
+            movies ? (
+              <div className="">
+                <InfiniteScrollContainer
+                  onBottomReached={() => {
+                    if (isFetching || isFetchingNextPage) return;
+                    if (hasNextPage) {
+                      fetchNextPage();
+                    }
+                  }}
+                  className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"
+                >
+                  {movies?.pages.map((page, i) => page?.map((movie, j) => (
+                    <MovieCard key={movie.imdb_code || `${i}-${j}`} movie={movie} />
+                  )))}
+                  {isFetchingNextPage && (
+                    <div className="flex justify-center items-center">
+                      <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                    </div>
+                  )}
+                </InfiniteScrollContainer>
+              </div>
+            ) : (
+              <p>No movies found</p>
+            )
+          )}
 
         </main>
       </div>
@@ -162,15 +104,15 @@ export default function Home() {
   }
 
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-  return user ? <DashboardPage /> : <LandingPage />;
+  // if (isLoading) {
+  //   return (
+  //     <div className="min-h-screen flex items-center justify-center bg-background">
+  //       <div className="text-center">
+  //         <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+  //         <p className="text-muted-foreground">Loading...</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
+  return <DashboardPage />;
 }

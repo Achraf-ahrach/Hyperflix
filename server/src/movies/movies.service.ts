@@ -1,7 +1,10 @@
 import { HttpService } from '@nestjs/axios';
-import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { lastValueFrom, map } from 'rxjs';
+import { Injectable, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import * as cacheManager_1 from 'cache-manager';
 
 /**
  * Do some caching ?
@@ -21,6 +24,47 @@ import { lastValueFrom, map } from 'rxjs';
  * <NAME> is optional
  */
 
+/**
+ 
+{
+
+"Title":"Zootopia 2",
+"Year":"2025",
+"Rated":"PG",
+"Released":"26 Nov 2025",
+"Runtime":"108 min",
+"Genre":"Animation, Action, Adventure",
+"Director":"Jared Bush, Byron Howard",
+"Writer":"Jared Bush",
+"Actors":"Ginnifer Goodwin, Jason Bateman, Ke Huy Quan",
+"Plot":"Brave rabbit cop Judy Hopps and her friend, the fox Nick Wilde, team up again to crack a new case, the most perilous and intricate of their careers.",
+"Language":"English",
+"Country":"United States",
+"Awards":"1 win & 2 nominations total",
+"Poster":"https://m.media-amazon.com/images/M/MV5BYjg1Mjc3MjQtMTZjNy00YWVlLWFhMWEtMWI3ZTgxYjJmNmRlXkEyXkFqcGc@._V1_SX300.jpg","Ratings":
+[
+{"Source":"Internet Movie Database","Value":"7.8/10"},
+{"Source":"Rotten Tomatoes","Value":"92%"},
+{"Source":"Metacritic","Value":"73/100"}
+],
+"Metascore":"73",
+"imdbRating":"7.8",
+"imdbVotes":"8,485",
+"imdbID":"tt26443597",
+"Type":"movie",
+"DVD":"N/A",
+"BoxOffice":"$97,700,000",
+"Production":"N/A",
+"Website":"N/A",
+"Response":"True"}
+
+ */
+
+/*
+Production Setup (Redis)
+In-memory caching is not suitable for clustered apps (data isn't shared between instances) or large datasets. You should switch to Redis.
+*/
+
 @Injectable()
 export class MoviesService {
   // Common mirrors: yts.mx, yts.lt, yts.ag if YTS domains change
@@ -30,69 +74,125 @@ export class MoviesService {
 
   private readonly logger = new Logger(MoviesService.name);
 
-  constructor(private readonly httpService: HttpService, private readonly configService: ConfigService) { }
+  constructor(private readonly httpService: HttpService, private readonly configService: ConfigService, @Inject(CACHE_MANAGER) private readonly cacheManager: cacheManager_1.Cache) { }
+
+
+  async searchMoviesYTS(query: string) {
+    const url = `https://yts.lt/api/v2/list_movies.json?query_term=${query}`;
+    const response = await lastValueFrom(this.httpService.get(url).pipe(map((res) => res.data)));
+    return response.data.movies;
+  }
+
+  async searchMoviesApiBay(query: string) {
+    // https://apibay.org/q.php?q={query}&cat={category_code}
+    const url = `https://apibay.org/q.php?q=${query}&cat=207`;
+    const response = await lastValueFrom(this.httpService.get(url).pipe(map((res) => res.data)));
+    return response.data;
+  }
+
+
+  async getTrendingMovies(page: number, limit: number) {
+    const start = (page - 1) * limit;
+    const heavyData = await this.getAndCacheHeavyData();
+    return heavyData.slice(start, start + limit);
+  }
+
+  async getAndCacheHeavyData() {
+    const heavyData: any = await this.cacheManager.get('all_movies');
+    if (heavyData) {
+      return heavyData
+    }
+    const ytsData = await this.getYtsTrending();
+    const apiBayData = await this.getApiBayTrending();
+    const allMovies = [...ytsData, ...apiBayData];
+    await this.cacheManager.set('all_movies', allMovies);
+    return allMovies;
+  }
+
   // 1. YTS Source (High Quality Movie Torrents)
   async getYtsTrending() {
+    const url = 'https://yts.lt/api/v2/list_movies.json?sort_by=download_count&limit=50';
+
     try {
-      const url = 'https://yts.lt/api/v2/list_movies.json?sort_by=download_count&limit=10';
-      const data = await lastValueFrom(
+      const topMovies = await lastValueFrom(
         this.httpService.get(url).pipe(map((res) => res.data))
       );
-      return data.data.movies
-      // ..map((movie: any) => ({
-      //   source: 'YTS',
-      //   title: movie.title,
-      //   seeds: 0, // YTS API doesn't always show live seeders
-      //   magnet: null, // YTS returns hash, need to build magnet manually or use torrent_url
-      //   hash: movie.torrents[0]?.hash,
-      //   cover: movie.medium_cover_image
-      // }));
+
+      // Skip omdbapi requests as YTS already has the data
+
+      return topMovies.data.movies.map((movie: any) => ({
+        source: 'YTS',
+        imdb_code: movie.imdb_code,
+        title: movie.title,
+        year: movie.year,
+        rating: movie.rating || 0,
+        thumbnail: movie.large_cover_image,
+        synopsis: movie.synopsis,
+        runtime: movie.runtime,
+        mpa_rating: movie.mpa_rating,
+        genres: movie.genres,
+        background_image: movie.background_image,
+        torrents: movie.torrents,
+      }));
     } catch (e) {
       this.logger.error(e);
       this.logger.error('YTS failed, switching to APIBay...');
-      // return this.getApiBayTrending(); // Fallback to APIBay
     }
   }
 
+  async getMovie(id: string) {
+    const heavyData: any[] = await this.getAndCacheHeavyData();
+    const movie = heavyData.find(m => m.imdb_code === id);
+    if (movie) return movie;
+
+    // If not found in cache, try fetching directly from YTS (if it's a YTS movie)
+    // Or just validte with OMDb? 
+    // For now, let's keep it simple and just rely on the cache or maybe fetch details if needed.
+    // Ideally we would fetch single movie details here.
+    return null;
+  }
 
   async getApiBayTrending() {
     const url = 'https://apibay.org/precompiled/data_top100_207.json';
     const omdbApiKey = this.configService.get('OMDB_API_KEY');
-    // process.env.OMDB_API_KEY; // e.g., 'a1b2c3d4'
 
     try {
-      // 1. Fetch the raw torrent list
-      const rawData = await lastValueFrom(
+      const topMovies = await lastValueFrom(
         this.httpService.get(url).pipe(map((res) => res.data))
       );
 
-      // 2. Process and Enrich only the first 10-20 items to save API calls
-      //    (OMDb free tier has a limit of 1000 calls per day)
-      const limit = 20;
-      const topMovies = rawData.slice(0, limit);
 
-      // 3. Map over the movies and fetch metadata in parallel
       const enrichedMovies = await Promise.all(
-        topMovies.map(async (movie: any) => {
-          let posterUrl = null;
-          let movieTitle = movie.name;
-          let movieYear = null;
-
-          // Only fetch if we have a valid IMDB ID
-          if (movie.imdb && movie.imdb.startsWith('tt')) {
+        topMovies.map(async (res: any) => {
+          let movie = {
+            posterUrl: null,
+            movieTitle: res.name,
+            movieYear: null,
+            imdbRating: 0,
+            plot: '',
+            runtime: 0,
+            rated: '',
+            genres: '',
+          }
+          if (res.imdb && res.imdb.startsWith('tt')) {
             try {
-              const metadataUrl = `http://www.omdbapi.com/?apikey=${omdbApiKey}&i=${movie.imdb}`;
+              const metadataUrl = `http://www.omdbapi.com/?apikey=${omdbApiKey}&i=${res.imdb}`;
               const metadata = await lastValueFrom(
                 this.httpService.get(metadataUrl).pipe(map((res) => res.data))
               );
 
               if (metadata.Response === 'True') {
-                posterUrl = metadata.Poster !== 'N/A' ? metadata.Poster : null;
-                movieTitle = metadata.Title; // Use the "clean" title from OMDb
-                movieYear = metadata.Year;
+                movie.posterUrl = metadata.Poster !== 'N/A' ? metadata.Poster : null;
+                movie.movieTitle = metadata.Title; // Use the "clean" title from OMDb
+                movie.movieYear = metadata.Year;
+                movie.imdbRating = Number.parseFloat(metadata.imdbRating);
+                movie.plot = metadata.Plot;
+                movie.runtime = parseInt(metadata.Runtime) || 0;
+                movie.rated = metadata.Rated;
+                movie.genres = metadata.Genre;
               }
             } catch (e) {
-              this.logger.error(`Failed to fetch metadata for ${movie.imdb}`);
+              this.logger.error(`Failed to fetch metadata for ${res.imdb}`);
               this.logger.error(e);
             }
           }
@@ -100,19 +200,24 @@ export class MoviesService {
           // Return the clean, enriched object
           return {
             source: 'APIBay',
-            imdb_code: movie.imdb, // Important for the frontend router
-            title: movieTitle,     // Clean title (e.g. "Zootopia 2")
-            year: movieYear,       // Required by subject
-            rating: 0,             // You can extract this from metadata.imdbRating
-            thumbnail: posterUrl,  // <--- HERE IS YOUR THUMBNAIL
+            imdb_code: res.imdb, // Important for the frontend router
+            title: movie.movieTitle,     // Clean title (e.g. "Zootopia 2")
+            year: movie.movieYear,       // Required by subject
+            rating: movie.imdbRating,
+            thumbnail: movie.posterUrl,  // THUMBNAIL
+            synopsis: movie.plot,
+            runtime: movie.runtime,
+            mpa_rating: movie.rated,
+            genres: movie.genres ? movie.genres.split(', ') : [],
+            background_image: movie.posterUrl, // Fallback as APIBay doesn't provide backgrounds
             torrents: [            // Structure for the video player later
               {
-                url: `magnet:?xt=urn:btih:${movie.info_hash}&dn=${encodeURIComponent(movie.name)}`,
-                hash: movie.info_hash,
+                url: `magnet:?xt=urn:btih:${res.info_hash}&dn=${encodeURIComponent(res.name)}`,
+                hash: res.info_hash,
                 quality: '1080p', // Heuristic based on raw name or APIBay category
-                seeds: parseInt(movie.seeders),
-                peers: parseInt(movie.leechers),
-                size: parseInt(movie.size),
+                seeds: parseInt(res.seeders),
+                peers: parseInt(res.leechers),
+                size: parseInt(res.size),
               }
             ]
           };
@@ -209,4 +314,14 @@ export class MoviesService {
   //     return [];
   //   }
   // }
+
+
+
+  // Search by query 
+  /**
+   * Search by query 
+   * for apibay https://apibay.org/q.php?q={query}&cat={category_code} 
+   * for YTS  https://yts.lt/api/v2/list_movies.json?query_term={query}
+   */
+
 }
