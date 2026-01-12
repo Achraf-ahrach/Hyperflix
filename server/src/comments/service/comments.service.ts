@@ -72,7 +72,7 @@ export class CommentsService {
         sql`${comments.movieId} = ${movieId} AND ${comments.parentId} IS NULL`
       )
       .groupBy(comments.id, users.id)
-      .orderBy(desc(comments.createdAt))
+      .orderBy(desc(comments.createdAt), desc(comments.id)) //
       .limit(limit)
       .offset(offset);
 
@@ -285,3 +285,4 @@ export class CommentsService {
     
   }
 }
+

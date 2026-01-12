@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { UserSettingsModule } from './userSetting/UserSettingsModule';
 import { UsersProfileController } from './userprofile/controller/profile.controller';
 import { UserProfileModule } from './userprofile/UserProfileModule';
+import { CommentsModule } from './comments/commentsModule';
 
 @Module({
   imports: [
@@ -18,7 +19,8 @@ import { UserProfileModule } from './userprofile/UserProfileModule';
     DatabaseModule,
     AuthModule,
     UserSettingsModule,
-    UserProfileModule
+    UserProfileModule,
+    CommentsModule
   ],
   controllers: [AppController],
   providers: [AppService],

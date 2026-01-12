@@ -1,7 +1,7 @@
 // dto/create-reply.dto.ts
 import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
 
-export class CreateReplyDto {
+export class ReplyDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(2000)

@@ -1,202 +1,16 @@
 "use client"
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useContext } from 'react';
 import {
   Send, Heart, MessageCircle, MoreVertical, Trash2,
   X, Loader2, ImageIcon, ChevronDown
 } from 'lucide-react';
+import { api, INITIAL_BATCH, LOAD_MORE_BATCH, Comment } from './page_';
+import { CommentInput } from './components/CommentInput';
+import { CommentItem } from './components/CommentItem';
 
-// --- Types ---
-interface User {
-  id: string;
-  username: string;
-  avatar: string;
-  isVerified?: boolean;
-}
 
-interface CommentMedia {
-  id: string;
-  type: 'image';
-  url: string;
-  alt?: string;
-}
 
-interface Reply {
-  id: string;
-  userId: string;
-  username: string;
-  userAvatar: string;
-  content: string;
-  likes: number;
-  isLiked: boolean;
-  media?: CommentMedia[];
-  createdAt: string;
-}
-
-interface Comment {
-  id: string;
-  userId: string;
-  username: string;
-  userAvatar: string;
-  content: string;
-  likes: number;
-  isLiked: boolean;
-  replies: Reply[];
-  replyCount: number;
-  media?: CommentMedia[];
-  createdAt: string;
-  isPinned?: boolean;
-}
-
-// --- Constants ---
-const INITIAL_BATCH = 3;
-const LOAD_MORE_BATCH = 3;
-
-const currentUser: User = {
-  id: 'user-1',
-  username: 'JohnDoe',
-  avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John',
-  isVerified: true
-};
-
-// --- API Service ---
-const api = {
-  async getComments(movieId: string, limit: number, offset: number): Promise<Comment[]> {
-    // Simulate API call
-    await new Promise(r => setTimeout(r, 500));
-    
-    // Mock data - in production, this would be: 
-    // const response = await fetch(`/api/movies/${movieId}/comments?limit=${limit}&offset=${offset}`);
-    // return response.json();
-    
-    return [
-      {
-        id: 'c-1',
-        userId: 'user-2',
-        username: 'MovieFan',
-        userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Movie',
-        content: 'This movie was incredible! ||The twist ending blew my mind!||',
-        likes: 24,
-        isLiked: false,
-        replies: [],
-        replyCount: 0,
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: 'c-2',
-        userId: 'user-3',
-        username: 'CinemaLover',
-        userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Cinema',
-        content: 'The cinematography was breathtaking. Every frame felt like art.',
-        likes: 18,
-        isLiked: false,
-        replies: [
-          {
-            id: 'r-1',
-            userId: 'user-4',
-            username: 'FilmCritic',
-            userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Critic',
-            content: 'Agreed! The lighting in the final scene was perfect.',
-            likes: 5,
-            isLiked: false,
-            createdAt: new Date().toISOString(),
-          }
-        ],
-        replyCount: 1,
-        createdAt: new Date().toISOString(),
-      }
-    ];
-  },
-
-  async createComment(movieId: string, content: string, media?: File): Promise<Comment> {
-    await new Promise(r => setTimeout(r, 800));
-    
-    // const formData = new FormData();
-    // formData.append('content', content);
-    // if (media) formData.append('media', media);
-    // const response = await fetch(`/api/movies/${movieId}/comments`, {
-    //   method: 'POST',
-    //   body: formData
-    // });
-    // return response.json();
-    
-    return {
-      id: `c-${Date.now()}`,
-      userId: currentUser.id,
-      username: currentUser.username,
-      userAvatar: currentUser.avatar,
-      content,
-      likes: 0,
-      isLiked: false,
-      replies: [],
-      replyCount: 0,
-      media: media ? [{ id: `m-${Date.now()}`, type: 'image', url: URL.createObjectURL(media) }] : [],
-      createdAt: new Date().toISOString()
-    };
-  },
-
-  async createReply(commentId: string, content: string): Promise<Reply> {
-    await new Promise(r => setTimeout(r, 600));
-    
-    // const response = await fetch(`/api/comments/${commentId}/replies`, {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ content })
-    // });
-    // return response.json();
-    
-    return {
-      id: `r-${Date.now()}`,
-      userId: currentUser.id,
-      username: currentUser.username,
-      userAvatar: currentUser.avatar,
-      content,
-      likes: 0,
-      isLiked: false,
-      createdAt: new Date().toISOString()
-    };
-  },
-
-  async toggleLike(commentId: string, replyId?: string): Promise<void> {
-    await new Promise(r => setTimeout(r, 300));
-    // await fetch(`/api/comments/${commentId}/like`, { method: 'POST' });
-  },
-
-  async deleteComment(commentId: string): Promise<void> {
-    await new Promise(r => setTimeout(r, 400));
-    // await fetch(`/api/comments/${commentId}`, { method: 'DELETE' });
-  }
-};
-
-// --- Spoiler Text Component ---
-const SpoilerText = ({ text }: { text: string }) => {
-  const [revealed, setRevealed] = useState(false);
-  const parts = text.split(/(\|\|.*?\|\|)/g);
-
-  return (
-    <p className="text-slate-300 whitespace-pre-wrap leading-relaxed text-sm">
-      {parts.map((part, i) => {
-        if (part.startsWith('||') && part.endsWith('||')) {
-          const content = part.slice(2, -2);
-          return (
-            <span
-              key={i}
-              onClick={() => setRevealed(!revealed)}
-              className={`cursor-pointer rounded px-1 transition-all mx-0.5 ${
-                revealed ? 'bg-slate-700 text-slate-200' : 'bg-slate-800 text-transparent select-none blur-sm'
-              }`}
-            >
-              {content}
-            </span>
-          );
-        }
-        return part;
-      })}
-    </p>
-  );
-};
-
-// --- Comment Input Component ---
 interface CommentInputProps {
   onSubmit: (content: string, media?: File) => Promise<void>;
   placeholder?: string;
@@ -204,259 +18,24 @@ interface CommentInputProps {
   compact?: boolean;
 }
 
-const CommentInput = ({ onSubmit, placeholder = "Write a comment...", autoFocus, compact }: CommentInputProps) => {
-  const [content, setContent] = useState('');
-  const [media, setMedia] = useState<File | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleSubmit = async () => {
-    if (!content.trim() && !media) return;
-    
-    setIsSubmitting(true);
-    try {
-      await onSubmit(content, media || undefined);
-      setContent('');
-      setMedia(null);
-    } catch (error) {
-      console.error('Failed to submit:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  if (compact) {
-    return (
-      <div className="flex gap-2">
-        <input
-          autoFocus={autoFocus}
-          className="flex-1 bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-red-500/50 transition-colors"
-          placeholder={placeholder}
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSubmit()}
-        />
-        <button
-          onClick={handleSubmit}
-          disabled={!content.trim() || isSubmitting}
-          className="bg-red-600 p-2 rounded-lg disabled:opacity-50 hover:bg-red-500 transition-colors"
-        >
-          {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-2xl backdrop-blur-sm">
-      <div className="flex gap-4">
-        <img src={currentUser.avatar} className="w-10 h-10 rounded-full border border-red-500/50" alt={currentUser.username} />
-        <div className="flex-1">
-          <textarea
-            className="w-full bg-transparent border-none outline-none resize-none text-sm placeholder:text-slate-600"
-            placeholder={placeholder}
-            rows={3}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-          />
-          {media && (
-            <div className="relative mt-2 inline-block">
-              <img src={URL.createObjectURL(media)} className="h-24 w-24 object-cover rounded-lg border border-slate-700" alt="Upload preview" />
-              <button 
-                onClick={() => setMedia(null)} 
-                className="absolute -top-2 -right-2 bg-red-600 p-1 rounded-full hover:bg-red-500"
-                aria-label="Remove image"
-              >
-                <X size={12} />
-              </button>
-            </div>
-          )}
-          <div className="flex justify-between items-center mt-4 border-t border-slate-800/50 pt-4">
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="text-slate-500 hover:text-white transition-colors"
-              aria-label="Attach image"
-            >
-              <ImageIcon size={20} />
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                hidden 
-                accept="image/*" 
-                onChange={(e) => setMedia(e.target.files?.[0] || null)} 
-              />
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={isSubmitting || (!content.trim() && !media)}
-              className="bg-red-600 hover:bg-red-500 disabled:opacity-50 px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all active:scale-95"
-            >
-              {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-              Post
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- Reply Item Component ---
-interface ReplyItemProps {
-  reply: Reply;
-  onLike: () => void;
-}
-
-const ReplyItem = ({ reply, onLike }: ReplyItemProps) => (
-  <div className="flex gap-3">
-    <img src={reply.userAvatar} className="w-7 h-7 rounded-full bg-slate-800" alt={reply.username} />
-    <div className="flex-1">
-      <div className="flex items-center gap-2">
-        <span className="font-bold text-xs text-slate-300">{reply.username}</span>
-        <span className="text-[10px] text-slate-600">• Just now</span>
-      </div>
-      <p className="text-slate-400 text-sm mt-0.5">{reply.content}</p>
-      <button
-        onClick={onLike}
-        className={`mt-2 flex items-center gap-1 text-[10px] transition-colors ${
-          reply.isLiked ? 'text-red-500 font-bold' : 'text-slate-600 hover:text-red-400'
-        }`}
-      >
-        <Heart size={10} fill={reply.isLiked ? "currentColor" : "none"} />
-        {reply.likes}
-      </button>
-    </div>
-  </div>
-);
-
-// --- Comment Item Component ---
-interface CommentItemProps {
-  comment: Comment;
-  onLike: () => void;
-  onReply: (content: string) => Promise<void>;
-  onDelete: () => void;
-  onReplyLike: (replyId: string) => void;
-}
-
-const CommentItem = ({ comment, onLike, onReply, onDelete, onReplyLike }: CommentItemProps) => {
-  const [showReplyInput, setShowReplyInput] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
-
-  const handleReplySubmit = async (content: string) => {
-    await onReply(content);
-    setShowReplyInput(false);
-  };
-
-  return (
-    <div className="bg-slate-900/30 border border-slate-800/40 p-6 rounded-2xl group transition-all hover:border-slate-700/60">
-      <div className="flex gap-4">
-        <img src={comment.userAvatar} className="w-10 h-10 rounded-full bg-slate-800" alt={comment.username} />
-        <div className="flex-1 min-w-0">
-          <div className="flex justify-between items-start">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-sm">{comment.username}</span>
-              {comment.userId === currentUser.id && (
-                <span className="text-[10px] bg-red-600/20 text-red-400 px-2 py-0.5 rounded-full uppercase tracking-tighter font-bold border border-red-600/30">
-                  You
-                </span>
-              )}
-            </div>
-            <div className="relative">
-              <button 
-                onClick={() => setShowMenu(!showMenu)} 
-                className="text-slate-600 hover:text-white transition-colors"
-                aria-label="Comment options"
-              >
-                <MoreVertical size={16} />
-              </button>
-              {showMenu && (
-                <div className="absolute right-0 mt-2 w-32 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-10 overflow-hidden">
-                  <button
-                    onClick={() => {
-                      onDelete();
-                      setShowMenu(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-xs text-red-400 hover:bg-slate-700 flex items-center gap-2"
-                  >
-                    <Trash2 size={12} /> Delete
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-2">
-            <SpoilerText text={comment.content} />
-          </div>
-
-          {comment.media?.[0] && (
-            <img 
-              src={comment.media[0].url} 
-              className="mt-4 rounded-xl max-h-72 w-auto border border-slate-800" 
-              alt={comment.media[0].alt || "Comment attachment"}
-            />
-          )}
-
-          <div className="flex items-center gap-5 mt-5">
-            <button
-              onClick={onLike}
-              className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${
-                comment.isLiked ? 'text-red-500' : 'text-slate-500 hover:text-red-400'
-              }`}
-            >
-              <Heart size={14} fill={comment.isLiked ? "currentColor" : "none"} />
-              {comment.likes}
-            </button>
-            <button
-              onClick={() => setShowReplyInput(!showReplyInput)}
-              className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-white transition-colors"
-            >
-              <MessageCircle size={14} />
-              Reply
-            </button>
-          </div>
-
-          {showReplyInput && (
-            <div className="mt-4">
-              <CommentInput 
-                onSubmit={handleReplySubmit} 
-                placeholder="Write a reply..." 
-                autoFocus 
-                compact 
-              />
-            </div>
-          )}
-
-          {comment.replies.length > 0 && (
-            <div className="mt-6 space-y-4 border-l-2 border-slate-800/60 pl-4">
-              {comment.replies.map(reply => (
-                <ReplyItem 
-                  key={reply.id} 
-                  reply={reply} 
-                  onLike={() => onReplyLike(reply.id)} 
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
 
 // --- Main Comments Section Component ---
 const CommentsSection = ({ movieId }: { movieId: string }) => {
   const [comments, setComments] = useState<Comment[]>([]);
-  const [visibleCount, setVisibleCount] = useState(INITIAL_BATCH);
+  const [page, setPage] = useState<number>(0);
+  const [total, setTotal] = useState<number>(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   // Load initial comments
   React.useEffect(() => {
     const loadComments = async () => {
-      try {
-        const data = await api.getComments(movieId, INITIAL_BATCH, 0);
-        setComments(data);
+      try
+      {
+        const data = await api.getComments(movieId, INITIAL_BATCH, page+1);
+        setComments(data.comments);
+        setPage(data.page);
+        setTotal(data.total);
       } catch (error) {
         console.error('Failed to load comments:', error);
       } finally {
@@ -469,7 +48,6 @@ const CommentsSection = ({ movieId }: { movieId: string }) => {
   const handleAddComment = async (content: string, media?: File) => {
     const newComment = await api.createComment(movieId, content, media);
     setComments(prev => [newComment, ...prev]);
-    setVisibleCount(prev => prev + 1);
   };
 
   const handleAddReply = async (commentId: string, content: string) => {
@@ -507,8 +85,20 @@ const CommentsSection = ({ movieId }: { movieId: string }) => {
   const handleLoadMore = async () => {
     setIsLoadingMore(true);
     try {
-      await new Promise(r => setTimeout(r, 700));
-      setVisibleCount(prev => prev + LOAD_MORE_BATCH);
+      const data = await api.getComments(movieId, INITIAL_BATCH, page+1);
+      console.log(page)
+      console.log(
+      'prev last:',
+      comments.at(-1)?.id,
+      'new first:',
+      data.comments[0]?.id
+    );
+      setComments(prevComments => [
+        ...prevComments,
+        ...data.comments,
+      ]);
+      setPage(data.page);
+      setTotal(data.total);
     } catch (error) {
       console.error('Failed to load more:', error);
     } finally {
@@ -516,8 +106,8 @@ const CommentsSection = ({ movieId }: { movieId: string }) => {
     }
   };
 
-  const displayedComments = comments.slice(0, visibleCount);
-  const hasMore = comments.length > visibleCount;
+  const displayedComments = comments;
+  const hasMore = comments.length < total;
 
   if (isInitialLoading) {
     return (
@@ -531,7 +121,7 @@ const CommentsSection = ({ movieId }: { movieId: string }) => {
     <div className="min-h-screen bg-slate-950 text-slate-200 font-sans p-4 md:p-8">
       <div className="max-w-3xl mx-auto">
         <h2 className="text-3xl font-bold mb-8 flex items-center gap-3">
-          Community Chat 
+          Community Chat
           <span className="text-sm font-normal text-slate-500 bg-slate-900 px-3 py-1 rounded-full">
             {comments.length}
           </span>

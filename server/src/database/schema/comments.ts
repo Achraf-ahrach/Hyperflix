@@ -51,11 +51,6 @@ export const comments = pgTable(
       sql`length(${table.content}) > 0 AND length(${table.content}) <= 2000`
     ),
 
-    index("idx_comments_movie_id").on(
-      table.movieId,
-      table.createdAt.desc()
-    ),
-
     index("idx_comments_user_id").on(
       table.userId,
       table.createdAt.desc()

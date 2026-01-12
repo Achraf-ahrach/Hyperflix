@@ -10,18 +10,18 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { CreateReplyCommentsService } from '../service/create-reply-comment.service';
-import { CreateReplyDto } from '../dto/CreateReply.dto';
+import { ReplyDto } from '../dto/CreateReply.dto';
 
 
 @Controller('comments')
 
-export class CreateReplyComment {
+export class CreateReplyCommentController {
   constructor(private readonly commentsService: CreateReplyCommentsService) {}
 
   @Post(':commentId/replies')
   async createReply(
     @Param('commentId', ParseIntPipe) commentId: number,
-    @Body() createReplyDto: CreateReplyDto,
+    @Body() createReplyDto: ReplyDto,
     @Req() req: any,
   ) {
     if (!createReplyDto.content || createReplyDto.content.trim().length === 0) {
@@ -32,11 +32,11 @@ export class CreateReplyComment {
       throw new BadRequestException('Content must be 2000 characters or less');
     }
 
-    const userId = req.user.id;
+    // const userId = req.user.id;
 
     return this.commentsService.createReply({
       commentId,
-      userId,
+      userId:2,
       content: createReplyDto.content.trim(),
     });
   }

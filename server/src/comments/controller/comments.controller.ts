@@ -26,7 +26,7 @@ export class CommentsController {
   async getMovieComments(
     @Param('movieId') movieId: number,
     @Query('limit', new ParseIntPipe({ optional: true })) limit = 10,
-    @Query('offset', new ParseIntPipe({ optional: true })) offset = 0,
+    @Query('offset', new ParseIntPipe({ optional: true })) offset = 1,
   ) {
     return this.commentService.getCommentsByMovie({ movieId, limit, page: offset });
   }

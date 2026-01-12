@@ -15,7 +15,7 @@ interface CommentItemProps {
   onReplyLike: (replyId: string) => void;
 }
 
-const CommentItem = ({ comment, onLike, onReply, onDelete, onReplyLike }: CommentItemProps) => {
+export const CommentItem = ({ comment, onLike, onReply, onDelete, onReplyLike }: CommentItemProps) => {
   const [showReplyInput, setShowReplyInput] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
 
@@ -111,6 +111,7 @@ const CommentItem = ({ comment, onLike, onReply, onDelete, onReplyLike }: Commen
                   key={reply.id} 
                   reply={reply} 
                   onLike={() => onReplyLike(reply.id)} 
+                  onDelete={() => onReplyLike(reply.id)} 
                 />
               ))}
             </div>

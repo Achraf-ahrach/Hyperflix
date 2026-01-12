@@ -17,8 +17,9 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { CreateCommentsService } from '../service/create-comment.service';
+import { AuthGuard } from '@nestjs/passport';
 
-@Controller('movies/:movieId/comments')
+@Controller('comments/:movieId')
 export class CreateCommentController {
   constructor(private readonly createCommentsService: CreateCommentsService) {}
 
@@ -48,12 +49,19 @@ export class CreateCommentController {
       },
     }),
   )
+
+
+
+  // @UseGuards(AuthGuard('jwt'))
   async createComment(
     @Param('movieId', ParseIntPipe) movieId: number,
     @Body('content') content: string,
     @UploadedFile() media: Express.Multer.File,
     @Req() req: any,
   ) {
+    
+    // console.log(req.user.id);
+
     if (!content || content.trim().length === 0) {
       throw new BadRequestException('Content is required');
     }
@@ -62,11 +70,11 @@ export class CreateCommentController {
       throw new BadRequestException('Content must be 2000 characters or less');
     }
 
-    const userId = req.user.id;
-
+    // const userId = req.user.id;
+    const idd : number = 2;
     return this.createCommentsService.createComment({
       movieId,
-      userId,
+      userId: idd,
       content: content.trim(),
       mediaFile: media,
     });

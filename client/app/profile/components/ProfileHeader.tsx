@@ -17,7 +17,7 @@ export const ProfileHeader: React.FC<{ user: User }> = ({ user }) => {
             <div className="absolute inset-0 bg-red-600 blur-xl opacity-20"></div>
             <img
               src={user.avatarUrl}
-              alt={user.displayName}
+              alt="ww"
               className="relative w-28 h-28 object-cover border-2 border-red-600/30"
             />
           </div>
@@ -25,7 +25,7 @@ export const ProfileHeader: React.FC<{ user: User }> = ({ user }) => {
 
         {/* User Info */}
         <div className="text-center space-y-2 mb-8">
-          <h1 className="text-2xl font-semibold text-white tracking-tight">{user.displayName}</h1>
+          <h1 className="text-2xl font-semibold text-white tracking-tight">laz</h1>
           <p className="text-zinc-400 text-sm">{user.username}</p>
         </div>
 
