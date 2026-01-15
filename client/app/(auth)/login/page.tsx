@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import api from "@/lib/axios";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, AlertCircle, ArrowRight } from "lucide-react";
@@ -15,7 +16,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-
 import bgImage from "@/public/hero-bg.jpg";
 
 export default function LoginPage() {
@@ -56,15 +56,15 @@ export default function LoginPage() {
   }, [email, password]);
 
   return (
-    // 2. Update the main div style to use the background image
     <div
       className="min-h-screen w-full flex items-center justify-center p-4 relative overflow-hidden bg-cover bg-center bg-no-repeat"
       style={{
         backgroundImage: `url(${bgImage.src})`,
       }}
     >
-      <Card className="w-full min-w-[320px] max-w-md shadow-lg shadow-black/10 border-border/50 p-0 relative z-10 bg-card/90 ">
-        <CardHeader className="text-center pt-8 pb-6 bg-background/50 rounded-br-[25px] rounded-bl-[25px] ">
+      <div className="absolute inset-0 bg-linear-to-b from-black/60 via-black/30 to-black/80" />
+      <Card className="w-full min-w-[320px] max-w-md rounded-2xl shadow-lg shadow-black/50 border-border/50 p-0 relative z-10 bg-black/80 ">
+        <CardHeader className="text-center pt-8 pb-6 bg-background/50 rounded-br-[25px] rounded-bl-[25px] rounded-tr-2xl rounded-tl-2xl">
           <CardTitle className="text-3xl font-bold bg-linear-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
             Welcome Back
           </CardTitle>
@@ -179,7 +179,7 @@ export default function LoginPage() {
               <span className="w-full border-t border-border/50"></span>
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-card px-6 text-xs uppercase text-muted-foreground font-bold tracking-wide">
+              <span className="bg-black/70 px-0.5 text-xs uppercase text-muted-foreground font-bold tracking-wide">
                 OR
               </span>
             </div>
