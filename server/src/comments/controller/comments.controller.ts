@@ -9,9 +9,11 @@ import {
   HttpStatus,
   Req,
   Delete,
+  UseGuards,
 } from '@nestjs/common';
 import { CommentDto } from '../dto/comment.dto';
 import { CommentsService } from '../service/comments.service';
+import { AuthGuard } from '@nestjs/passport';
 
 
 @Controller('comments')
@@ -22,12 +24,16 @@ export class CommentsController {
   ) { }
 
 
+  @UseGuards(AuthGuard('jwt'))
   @Get(':movieId')
   async getMovieComments(
     @Param('movieId') movieId: number,
     @Query('limit', new ParseIntPipe({ optional: true })) limit = 10,
     @Query('offset', new ParseIntPipe({ optional: true })) offset = 1,
+    @Req() req: any,
   ) {
+    console.log("||")
+    console.log(req.user);
     return this.commentService.getCommentsByMovie({ movieId, limit, page: offset });
   }
 
