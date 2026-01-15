@@ -1,19 +1,19 @@
 "use client";
 
-import { Tv, Download, Monitor, Users } from "lucide-react";
+import { Sparkles, Clapperboard, MessageCircle, Monitor } from "lucide-react";
 
 const features = [
   {
-    title: "Enjoy on your TV",
+    title: "See what others think",
     description:
-      "Watch on Smart TVs, Playstation, Xbox, Chromecast, Apple TV, Blu-ray players, and more.",
-    icon: Tv,
+      "Read comments and reviews from other people on the movies you love. Discover opinions and ratings from the community.",
+    icon: MessageCircle,
   },
   {
-    title: "Download your shows to watch offline",
+    title: "Always 100% Free",
     description:
-      "Save your favorites easily and always have something to watch.",
-    icon: Download,
+      "Welcome to instant gratification at its best. Watch now without any payment or subscription and end the search for free movie websites.",
+    icon: Sparkles,
   },
   {
     title: "Watch everywhere",
@@ -22,10 +22,10 @@ const features = [
     icon: Monitor,
   },
   {
-    title: "Create profiles for kids",
+    title: "Thousands of Titles",
     description:
-      "Send kids on adventures with their favorite characters in a space made just for them — free with your membership.",
-    icon: Users,
+      "Choose from movies, shows, sports and music documentaries, AMC series, Live TV and more.",
+    icon: Clapperboard,
   },
 ];
 

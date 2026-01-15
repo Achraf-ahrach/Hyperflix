@@ -1,23 +1,25 @@
 "use client";
 
 import Navbar from "@/components/layout/Navbar";
-import { useAuth } from "@/lib/hooks/useAuth";
 import LandingPage from "@/components/landing/LandingPage";
+import { useUser } from "@/lib/contexts/UserContext";
 
 function DashboardPage() {
+  const { user } = useUser();
+
   return (
     <div className="antialiased bg-background min-h-screen text-foreground">
       <Navbar />
       <main className="container mx-auto py-6 px-4">
         <h1 className="text-3xl font-bold mb-4">Dashboard</h1>
-        <p>Welcome to your dashboard!</p>
+        <p>Welcome back, {user?.username}!</p>
       </main>
     </div>
   );
 }
 
 export default function Home() {
-  const { data: user, isLoading } = useAuth();
+  const { user, isLoading } = useUser();
 
   if (isLoading) {
     return (

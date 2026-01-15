@@ -4,6 +4,7 @@ import { Hero } from "./hero";
 import { Features } from "./features";
 import { Trending } from "./trending";
 import { Footer } from "./footer";
+import { FAQ } from "./faq";
 
 export default function LandingPage() {
   return (
@@ -11,6 +12,7 @@ export default function LandingPage() {
       <Hero />
       <Trending />
       <Features />
+      <FAQ />
       <Footer />
     </div>
   );
