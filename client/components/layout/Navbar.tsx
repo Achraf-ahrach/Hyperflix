@@ -74,11 +74,6 @@ export default function Navbar() {
 
         {/* Right Actions */}
         <div className="ml-auto flex items-center space-x-4">
-          {/* Language Toggle (Simplification) */}
-          {/* <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-            EN
-          </Button> */}
-
           <ModeToggle />
 
           {/* Profile Dropdown */}

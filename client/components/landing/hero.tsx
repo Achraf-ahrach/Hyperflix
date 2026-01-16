@@ -46,15 +46,8 @@ export function Hero() {
           className="w-32 md:w-44 lg:w-48 object-contain"
         />
         <div className="flex items-center gap-4">
-          <div className="hidden md:flex items-center gap-2 px-3 py-1 border border-white/30 rounded bg-black/20 backdrop-blur-sm text-white relative z-30">
-            <Languages className="w-4 h-4 text-white pointer-events-none" />
-            <select className="bg-transparent text-sm font-medium outline-none cursor-pointer text-white pr-4">
-              <option className="bg-black text-white">English</option>
-              <option className="bg-black text-white">Français</option>
-            </select>
-          </div>
           <Link href="/login">
-            <Button className="bg-[#e50914] hover:bg-[#c11119] text-white font-medium px-4 py-1.5 h-auto text-sm rounded-md transition-colors">
+            <Button className="bg-[#e50914] hover:bg-[#c11119] text-white font-medium px-6 py-2 h-auto text-md rounded-md transition-colors">
               Sign In
             </Button>
           </Link>

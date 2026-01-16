@@ -190,14 +190,14 @@ export default function LoginPage() {
             <button
               onClick={handleFortyTwoLogin}
               disabled={isLoading}
-              className="border-border/60 hover:border-primary flex items-center justify-center gap-2 h-11 bg-surface hover:bg-[#2D3B55] text-text-head rounded-xl font-medium text-sm border border-border-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="border-border/60 hover:border-primary flex items-center justify-center gap-2 h-11 bg-surface hover:bg-[#2D3B55] text-text-head rounded-xl font-medium text-sm border border-border-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-white/20"
             >
-              <img
-                src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/42_Logo.svg/1024px-42_Logo.svg.png"
+              <Image
+                src="/42_Logo.png"
                 alt="42 Logo"
                 width={20}
                 height={20}
-                className="w-5 h-5"
+                className="w-6 h-6"
               />
               <span>Intra</span>
             </button>
@@ -205,31 +205,15 @@ export default function LoginPage() {
             <button
               onClick={handleGoogleLogin}
               disabled={isLoading}
-              className=" border-border/60 hover:border-primary flex items-center justify-center gap-2 h-11 bg-surface hover:bg-[#2D3B55] text-text-head rounded-xl font-medium text-sm border border-border-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className=" border-border/60 hover:border-primary flex items-center justify-center gap-2 h-11 bg-surface hover:bg-[#2D3B55] text-text-head rounded-xl font-medium text-sm border border-border-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-white/20"
             >
-              <svg
+              <Image
+                src="/Google_logo.png"
+                alt="Google Logo"
+                width={20}
+                height={20}
                 className="w-5 h-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M23.766 12.2764C23.766 11.4607 23.6999 10.6406 23.5588 9.83807H12.24V14.4591H18.7217C18.4528 15.9494 17.5885 17.2678 16.323 18.1056V21.1039H20.19C22.4608 19.0139 23.766 15.9274 23.766 12.2764Z"
-                  fill="#4285F4"
-                ></path>
-                <path
-                  d="M12.24 24.0008C15.4765 24.0008 18.2059 22.9382 20.19 21.1039L16.323 18.1056C15.2517 18.8375 13.8627 19.252 12.2445 19.252C9.11388 19.252 6.45946 17.1399 5.50705 14.3003H1.5166V17.3912C3.55371 21.4434 7.7029 24.0008 12.24 24.0008Z"
-                  fill="#34A853"
-                ></path>
-                <path
-                  d="M5.50253 14.3003C5.00236 12.8199 5.00236 11.1799 5.50253 9.69951V6.60861H1.5166C-0.18551 10.0056 -0.18551 13.9945 1.5166 17.3915L5.50253 14.3003Z"
-                  fill="#FBBC05"
-                ></path>
-                <path
-                  d="M12.24 4.74966C13.9509 4.7232 15.6044 5.36697 16.8434 6.54867L20.2695 3.12262C18.1001 1.0855 15.2208 -0.034466 12.24 0.000808666C7.7029 0.000808666 3.55371 2.55822 1.5166 6.60861L5.50253 9.69951C6.45064 6.86154 9.10947 4.74966 12.24 4.74966Z"
-                  fill="#EA4335"
-                ></path>
-              </svg>
+              />
               <span>Google</span>
             </button>
           </div>
