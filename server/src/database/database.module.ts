@@ -6,6 +6,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from './schema/index';
 
 export const DRIZZLE = 'DB_CONNECTION';
+export const PG_POOL = 'PG_POOL';
 
 @Global()
 @Module({
@@ -23,6 +24,7 @@ export const DRIZZLE = 'DB_CONNECTION';
         return drizzle(pool, { schema });
       },
     },
+    
   ],
   exports: [DRIZZLE],
 })

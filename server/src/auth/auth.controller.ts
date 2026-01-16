@@ -117,7 +117,7 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const { access_token } = await this.authService.login(req.user);
-
+    
     response.cookie('Authentication', access_token, {
       httpOnly: true,
       secure: false,
@@ -143,7 +143,7 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const { access_token } = await this.authService.login(req.user);
-
+    
     response.cookie('Authentication', access_token, {
       httpOnly: true,
       secure: false,
