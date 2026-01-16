@@ -2,7 +2,7 @@
 
 
 
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
 import { SettingsRepository } from '../repository/settings.repository';
@@ -16,12 +16,16 @@ export class UpdateMailService {
     private readonly jwtService: JwtService
   ) {}
 
-  async updateMail(userId: number, dto: AccountSettingsDto) {
-    console.log(dto);
-    // const user = await this.usersRepository.findById(userId);
-    // if (!user) throw new NotFoundException('User not found');
+  async updateEmailSettings(userId: number, dto: AccountSettingsDto) {
 
-    return true;
+    if (dto.email)
+    {
+      const user = await this.usersRepository.findByEmail(dto.email);
+      if (user && user.id != userId)
+        throw new BadRequestException('Email already in use');
+      await this.usersRepository.updateEmail(userId, dto.email);
+    }
+    return {email: dto.email};
   }
 
 

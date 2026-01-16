@@ -27,6 +27,7 @@ const CommentsSection = ({ movieId }: { movieId: string }) => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
+  console.log((process.env.BACKEND_URL))
   // Load initial comments
   React.useEffect(() => {
     const loadComments = async () => {

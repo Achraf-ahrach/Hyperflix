@@ -5,7 +5,7 @@ import { IsOptional, IsString, IsEmail } from 'class-validator';
 export class PasswordSettingsDto
 {
   @IsString()
-  old_password?: string;
+  current_password?: string;
 
   @IsString()
   new_password?: string;

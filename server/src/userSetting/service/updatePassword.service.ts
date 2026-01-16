@@ -36,19 +36,16 @@ function validateSpecial(password: string) {
 
 
 
-
-
-
 @Injectable()
 export class UpdatePasswordService {
   constructor(private settingsRepository: SettingsRepository) {}
 
   async updatePassword(userId: number, dto: PasswordSettingsDto) {
     
-    const { old_password, new_password, confirm_password } = dto;
+    const { current_password, new_password, confirm_password } = dto;
 
-    if (!old_password || !new_password || !confirm_password) {
-      throw new BadRequestException('Old password, new password, and confirm password are required');
+    if (!current_password || !new_password || !confirm_password) {
+      throw new BadRequestException('Current password, new password, and confirm password are required');
     }
 
     if (confirm_password !== new_password)
@@ -77,9 +74,9 @@ export class UpdatePasswordService {
     if (!user.passwordHash)
       throw new UnauthorizedException('You are not allowed to modify password here');
 
-    const isOldPasswordCorrect = await bcrypt.compare(old_password, user.passwordHash);
-    if (!isOldPasswordCorrect)
-      throw new UnauthorizedException('Wrong old password');
+    const isCurrentPasswordCorrect = await bcrypt.compare(current_password, user.passwordHash);
+    if (!isCurrentPasswordCorrect)
+      throw new UnauthorizedException('Wrong current password');
 
     const passwordHash = await bcrypt.hash(new_password, 10);
     await this.settingsRepository.updatePassword(userId, passwordHash);

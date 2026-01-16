@@ -5,6 +5,7 @@ import Profile from "./components/Profile";
 import Account from "./components/Account";
 
 import {Mail, User, Lock, Globe, Check, AlertCircle } from 'lucide-react';
+import Security from "./components/Security";
 
 
 export interface ApiError {
@@ -86,7 +87,7 @@ export default function SettingsPage() {
                             }
                             {
                                 activeSection === "security" && (
-                                    <Account setSaveSuccess={setSaveSuccess} setError={setError} error={error}/>
+                                    <Security setSaveSuccess={setSaveSuccess} setError={setError} error={error}/>
                                 )
                             }
 

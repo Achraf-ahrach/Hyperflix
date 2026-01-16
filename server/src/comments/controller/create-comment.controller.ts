@@ -35,7 +35,7 @@ export class CreateCommentController {
         },
       }),
       fileFilter: (req, file, callback) => {
-        // Accept images and videos only
+        // Accept images and videos onlyundefined
         if (!file.mimetype.match(/\/(jpg|jpeg|png|gif|webp|mp4|webm|mov)$/)) {
           return callback(
             new BadRequestException('Only image and video files are allowed!'),

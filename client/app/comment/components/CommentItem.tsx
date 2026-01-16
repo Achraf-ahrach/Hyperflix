@@ -68,7 +68,7 @@ export const CommentItem = ({ comment, onLike, onReply, onDelete, onReplyLike }:
 
           {comment.media?.[0] && (
             <img 
-              src={comment.media[0].url} 
+              src={`http://localhost:3001${comment.media[0].url}`} 
               className="mt-4 rounded-xl max-h-72 w-auto border border-slate-800" 
               alt={comment.media[0].alt || "Comment attachment"}
             />

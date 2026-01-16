@@ -75,6 +75,7 @@ export const api = {
 
     const response = await fetch(endpoint, {
       method: 'GET',
+      credentials: 'include',
       // body: formData
     });
     return await response.json();

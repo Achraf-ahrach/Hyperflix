@@ -5,7 +5,10 @@ import { useEffect, useState } from "react";
 import ActionSetting from "./ActionSetting";
 import LoadingSetting from "./LoadingSetting";
 import { ApiError } from "../page";
-
+import { useUser } from "@/lib/contexts/UserContext";
+import { useQueryClient } from "@tanstack/react-query";
+import { User as UserData } from "@/lib/contexts/UserContext";
+import api from "@/lib/axios";
 
 
 interface ProfileForm {
@@ -20,14 +23,17 @@ interface ProfileForm {
 
 
 interface SettingProps {
-    setSaveSuccess : ( a : boolean) => void,
-    setError : (a : ApiError | null ) => void,
-    error : ApiError | null
+    setSaveSuccess: (a: boolean) => void,
+    setError: (a: ApiError | null) => void,
+    error: ApiError | null
 
 }
 
-export default function Profile({setSaveSuccess , setError, error} : SettingProps) {
-    
+export default function Profile({ setSaveSuccess, setError, error }: SettingProps) {
+
+
+    const queryClient = useQueryClient();
+    const { user } = useUser();
     const [originalData, setOriginalData] = useState<ProfileForm | null>(null);
     const [formData, setFormData] = useState<ProfileForm>({
         firstName: '',
@@ -35,39 +41,28 @@ export default function Profile({setSaveSuccess , setError, error} : SettingProp
         username: '',
         profilePicture: '',
     });
-    const [isSaving, setIsSaving] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
 
+
+
+    const [isSaving, setIsSaving] = useState(false);
+    // const [isLoading, setIsLoading] = useState(true);
 
 
     useEffect(() => {
-        fetchUserData();
-      }, []);
-    
-      const fetchUserData = async () => {
-        setIsLoading(true);
-        setError(null);
-        
-        try {
-          // Simulate API call
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          // Mock response data
-          const userData = {
-            firstName: 'John',
-            lastName: 'Doe',
-            username: 'johndoe',
-            profilePicture: '',
-          };
-    
-          setFormData(userData);
-        //   setOriginalData(userData);
-        } catch (err) {
-          setError({ message: 'Failed to load user data. Please try again.' });
-        } finally {
-          setIsLoading(false);
-        }
-      };
+        if (!user) return;
+
+        const data = {
+            firstName: user.firstName,
+            lastName: user.lastName,
+            username: user.username,
+            profilePicture: `http://localhost:3001${user.avatarUrl ?? ''}`,
+        };
+
+        setFormData(data);
+        setOriginalData(data);
+    }, [user]);
+
+
 
 
 
@@ -78,15 +73,15 @@ export default function Profile({setSaveSuccess , setError, error} : SettingProp
 
     const handleCancel = () => {
         if (originalData) {
-          setFormData(originalData);
-          setError(null);
+            setFormData(originalData);
+            setError(null);
         }
-      };
-    
+    };
+
 
     const handleSave = async () => {
         setError(null);
-    
+
         if (formData.username && formData.username.length < 3) {
             setError({ message: 'Username must be at least 3 characters', field: 'username' });
             return false;
@@ -97,111 +92,79 @@ export default function Profile({setSaveSuccess , setError, error} : SettingProp
             && formData.lastName === originalData.lastName
         )
             return true;
-    
+
         setIsSaving(true);
-    
+
         try {
 
-            
-            
-          let endpoint = `/user/profile`;
-          let payload = {
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            username: formData.username,
+
+            let endpoint = `/settings/profile`;
+            let payload = {
+                first_name: formData.firstName,
+                last_name: formData.lastName,
+                username: formData.username,
             };
 
+            await api.patch(endpoint, payload);
+            const updatedData = { ...formData };
 
-          
-    
-          // Simulate API call
-          await new Promise(resolve => setTimeout(resolve, 1500));
-    
-          // In production:
-          // const response = await fetch(endpoint, {
-          //   method: 'PATCH',
-          //   headers: {
-          //     'Content-Type': 'application/json',
-          //     'Authorization': `Bearer ${token}`
-          //   },
-          //   body: JSON.stringify(payload)
-          // });
-          //
-          // if (!response.ok) {
-          //   const errorData = await response.json();
-          //   throw new Error(errorData.message || 'Failed to update settings');
-          // }
-          //
-          // const updatedData = await response.json();
-    
-          // Mock successful response
-          const updatedData = { ...formData };
-          
-          // Handle email change - set pending email and show verification message
-         
-    
-          setFormData(updatedData);
-          setSaveSuccess(true);
-          setOriginalData(updatedData);
+            queryClient.setQueryData<UserData | null>(
+                ["auth", "profile"],
+                (oldUser) =>
+                    oldUser
+                        ? { ...oldUser, firstName: formData.firstName, lastName: formData.lastName, username: formData.username }
+                        : oldUser
+            );
+            setFormData(updatedData);
+            setSaveSuccess(true);
+            setOriginalData(updatedData);
 
-          
+
         } catch (err: any) {
-          setError({ 
-            message: err.message || 'Failed to save changes. Please try again.' 
-          });
+            setError({
+                message: err.response?.data?.message || err.message || 'Failed to save changes. Please try again.'
+            });
         } finally {
-          setIsSaving(false);
+            setIsSaving(false);
         }
-      };
+    };
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Validate file size (max 5MB)
+  
         if (file.size > 5 * 1024 * 1024) {
             setError({ message: 'Image size must be less than 5MB', field: 'profilePicture' });
             return;
         }
-
-        // Validate file type
         if (!file.type.startsWith('image/')) {
             setError({ message: 'Please upload a valid image file', field: 'profilePicture' });
             return;
         }
 
         try {
-            // Convert to base64
-            const reader = new FileReader();
-            reader.onloadend = async () => {
-                const base64Image = reader.result as string;
 
-                // Simulate upload to server
-                setIsSaving(true);
-                await new Promise(resolve => setTimeout(resolve, 1500));
-
-                // const response = await fetch(`${API_BASE_URL}/user/profile-picture`, {
-                //   method: 'POST',
-                //   headers: { 'Content-Type': 'application/json' },
-                //   body: JSON.stringify({ image: base64Image })
-                // });
-
-                setFormData({ ...formData, profilePicture: base64Image });
-                setSaveSuccess(true);
-                setTimeout(() => setSaveSuccess(false), 3000);
-                setIsSaving(false);
-            };
-            reader.readAsDataURL(file);
+            setIsSaving(true);
+            const bodyFormData = new FormData();
+            bodyFormData.append('image', file);
+            const response = await api.patch('/settings/image', bodyFormData);
+            console.log(response);
+            setFormData({ ...formData, profilePicture: `http://localhost:3001${response.data.url}` });
+            setSaveSuccess(true);
         } catch (err) {
             setError({ message: 'Failed to upload image', field: 'profilePicture' });
+            setSaveSuccess(false);
+        }
+        finally{
             setIsSaving(false);
         }
     };
 
 
-    if (isLoading)
-        return (<LoadingSetting/>);
-    
+    // if (isLoading)
+    //     return (<LoadingSetting/>);
+
 
     return (
         <div className="space-y-6">
@@ -223,7 +186,7 @@ export default function Profile({setSaveSuccess , setError, error} : SettingProp
                             type="file"
                             accept="image/*"
                             onChange={handleImageUpload}
-                            className="hidden"
+                            className="sr-only"
                             disabled={isSaving}
                         />
                     </label>
@@ -271,12 +234,12 @@ export default function Profile({setSaveSuccess , setError, error} : SettingProp
                     placeholder="Enter username"
                 />
             </div>
-            
+
             <ActionSetting
                 isSaving={isSaving}
                 handleSave={handleSave}
                 handleCancel={handleCancel}
-                />
+            />
         </div>
     )
 }
