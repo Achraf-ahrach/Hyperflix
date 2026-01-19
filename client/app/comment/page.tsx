@@ -34,6 +34,7 @@ const CommentsSection = ({ movieId }: { movieId: string }) => {
       try
       {
         const data = await comment_api.getComments(movieId, INITIAL_BATCH, page+1);
+        console.log('Initial load:', data);
         setComments(data.comments);
         setPage(data.page);
         setTotal(data.total);
@@ -64,15 +65,16 @@ const CommentsSection = ({ movieId }: { movieId: string }) => {
     const result : boolean =  await comment_api.toggleLike(commentId, replyId);
     if (result)
     {
+
       setComments(prev => prev.map(c => {
         if (!replyId && c.id === commentId) {
-          return { ...c, isLiked: !c.isLiked, likes: c.isLiked ? c.likes - 1 : c.likes + 1 };
+          return { ...c, isLiked: !c.isLiked, likes: c.isLiked ?  Number(c.likes) - 1 : Number(c.likes) + 1 };
         }
         if (replyId && c.id === commentId) {
           return {
             ...c,
             replies: c.replies.map(r => r.id === replyId
-              ? { ...r, isLiked: !r.isLiked, likes: r.isLiked ? r.likes - 1 : r.likes + 1 }
+              ? { ...r, isLiked: !r.isLiked, likes: r.isLiked ? Number(r.likes) - 1 : Number(r.likes) + 1 }
               : r)
           };
         }

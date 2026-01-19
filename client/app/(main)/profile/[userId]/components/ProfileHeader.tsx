@@ -1,3 +1,4 @@
+import { API_URL } from "@/app/utils";
 import { User } from "../types/types";
 
 // ProfileHeader Component
@@ -19,7 +20,7 @@ export const ProfileHeader: React.FC<{ user: User }> = ({ user }) => {
             {
               user.avatarUrl ? (
                 <img
-                  src=  {user.avatarUrl.startsWith('/') ? `http://localhost:3001${user.avatarUrl}` : `${user.avatarUrl}`}
+                  src=  {user.avatarUrl.startsWith('/') ? `${API_URL}${user.avatarUrl}` : `${user.avatarUrl}`}
                   alt="profile"
                   className="relative w-28 h-28 object-cover border-2 border-red-600/30"
                 />) : (

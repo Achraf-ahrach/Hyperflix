@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { CommentItem } from './components/CommentItem';
 import api from '@/lib/axios';
+import { API_URL } from '../utils';
 
 // --- Types ---
 export interface User {
@@ -72,7 +73,7 @@ export const comment_api = {
 
 
 
-    const endpoint = `http://localhost:3001/comments/2?limit=${limit}&offset=${offset}`;
+    const endpoint = `${API_URL}/comments/2?limit=${limit}&offset=${offset}`;
 
     const response = await fetch(endpoint, {
       method: 'GET',
@@ -81,51 +82,13 @@ export const comment_api = {
     });
     return await response.json();
 
-
-    return [
-      {
-        id: 'c-1',
-        userId: 'user-2',
-        username: 'MovieFan',
-        userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Movie',
-        content: 'This movie was incredible! ||The twist ending blew my mind!||',
-        likes: 24,
-        isLiked: false,
-        replies: [],
-        replyCount: 0,
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: 'c-2',
-        userId: 'user-3',
-        username: 'CinemaLover',
-        userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Cinema',
-        content: 'The cinematography was breathtaking. Every frame felt like art.',
-        likes: 18,
-        isLiked: false,
-        replies: [
-          {
-            id: 'r-1',
-            userId: 'user-4',
-            username: 'FilmCritic',
-            userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Critic',
-            content: 'Agreed! The lighting in the final scene was perfect.',
-            likes: 5,
-            isLiked: false,
-            createdAt: new Date().toISOString(),
-          }
-        ],
-        replyCount: 1,
-        createdAt: new Date().toISOString(),
-      }
-    ];
   },
 
   async createComment(movieId: string, content: string, media?: File): Promise<Comment> {
     // await new Promise(r => setTimeout(r, 800));
 
 
-    const endpoint = "http://localhost:3001/comments/2";
+    const endpoint = `${API_URL}/comments/2`;
     const formData = new FormData();
     formData.append('content', content);
     console.log(content);
@@ -136,25 +99,11 @@ export const comment_api = {
     });
     return await response.json();
 
-    // return {
-    //   id: `c-${Date.now()}`,
-    //   userId: currentUser.id,
-    //   username: currentUser.username,
-    //   userAvatar: currentUser.avatar,
-    //   content,
-    //   likes: 0,
-    //   isLiked: false,
-    //   replies: [],
-    //   replyCount: 0,
-    //   media: media ? [{ id: `m-${Date.now()}`, type: 'image', url: URL.createObjectURL(media) }] : [],
-    //   createdAt: new Date().toISOString()
-    // };
   },
 
   async createReply(commentId: string, content: string): Promise<Reply> {
-    // await new Promise(r => setTimeout(r, 600));
 
-    const endpoint = `http://localhost:3001/comments/${commentId}/replies`;
+    const endpoint = `${API_URL}/comments/${commentId}/replies`;
 
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -176,7 +125,6 @@ export const comment_api = {
   },
 
   async toggleLike(commentId: string, replyId?: string): Promise<boolean> {
-    // await new Promise(r => setTimeout(r, 300));
     try
     {
       console.log(`/comments/${commentId}/like`);
@@ -187,7 +135,6 @@ export const comment_api = {
     {
       return false;
     }
-    // await fetch(`/api/comments/${commentId}/like`, { method: 'POST' });
   },
 
   async deleteComment(commentId: string): Promise<void> {

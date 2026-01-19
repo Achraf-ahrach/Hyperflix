@@ -5,6 +5,7 @@ import { CommentInput } from "./CommentInput";
 import { ReplyItem } from "./ReplyItem";
 import {Comment} from "../types/types"
 import { currentUser } from "../page_";
+import { API_URL } from "@/app/utils";
 
 // --- Comment Item Component ---
 interface CommentItemProps {
@@ -69,7 +70,7 @@ export const CommentItem = ({ comment, onLike, onReply, onDelete, onReplyLike }:
 
           {comment.media?.[0] && (
             <img 
-              src={`http://localhost:3001${comment.media[0].url}`} 
+              src={`${API_URL}${comment.media[0].url}`} 
               className="mt-4 rounded-xl max-h-72 w-auto border border-slate-800" 
               alt={comment.media[0].alt || "Comment attachment"}
             />
