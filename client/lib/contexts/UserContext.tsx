@@ -4,10 +4,12 @@ import { createContext, useContext, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/axios";
 
-interface User {
+export interface User {
   id: number;
   email: string;
   username: string;
+  firstName: string;
+  lastName: string;
   avatarUrl: string | null;
   provider: string;
 }

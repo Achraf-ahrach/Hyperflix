@@ -22,12 +22,15 @@ interface SettingProps {
 
 export default function Account({setSaveSuccess, setError, error } : SettingProps) {
 
-    const [originalData, setOriginalData] = useState<AccountForm | null>(null);
+    const [originalData, setOriginalData] = useState<AccountForm | null>(
+    {
+        email: '',
+    });
     const [formData, setFormData] = useState<AccountForm>({
         email: '',
     });
     const [isSaving, setIsSaving] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
 
     const [pendingEmail, setPendingEmail] = useState<string>('');
     // const [emailVerificationSent, setEmailVerificationSent] = useState(false);

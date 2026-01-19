@@ -5,6 +5,8 @@ import Profile from "./components/Profile";
 import Account from "./components/Account";
 
 import {Mail, User, Lock, Globe, Check, AlertCircle } from 'lucide-react';
+import Security from "./components/Security";
+import LanguagePreference from "./components/Language";
 
 
 export interface ApiError {
@@ -54,7 +56,8 @@ export default function SettingsPage() {
                                 { id: 'profile', label: 'Profile', icon: User },
                                 { id: 'account', label: 'Account', icon: Mail },
                                 { id: 'security', label: 'Security', icon: Lock },
-                                // { id: 'preferences', label: 'Preferences', icon: Globe },
+                                // { id: 'pre', label: 'Security', icon: Lock },
+                                { id: 'preferences', label: 'Preferences', icon: Globe },
                             ].map((section) => (
                                 <button
                                     key={section.id}
@@ -86,7 +89,12 @@ export default function SettingsPage() {
                             }
                             {
                                 activeSection === "security" && (
-                                    <Account setSaveSuccess={setSaveSuccess} setError={setError} error={error}/>
+                                    <Security setSaveSuccess={setSaveSuccess} setError={setError} error={error}/>
+                                )
+                            }
+                            {
+                                activeSection === "preferences" && (
+                                    <LanguagePreference setSaveSuccess={setSaveSuccess} setError={setError} error={error}/>
                                 )
                             }
 

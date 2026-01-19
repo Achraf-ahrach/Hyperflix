@@ -5,25 +5,32 @@ import { useEffect, useState } from "react";
 
 import ActionSetting from "./ActionSetting";
 import { ApiError } from "../page";
+import { API_URL } from "@/app/utils";
+import api from "@/lib/axios";
 
 
 
 interface PasswordForm {
-    currentPassword:  string,
+    currentPassword: string,
     newPassword: string,
-    confirmPassword:  string,
+    confirmPassword: string,
 }
 
 interface SettingProps {
-    setSaveSuccess : ( a : boolean) => void,
-    setError : (a : ApiError | null ) => void,
-    error : ApiError | null
+    setSaveSuccess: (a: boolean) => void,
+    setError: (a: ApiError | null) => void,
+    error: ApiError | null
 
 }
-export default function Security({setSaveSuccess, setError, error} : SettingProps) {
+export default function Security({ setSaveSuccess, setError, error }: SettingProps) {
 
 
-    const [originalData, setOriginalData] = useState<PasswordForm | null>(null);
+    const [originalData, setOriginalData] = useState<PasswordForm | null>({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+
+    });
     const [formData, setFormData] = useState<PasswordForm>({
         currentPassword: '',
         newPassword: '',
@@ -66,6 +73,7 @@ export default function Security({setSaveSuccess, setError, error} : SettingProp
         return true;
     };
 
+
     const handleSave = async () => {
         setError(null);
 
@@ -76,52 +84,32 @@ export default function Security({setSaveSuccess, setError, error} : SettingProp
         setIsSaving(true);
 
         try {
-            // Prepare update payload based on active section
-            let endpoint = '';
-
-
-            endpoint = `/user/password`;
             let payload = {
-                currentPassword: formData.currentPassword,
-                newPassword: formData.newPassword
+                current_password: formData.currentPassword,
+                new_password: formData.newPassword,
+                confirm_password: formData.confirmPassword
             };
 
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            await api.patch('/settings/password', payload);
+            setFormData({
+                ...formData,
+                currentPassword: '',
+                newPassword: '',
+                confirmPassword: ''
+            });
 
-            // In production:
-            // const response = await fetch(endpoint, {
-            //   method: 'PATCH',
-            //   headers: {
-            //     'Content-Type': 'application/json',
-            //     'Authorization': `Bearer ${token}`
-            //   },
-            //   body: JSON.stringify(payload)
-            // });
-            //
-            // if (!response.ok) {
-            //   const errorData = await response.json();
-            //   throw new Error(errorData.message || 'Failed to update settings');
-            // }
-            //
-            // const updatedData = await response.json();
-
-            // Mock successful response
-            const updatedData = { ...formData };
-
-            // Clear password fields after successful update
-
-            updatedData.currentPassword = '';
-            updatedData.newPassword = '';
-            updatedData.confirmPassword = '';
-
+            setOriginalData({
+                ...originalData,
+                currentPassword: '',
+                newPassword: '',
+                confirmPassword: ''
+            });
 
             setSaveSuccess(true);
-            setFormData(updatedData);
-            setOriginalData(updatedData);
+
         } catch (err: any) {
             setError({
-                message: err.message || 'Failed to save changes. Please try again.'
+                message: err.response?.data?.message || err.message || 'Failed to save changes. Please try again.'
             });
         } finally {
             setIsSaving(false);
