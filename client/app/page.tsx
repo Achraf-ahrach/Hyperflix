@@ -5,18 +5,17 @@ import { useRouter } from "next/navigation";
 import { FilterBar } from "@/components/filter-bar";
 import { MovieCard } from "@/components/movie-card";
 import Navbar from "@/components/layout/Navbar";
-import { useAuth } from "@/lib/hooks/useAuth";
+// import { useAuth } from "@/lib/hooks/useAuth";
+import { useUser } from "@/lib/contexts/UserContext";
+
 import { useMoviesLibrary } from "@/lib/hooks/useMovies";
 import InfiniteScrollContainer from "@/components/infinite-scroll-container";
 
-
 export default function Home() {
-  const { data: user, isLoading } = useAuth();
-  // const [user, setUser] = useState<any>(null);
+  const { user, isLoading } = useUser();
   const [page, setPage] = useState(1);
   const size = 10;
   const router = useRouter();
-  // const [movies, setMovies] = useState(MOCK_MOVIES);
 
   const {
     data: movies,
@@ -30,30 +29,6 @@ export default function Home() {
 
   // Filter States
   const [hideWatched, setHideWatched] = useState(false);
-
-  // useEffect(() => {
-  //   // 1. Fetch Profile
-  //   api.get("/auth/profile")
-  //     .then(({ data }) => setUser(data))
-  //     .catch(() => {
-  //       // If the backend says 401 (Unauthorized), redirect to login
-  //       router.push("/login");
-  //     });
-  // }, [router]);
-
-  /* 
-     Ideally, we would perform filtering/sorting here or on the backend.
-     For this UI demo, we will just pass dummy handlers to the FilterBar. 
-  */
-  // const handleSortChange = (val: string) => console.log("Sort:", val);
-  // const handleGenreChange = (val: string) => console.log("Genre:", val);
-  // const handleRatingChange = (val: string) => console.log("Rating:", val);
-  // const handleYearChange = (val: string) => console.log("Year:", val);
-  // const handleHideWatched = (val: boolean) => setHideWatched(val);
-
-  // const filteredMovies = hideWatched ? movies.filter(m => !m.watched) : movies;
-
-  // if (!user) return <p className="p-10">Loading...</p>;
 
   function DashboardPage() {
     return (

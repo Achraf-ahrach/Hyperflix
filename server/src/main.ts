@@ -7,13 +7,16 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   const config = new DocumentBuilder()
-    .setTitle('Hyperflix')
-    .setDescription('The Hyperflix API description')
+    .setTitle('Hyperflix API')
+    .setDescription('API documentation for the Hyperflix application')
     .setVersion('1.0')
     .addTag('Hyperflix')
+    .addBearerAuth() // If you want to test JWT-protected endpoints
+    .addCookieAuth('Authentication') // For cookie-based auth
     .build();
-  const documentFactory = () => SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, documentFactory);
+
+  const document = () => SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
 
   // Enable cookie parser middleware
   app.use(cookieParser());

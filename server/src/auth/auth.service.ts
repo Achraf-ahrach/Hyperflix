@@ -14,7 +14,7 @@ export class AuthService {
 
   async validateLocalUser(userData: { email: string; password: string }) {
     const user = await this.usersService.findByEmail(userData.email);
-    
+
     if (
       user &&
       user.passwordHash &&
@@ -64,7 +64,8 @@ export class AuthService {
 
     const accessToken = this.jwtService.sign(payload);
 
-    const expiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '30d';
+    const expiresIn =
+      this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '30d';
     const refreshToken = this.jwtService.sign(payload, {
       secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
       expiresIn: expiresIn as any,

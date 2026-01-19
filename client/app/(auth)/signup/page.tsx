@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import api from "@/lib/axios";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, AlertCircle, ArrowRight, User, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,8 @@ import {
 } from "@/components/ui/card";
 import bgImage from "@/public/hero-bg.jpg";
 
-export default function SignUpPage() {
+function SignUpForm() {
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -27,6 +28,13 @@ export default function SignUpPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    const emailParam = searchParams.get("email");
+    if (emailParam) {
+      setEmail(decodeURIComponent(emailParam));
+    }
+  }, [searchParams]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,7 +95,9 @@ export default function SignUpPage() {
         backgroundImage: `url(${bgImage.src})`,
       }}
     >
-      <Card className="w-full min-w-[320px] max-w-md shadow-lg shadow-black/10 border-border/50 p-0 relative z-10 bg-card/90">
+      <div className="absolute inset-0 bg-linear-to-b from-black/60 via-black/30 to-black/80" />
+
+      <Card className="w-full min-w-[320px] max-w-md rounded-2xl shadow-lg shadow-black/50 border-border/50 p-0 relative z-10 bg-black/80 ">
         <CardHeader className="text-center pt-8 pb-6 bg-background/50 rounded-br-[25px] rounded-bl-[25px]">
           <CardTitle className="text-3xl font-bold bg-linear-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
             Create Account
@@ -97,7 +107,7 @@ export default function SignUpPage() {
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-6 pt-8">
+        <CardContent className="space-y-5 pt-6">
           <form onSubmit={handleSignUp} className="space-y-5">
             {/* Email Field */}
             <div className="space-y-2.5">
@@ -243,12 +253,12 @@ export default function SignUpPage() {
           </form>
 
           {/* Divider */}
-          <div className="relative my-8">
+          <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-border/50"></span>
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-card px-6 text-xs uppercase text-muted-foreground font-bold tracking-wide">
+              <span className="bg-black/70 px-0.5 text-xs uppercase text-muted-foreground font-bold tracking-wide">
                 OR
               </span>
             </div>
@@ -317,5 +327,22 @@ export default function SignUpPage() {
         </CardFooter>
       </Card>
     </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </div>
+      }
+    >
+      <SignUpForm />
+    </Suspense>
   );
 }

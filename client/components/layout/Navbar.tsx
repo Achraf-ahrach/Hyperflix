@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Search, Bell, LogOut, User, Settings } from "lucide-react";
+import Image from "next/image";
+import { Search, LogOut, User, Settings } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,30 +17,30 @@ import {
 import { useRouter } from "next/navigation";
 import api from "@/lib/axios";
 import ModeToggle from "../shared/mode-toggle";
-import { useEffect, useState } from "react";
+import { useUser } from "@/lib/contexts/UserContext";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function Navbar() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const { user, refetch } = useUser();
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    api
-      .get("/auth/profile")
-      .then(({ data }) => setUser(data))
-      .catch(() => {
-        // User not authenticated
-        setUser(null);
-      });
-  }, []);
-
-  console.log("userData: ", user);
+  const logoutMutaion = useMutation({
+    mutationFn: async () => {
+      await api.post("/auth/logout");
+    },
+    onSuccess: () => {
+      queryClient.setQueriesData({ queryKey: ["auth", "profile"] }, null);
+      queryClient.removeQueries({ queryKey: ["auth"] });
+      // refetch();
+      router.push("/login");
+    },
+  });
 
   const handleLogout = async () => {
-    await api.post("/auth/logout");
-    router.push("/login");
+    logoutMutaion.mutate();
   };
 
-  // Get user initials for avatar fallback
   const getUserInitials = () => {
     if (!user) return "U";
     if (user.username) return user.username.substring(0, 2).toUpperCase();
@@ -50,16 +51,14 @@ export default function Navbar() {
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur-sm">
       <div className="flex h-16 items-center px-6">
-        {/* Logo */}
-        <Link
-          href="/"
-          className="mr-8 flex items-center gap-2 font-bold text-xl text-primary hover:text-primary/80 transition"
-        >
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground">
-            H
-          </div>
-          <span className="hidden md:inline-block">Hyperflix</span>
-        </Link>
+        <Image
+          src="/logo_.png"
+          alt="Hyperflix Logo"
+          width={140}
+          height={40}
+          priority
+          className="w-32 md:w-44 lg:w-48 object-contain"
+        />
 
         {/* Search Bar - Wide center area */}
         <div className="flex-1 max-w-xl mx-4">
@@ -96,7 +95,7 @@ export default function Navbar() {
               <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                 <Avatar className="h-9 w-9 border border-border">
                   <AvatarImage
-                    src={user?.avatarUrl}
+                    src={user?.avatarUrl || undefined}
                     alt={user?.username || "User"}
                   />
                   <AvatarFallback>{getUserInitials()}</AvatarFallback>
@@ -123,7 +122,7 @@ export default function Navbar() {
                 <User className="mr-2 h-4 w-4" />
                 <span>Profile</span>
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push("/settings")}>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Settings</span>
               </DropdownMenuItem>

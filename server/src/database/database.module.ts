@@ -3,9 +3,10 @@ import { Module, Global } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import * as schema from './schema';
+import * as schema from './schema/index';
 
 export const DRIZZLE = 'DB_CONNECTION';
+export const PG_POOL = 'PG_POOL';
 
 @Global()
 @Module({
@@ -23,6 +24,7 @@ export const DRIZZLE = 'DB_CONNECTION';
         return drizzle(pool, { schema });
       },
     },
+    
   ],
   exports: [DRIZZLE],
 })

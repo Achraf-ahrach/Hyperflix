@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/shared/theme-provider";
 import QueryProvider from "@/components/providers/QueryProvider";
 import ReduxProviders from "@/lib/store/ReduxProviders";
+import { UserProvider } from "@/lib/contexts/UserContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,17 +33,19 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <QueryProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="dark"
-            enableSystem={false}
-            storageKey="theme"
-            disableTransitionOnChange
-          >
-            <ReduxProviders>
-              {children}
-            </ReduxProviders>
-          </ThemeProvider>
+          <UserProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="dark"
+              enableSystem={false}
+              storageKey="theme"
+              disableTransitionOnChange
+            >
+              <ReduxProviders>
+                {children}
+              </ReduxProviders>
+            </ThemeProvider>
+          </UserProvider>
         </QueryProvider>
       </body>
     </html>

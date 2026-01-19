@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { ChevronRight } from "lucide-react";
 
 const trendingItems = [
   { id: 1, title: "Man vs Baby", image: "/movies/movie_1.png" },
@@ -18,9 +17,9 @@ export function Trending() {
         {trendingItems.map((item, index) => (
           <div
             key={item.id}
-            className="relative aspect-[2/3] group cursor-pointer"
+            className="relative aspect-2/3 group cursor-pointer"
           >
-            <div className="absolute -left-8 md:-left-10 lg:-left-12 bottom-[-10px] md:bottom-[-15px] z-20 select-none">
+            <div className="absolute -left-8 md:-left-10 lg:-left-12 -bottom-2.5 md:-bottom-3.75 z-20 select-none">
               <span
                 className="text-[80px] md:text-[120px] lg:text-[160px] font-black leading-none drop-shadow-md"
                 style={{
