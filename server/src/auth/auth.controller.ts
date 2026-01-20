@@ -117,7 +117,7 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const { access_token } = await this.authService.login(req.user);
-    
+
     response.cookie('Authentication', access_token, {
       httpOnly: true,
       secure: false,
@@ -142,8 +142,9 @@ export class AuthController {
     @Request() req,
     @Res({ passthrough: true }) response: Response,
   ) {
+    console.log('\n42 OAuth callback user:', req.user);
     const { access_token } = await this.authService.login(req.user);
-    
+
     response.cookie('Authentication', access_token, {
       httpOnly: true,
       secure: false,
@@ -159,7 +160,7 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt'))
   @Get('profile')
   getProfile(@Request() req) {
-    console.log('\n\nAuthenticated user:', req.user);
+    console.log('\n\nprofile API Authenticated user:', req.user);
     return req.user;
   }
 

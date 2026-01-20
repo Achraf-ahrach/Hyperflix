@@ -31,6 +31,8 @@ export class AuthService {
     providerId: string;
     email: string;
     username: string;
+    firstName?: string;
+    lastName?: string;
     avatarUrl?: string;
   }) {
     // Try to find user by provider ID first

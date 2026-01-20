@@ -62,14 +62,22 @@ export default function Navbar() {
 
         {/* Search Bar - Wide center area */}
         <div className="flex-1 max-w-xl mx-4">
-          <div className="relative">
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            const formData = new FormData(e.currentTarget);
+            const query = formData.get("q") as string;
+            if (query?.trim()) {
+              router.push(`/search?q=${encodeURIComponent(query.trim())}`);
+            }
+          }} className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
+              name="q"
               type="search"
               placeholder="Search..."
               className="w-full bg-card border border-border pl-9 focus-visible:ring-primary"
             />
-          </div>
+          </form>
         </div>
 
         {/* Right Actions */}

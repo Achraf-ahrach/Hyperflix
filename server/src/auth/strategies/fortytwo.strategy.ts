@@ -5,7 +5,10 @@ import { ConfigService } from '@nestjs/config';
 import { AuthService } from '../auth.service';
 
 @Injectable()
-export class FortyTwoStrategy extends PassportStrategy(Strategy.Strategy, '42') {
+export class FortyTwoStrategy extends PassportStrategy(
+  Strategy.Strategy,
+  '42',
+) {
   constructor(
     private configService: ConfigService,
     private authService: AuthService,
@@ -32,13 +35,16 @@ export class FortyTwoStrategy extends PassportStrategy(Strategy.Strategy, '42') 
     profile: any,
     done: any,
   ): Promise<any> {
-    const { id, emails, displayName, username, photos } = profile;
-    
+    const { id, emails, displayName, username, firstName, lastName, photos } =
+      profile;
+
     const user = await this.authService.validateOAuthUser({
       provider: '42',
       providerId: id,
       email: emails?.[0]?.value || `${username}@student.42.fr`,
       username: username || displayName,
+      firstName: firstName,
+      lastName: lastName,
       avatarUrl: photos?.[0]?.value || profile._json?.image?.link,
     });
 
