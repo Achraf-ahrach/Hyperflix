@@ -5,8 +5,11 @@ import { resolve } from 'path';
 // POINT TO ROOT .ENV
 dotenv.config({ path: resolve(__dirname, '../.env') });
 
-const databaseUrl =
-  process.env.DATABASE_URL?.replace('@db:', '@localhost:') || '';
+// Only replace @db: with @localhost: when running locally (not in Docker)
+const isDocker = process.env.NODE_ENV === 'production' || process.env.DOCKER === 'true';
+const databaseUrl = isDocker 
+  ? process.env.DATABASE_URL || ''
+  : process.env.DATABASE_URL?.replace('@db:', '@localhost:') || '';
 
 export default defineConfig({
   schema: './src/database/schema/index.ts',
