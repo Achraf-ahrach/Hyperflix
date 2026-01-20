@@ -8,7 +8,6 @@ import Link from "next/link";
 import { Play, Plus, ThumbsUp, Share2, Flag } from "lucide-react";
 
 import api from "@/lib/axios";
-import Navbar from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
 import { Movie } from "@/lib/types/Movie";
 import { useSelector } from "react-redux";
@@ -68,8 +67,6 @@ export default function MovieDetailsPage() {
 
     return (
         <div className="min-h-screen bg-[#141414] text-white font-sans">
-            <Navbar />
-
             {/* Hero Section */}
             <div className="relative h-[85vh] w-full">
                 {/* Background Image */}

@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSearchMovies } from "@/lib/hooks/useSearchMovies";
 import { MovieCard } from "@/components/movie-card";
-import Navbar from "@/components/layout/Navbar";
 import { FilterBar } from "@/components/filter-bar";
 
 function SearchContent() {
@@ -51,19 +50,16 @@ function SearchContent() {
 
 export default function SearchPage() {
   return (
-    <div className="antialiased bg-background min-h-screen text-foreground">
-      <Navbar />
-      <main className="container mx-auto py-8 px-4 md:px-6 lg:px-8">
-        <Suspense
-          fallback={
-            <div className="flex justify-center items-center py-20">
-              <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            </div>
-          }
-        >
-          <SearchContent />
-        </Suspense>
-      </main>
-    </div>
+    <main className="container mx-auto py-8 px-4 md:px-6 lg:px-8">
+      <Suspense
+        fallback={
+          <div className="flex justify-center items-center py-20">
+            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          </div>
+        }
+      >
+        <SearchContent />
+      </Suspense>
+    </main>
   );
 }
