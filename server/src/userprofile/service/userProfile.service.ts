@@ -20,7 +20,10 @@ export interface Movie {
 }
 
 @Injectable()
-export class userProfileService {
+export class UserProfileService {
+    getUserProfileData(userId: number) {
+        throw new Error('Method not implemented.');
+    }
     constructor(
         private userCommentsRepository: UserCommentsRepository,
         private userWatchedMoviesRepository: UserWatchedMoviesRepository,
@@ -147,12 +150,12 @@ export class userProfileService {
     ) {
         const total_comments = await this.userCommentsRepository.getUserTotalComments(userId);
         const total_watchedMovies = await this.userWatchedMoviesRepository.getUserTotalWatchedMovies(userId);
+        const userInfo = await this.userCommentsRepository.findById(userId);
         const data: UserResponseDto =
         {
             id: userId,
-            username: "__",
-            displayName: "__",
-            avatarUrl: "___",
+            username: userInfo.username,
+            avatarUrl: userInfo.avatarUrl ? userInfo.avatarUrl : '',
             watchedCount: total_watchedMovies,
             commentsCount: total_comments
         }

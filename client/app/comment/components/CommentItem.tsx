@@ -5,6 +5,7 @@ import { CommentInput } from "./CommentInput";
 import { ReplyItem } from "./ReplyItem";
 import {Comment} from "../types/types"
 import { currentUser } from "../page_";
+import { API_URL } from "@/app/utils";
 
 // --- Comment Item Component ---
 interface CommentItemProps {
@@ -24,8 +25,9 @@ export const CommentItem = ({ comment, onLike, onReply, onDelete, onReplyLike }:
     setShowReplyInput(false);
   };
 
+  
   return (
-    <div className="bg-slate-900/30 border border-slate-800/40 p-6 rounded-2xl group transition-all hover:border-slate-700/60">
+    <div className="bg-slate-900/30 border border-slate-800/60 p-6 rounded-2xl group transition-all hover:border-slate-700/60">
       <div className="flex gap-4">
         <img src={comment.userAvatar} className="w-10 h-10 rounded-full bg-slate-800" alt={comment.username} />
         <div className="flex-1 min-w-0">
@@ -68,7 +70,7 @@ export const CommentItem = ({ comment, onLike, onReply, onDelete, onReplyLike }:
 
           {comment.media?.[0] && (
             <img 
-              src={`http://localhost:3001${comment.media[0].url}`} 
+              src={`${API_URL}${comment.media[0].url}`} 
               className="mt-4 rounded-xl max-h-72 w-auto border border-slate-800" 
               alt={comment.media[0].alt || "Comment attachment"}
             />

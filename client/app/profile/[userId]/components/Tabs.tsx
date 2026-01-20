@@ -13,7 +13,7 @@ export const Tabs: React.FC<{
   ];
 
   return (
-    <div className="border-b border-zinc-800">
+    <div className="sticky border-b border-zinc-800">
       <div className="flex gap-8 px-6">
         {tabs.map((tab) => (
           <button

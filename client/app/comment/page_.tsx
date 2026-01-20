@@ -6,6 +6,8 @@ import {
   X, Loader2, ImageIcon, ChevronDown
 } from 'lucide-react';
 import { CommentItem } from './components/CommentItem';
+import api from '@/lib/axios';
+import { API_URL } from '../utils';
 
 // --- Types ---
 export interface User {
@@ -60,7 +62,7 @@ export const currentUser: User = {
 };
 
 // --- API Service ---
-export const api = {
+export const comment_api = {
   async getComments(movieId: string, limit: number, offset: number) {
     // Simulate API call
     // await new Promise(r => setTimeout(r, 500));
@@ -71,7 +73,7 @@ export const api = {
 
 
 
-    const endpoint = `http://localhost:3001/comments/2?limit=${limit}&offset=${offset}`;
+    const endpoint = `${API_URL}/comments/2?limit=${limit}&offset=${offset}`;
 
     const response = await fetch(endpoint, {
       method: 'GET',
@@ -80,51 +82,13 @@ export const api = {
     });
     return await response.json();
 
-
-    return [
-      {
-        id: 'c-1',
-        userId: 'user-2',
-        username: 'MovieFan',
-        userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Movie',
-        content: 'This movie was incredible! ||The twist ending blew my mind!||',
-        likes: 24,
-        isLiked: false,
-        replies: [],
-        replyCount: 0,
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: 'c-2',
-        userId: 'user-3',
-        username: 'CinemaLover',
-        userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Cinema',
-        content: 'The cinematography was breathtaking. Every frame felt like art.',
-        likes: 18,
-        isLiked: false,
-        replies: [
-          {
-            id: 'r-1',
-            userId: 'user-4',
-            username: 'FilmCritic',
-            userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Critic',
-            content: 'Agreed! The lighting in the final scene was perfect.',
-            likes: 5,
-            isLiked: false,
-            createdAt: new Date().toISOString(),
-          }
-        ],
-        replyCount: 1,
-        createdAt: new Date().toISOString(),
-      }
-    ];
   },
 
   async createComment(movieId: string, content: string, media?: File): Promise<Comment> {
     // await new Promise(r => setTimeout(r, 800));
 
 
-    const endpoint = "http://localhost:3001/comments/2";
+    const endpoint = `${API_URL}/comments/2`;
     const formData = new FormData();
     formData.append('content', content);
     console.log(content);
@@ -135,25 +99,11 @@ export const api = {
     });
     return await response.json();
 
-    // return {
-    //   id: `c-${Date.now()}`,
-    //   userId: currentUser.id,
-    //   username: currentUser.username,
-    //   userAvatar: currentUser.avatar,
-    //   content,
-    //   likes: 0,
-    //   isLiked: false,
-    //   replies: [],
-    //   replyCount: 0,
-    //   media: media ? [{ id: `m-${Date.now()}`, type: 'image', url: URL.createObjectURL(media) }] : [],
-    //   createdAt: new Date().toISOString()
-    // };
   },
 
   async createReply(commentId: string, content: string): Promise<Reply> {
-    // await new Promise(r => setTimeout(r, 600));
 
-    const endpoint = `http://localhost:3001/comments/${commentId}/replies`;
+    const endpoint = `${API_URL}/comments/${commentId}/replies`;
 
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -174,9 +124,17 @@ export const api = {
     };
   },
 
-  async toggleLike(commentId: string, replyId?: string): Promise<void> {
-    await new Promise(r => setTimeout(r, 300));
-    // await fetch(`/api/comments/${commentId}/like`, { method: 'POST' });
+  async toggleLike(commentId: string, replyId?: string): Promise<boolean> {
+    try
+    {
+      console.log(`/comments/${commentId}/like`);
+      api.post(`/comments/${commentId}/like`);
+      return true;
+    }
+    catch
+    {
+      return false;
+    }
   },
 
   async deleteComment(commentId: string): Promise<void> {
@@ -462,7 +420,7 @@ const CommentsSection = ({ movieId }: { movieId: string }) => {
     const loadComments = async () => {
       try
       {
-        const data = await api.getComments(movieId, INITIAL_BATCH, 0);
+        const data = await comment_api.getComments(movieId, INITIAL_BATCH, 0);
         setComments(data);
       }
       catch (error) {
@@ -476,13 +434,13 @@ const CommentsSection = ({ movieId }: { movieId: string }) => {
   }, [movieId]);
 
   const handleAddComment = async (content: string, media?: File) => {
-    const newComment = await api.createComment(movieId, content, media);
+    const newComment = await comment_api.createComment(movieId, content, media);
     setComments(prev => [newComment, ...prev]);
     setVisibleCount(prev => prev + 1);
   };
 
   const handleAddReply = async (commentId: string, content: string) => {
-    const newReply = await api.createReply(commentId, content);
+    const newReply = await comment_api.createReply(commentId, content);
     setComments(prev => prev.map(c =>
       c.id === commentId
         ? { ...c, replies: [...c.replies, newReply], replyCount: c.replyCount + 1 }
@@ -491,7 +449,7 @@ const CommentsSection = ({ movieId }: { movieId: string }) => {
   };
 
   const handleToggleLike = async (commentId: string, replyId?: string) => {
-    await api.toggleLike(commentId, replyId);
+    await comment_api.toggleLike(commentId, replyId);
     setComments(prev => prev.map(c => {
       if (!replyId && c.id === commentId) {
         return { ...c, isLiked: !c.isLiked, likes: c.isLiked ? c.likes - 1 : c.likes + 1 };
@@ -509,7 +467,7 @@ const CommentsSection = ({ movieId }: { movieId: string }) => {
   };
 
   const handleDeleteComment = async (commentId: string) => {
-    await api.deleteComment(commentId);
+    await comment_api.deleteComment(commentId);
     setComments(prev => prev.filter(c => c.id !== commentId));
   };
 

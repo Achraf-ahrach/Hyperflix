@@ -119,7 +119,7 @@ export default function Security({ setSaveSuccess, setError, error }: SettingPro
 
     return (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white mb-6">Security</h2>
+            <h2 className="text-xl font-bold text-white mb-6">Security</h2>
 
             <div>
                 <label className="block text-slate-300 font-medium mb-2">Current Password</label>

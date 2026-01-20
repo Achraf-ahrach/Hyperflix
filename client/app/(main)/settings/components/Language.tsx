@@ -124,7 +124,7 @@ export default function LanguagePreference({ setSaveSuccess, setError, error }: 
 
 
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white mb-6">Preferences</h2>
+            <h2 className="text-xl font-bold text-white mb-6">Preferences</h2>
 
             <div>
                 <label className="block text-slate-300 font-medium mb-2">Preferred Language</label>

@@ -7,12 +7,11 @@ export interface Movie {
 }
 
 export interface User {
-  id: string;
+  id: number;
   username: string;
-  // displayName: string;
-  avatarUrl: string;
+
+  avatarUrl: string | null;
   watchedCount: number;
-  // watchLaterCount: number;
   commentsCount: number;
 }
 

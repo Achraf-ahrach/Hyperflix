@@ -26,7 +26,7 @@ export const ReplyItem = ({ reply, onLike, onDelete }: ReplyItemProps) => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="font-bold text-xs text-slate-300">{reply.username}</span>
-            <span className="text-[10px] text-slate-600">• Just now</span>
+            {/* <span className="text-[10px] text-slate-600">• Just now</span> */}
           </div>
 
           {/* Three dots menu for deletion */}
@@ -42,7 +42,8 @@ export const ReplyItem = ({ reply, onLike, onDelete }: ReplyItemProps) => {
 
             {/* Dropdown menu */}
 
-            { showMenu && (
+            {
+              showMenu && (
                 <div className="absolute right-0 top-full mt-1 w-24 bg-slate-800 border border-slate-700 rounded-md shadow-lg transition-all duration-200 z-10">
                   <button
                     onClick={() => null}

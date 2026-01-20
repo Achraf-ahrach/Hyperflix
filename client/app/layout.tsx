@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/shared/theme-provider";
 import QueryProvider from "@/components/providers/QueryProvider";
 import ReduxProviders from "@/lib/store/ReduxProviders";
 import { UserProvider } from "@/lib/contexts/UserContext";
+import Navbar from "@/components/layout/Navbar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,6 +35,7 @@ export default function RootLayout({
       >
         <QueryProvider>
           <UserProvider>
+            <Navbar />
             <ThemeProvider
               attribute="class"
               defaultTheme="dark"

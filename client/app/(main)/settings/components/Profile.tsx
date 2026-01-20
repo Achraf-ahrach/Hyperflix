@@ -9,6 +9,7 @@ import { useUser } from "@/lib/contexts/UserContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { User as UserData } from "@/lib/contexts/UserContext";
 import api from "@/lib/axios";
+import { API_URL } from "@/app/utils";
 
 
 interface ProfileForm {
@@ -50,14 +51,16 @@ export default function Profile({ setSaveSuccess, setError, error }: SettingProp
 
     useEffect(() => {
         if (!user) return;
-
+        if (user.avatarUrl && !user.avatarUrl.startsWith('http')) {
+            user.avatarUrl = `${API_URL}${user.avatarUrl}`;
+        }
         const data = {
             firstName: user.firstName,
             lastName: user.lastName,
             username: user.username,
-            profilePicture: `http://localhost:3001${user.avatarUrl ?? ''}`,
+            profilePicture: `${user.avatarUrl ?? ''}`,
         };
-
+        console.log('Loaded user data:', data);
         setFormData(data);
         setOriginalData(data);
     }, [user]);
@@ -82,11 +85,18 @@ export default function Profile({ setSaveSuccess, setError, error }: SettingProp
     const handleSave = async () => {
         setError(null);
 
-        if (formData.username && formData.username.length < 3) {
+        if (!formData.username || (formData.username && formData.username.length < 3)) {
             setError({ message: 'Username must be at least 3 characters', field: 'username' });
             return false;
         }
-
+        if (!formData.firstName || (formData.firstName && formData.firstName.length < 2)) {
+            setError({ message: 'First name must be at least 2 characters', field: 'firstName' });
+            return false;
+        }
+        if (!formData.lastName || (formData.lastName && formData.lastName.length < 2)) {
+            setError({ message: 'Last name must be at least 2 characters', field: 'lastName' });
+            return false;
+        }
         if (originalData !== null && formData.username === originalData.username
             && formData.firstName === originalData.firstName
             && formData.lastName === originalData.lastName
@@ -150,7 +160,7 @@ export default function Profile({ setSaveSuccess, setError, error }: SettingProp
             bodyFormData.append('image', file);
             const response = await api.patch('/settings/image', bodyFormData);
             console.log(response);
-            setFormData({ ...formData, profilePicture: `http://localhost:3001${response.data.url}` });
+            setFormData({ ...formData, profilePicture: `${API_URL}${response.data.url}` });
             setSaveSuccess(true);
         } catch (err) {
             setError({ message: 'Failed to upload image', field: 'profilePicture' });
@@ -168,7 +178,7 @@ export default function Profile({ setSaveSuccess, setError, error }: SettingProp
 
     return (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white mb-6">Profile Information</h2>
+            <h2 className="text-xl font-bold text-white mb-6">Profile Information</h2>
 
             {/* Profile Picture */}
             <div className="flex items-center gap-6">

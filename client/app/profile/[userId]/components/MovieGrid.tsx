@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Movie } from "../types/types";
 import { MovieCard } from "./MovieCard";
 import { Pagination } from "./Pagination";
+import { useRouter } from "next/router";
 
 
 
@@ -16,7 +17,7 @@ export const MovieGrid: React.FC<{
   total: number;
   onPageChange: (pageNum : number) => void;
 }> = ({ movies, isWatchLater = false, itemsPerPage = 20 , currentPage, onPageChange, total}) => {
-  
+
   const totalPages = Math.ceil(total / itemsPerPage);
   const currentMovies = movies;
 
@@ -25,7 +26,11 @@ export const MovieGrid: React.FC<{
       
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {currentMovies.map((movie) => (
-          <MovieCard key={movie.id} movie={movie} isWatchLater={isWatchLater} />
+          <MovieCard
+            key={movie.id}
+            movie={movie}
+            isWatchLater={isWatchLater}
+          />
         ))}
       </div>
       

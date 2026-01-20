@@ -1,3 +1,4 @@
+import { useRouter } from "next/navigation";
 import { Movie } from "../types/types";
 
 
@@ -7,8 +8,10 @@ export const MovieCard: React.FC<{ movie: Movie; isWatchLater?: boolean }> = ({
   movie, 
   isWatchLater = false 
 }) => {
+    const router = useRouter();
   return (
-    <div className="group relative bg-zinc-900 overflow-hidden transition-transform duration-200 hover:scale-105">
+    <div className="group relative bg-zinc-900 overflow-hidden transition-transform duration-200 hover:scale-105"
+      onClick={() => router.push(`/movies/${movie.id}`)}>
       {isWatchLater && (
         <div className="absolute top-2 right-2 z-10 bg-yellow-600 text-black px-2 py-1 text-xs font-semibold">
           WATCH LATER

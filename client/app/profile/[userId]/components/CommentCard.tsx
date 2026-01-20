@@ -6,6 +6,7 @@ import {Comment} from '../types/types';
 
 // CommentCard Component
 export const CommentCard: React.FC<{ comment: Comment }> = ({ comment }) => {
+  console.log(comment.content) ;
   return (
     <div className="bg-zinc-900 p-4 sm:p-6 border-b border-zinc-800 hover:bg-zinc-900/50 transition-colors">
       <div className="flex flex-col sm:flex-row gap-4">
@@ -23,16 +24,13 @@ export const CommentCard: React.FC<{ comment: Comment }> = ({ comment }) => {
               <h3 className="text-white font-medium text-sm sm:text-base truncate">{comment.movieTitle}</h3>
               <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1">
                 <div className="flex items-center gap-1">
-                  {Array.from({ length: 10 }).map((_, i) => (
+                  
                     <span
-                      key={i}
-                      className={`text-xs ${
-                        i < comment.rating ? 'text-yellow-500' : 'text-zinc-700'
-                      }`}
+                     
                     >
-                      ⭐
+                     {comment.rating } ⭐
                     </span>
-                  ))}
+                 
                 </div>
                 <span className="text-zinc-500 text-xs">{comment.createdAt}</span>
               </div>
@@ -40,18 +38,7 @@ export const CommentCard: React.FC<{ comment: Comment }> = ({ comment }) => {
           </div>
           
           <p className="text-zinc-400 text-xs sm:text-sm leading-relaxed break-words">{comment.content}</p>
-          
-          <div className="flex items-center gap-4 pt-2">
-            <button className="flex items-center gap-2 text-zinc-500 hover:text-white transition-colors">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-              </svg>
-              {/* <span className="text-xs font-medium">{comment.likes}</span> */}
-            </button>
-            <button className="text-zinc-500 hover:text-white transition-colors text-xs font-medium">
-              Reply
-            </button>
-          </div>
+
         </div>
       </div>
     </div>

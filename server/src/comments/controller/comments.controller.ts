@@ -34,9 +34,10 @@ export class CommentsController {
   ) {
     console.log("||")
     console.log(req.user);
-    return this.commentService.getCommentsByMovie({ movieId, limit, page: offset });
+    return this.commentService.getCommentsByMovie({ movieId, limit, page: offset,currentUserId: req.user.id});
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Post(':commentId/like')
   @HttpCode(HttpStatus.OK)
   async toggleLike(

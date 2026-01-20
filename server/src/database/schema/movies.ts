@@ -16,7 +16,8 @@ import {
     "movies",
     {
       id: bigserial("id", { mode: "number" }).primaryKey(),
-  
+      // id: varchar("id", { length: 50 }).primaryKey(),
+
       title: varchar("title", { length: 500 }).notNull(),
   
       productionYear: integer("production_year"),

@@ -2,7 +2,7 @@
 
 // src/users/users.repository.ts
 import { Inject, Injectable } from '@nestjs/common';
-import { mailTokens } from '../../database/schema';
+import { mailTokens, users } from '../../database/schema';
 import { DRIZZLE } from '../../database/database.module';
 import { drizzle } from 'drizzle-orm/node-postgres'
 
@@ -20,6 +20,12 @@ export class UserCommentsRepository {
         @Inject(DRIZZLE) private readonly db: ReturnType<typeof drizzle>,
     ) { }
 
+
+      async findById(id: number) {
+        const result = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
+        return result[0] ?? null;
+      }
+      
     async getUserCommentsByPage(
         userId: number,
         page: number,
@@ -41,7 +47,7 @@ export class UserCommentsRepository {
             .innerJoin(movies, eq(comments.movieId, movies.id))
             .where(
                 eq(comments.userId, userId))
-            .orderBy(desc(comments.createdAt))
+            .orderBy(desc(comments.createdAt), desc(comments.id) )
             .limit(limit)
             .offset(offset);
 
