@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import React, { useState, useRef, useContext } from 'react';
 import {
@@ -171,7 +171,9 @@ const CommentsSection = ({ movieId }: { movieId: string }) => {
 
         {!hasMore && comments.length > 0 && (
           <div className="mt-16 text-center border-t border-slate-900 pt-8">
-            <p className="text-slate-700 text-xs uppercase tracking-[0.2em]">End of Discussion</p>
+            <p className="text-slate-700 text-xs uppercase tracking-[0.2em]">
+              End of Discussion
+            </p>
           </div>
         )}
       </div>
