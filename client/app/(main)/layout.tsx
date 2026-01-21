@@ -14,9 +14,9 @@ export default function MainLayout({
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      router.push("/");
-    }
+    // if (!isLoading && !user) {
+    //   router.push("/");
+    // }
   }, [user, isLoading, router]);
 
   if (isLoading) {
@@ -27,9 +27,9 @@ export default function MainLayout({
     );
   }
 
-  if (!user) {
-    return null;
-  }
+  // if (!user) {
+  //   return null;
+  // }
 
   return (
     <div className="antialiased bg-background min-h-screen text-foreground">

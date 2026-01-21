@@ -5,102 +5,242 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Search, X } from "lucide-react";
-import { useState } from "react";
+import { ChevronDown, Search, X, Check } from "lucide-react";
+import { useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import { MovieFilters } from "@/lib/hooks/useMovies";
+
+// Complete genre list from IMDb
+const GENRES = [
+    "Action",
+    "Adventure",
+    "Animation",
+    "Biography",
+    "Comedy",
+    "Crime",
+    "Documentary",
+    "Drama",
+    "Family",
+    "Fantasy",
+    "Film-Noir",
+    "History",
+    "Horror",
+    "Music",
+    "Musical",
+    "Mystery",
+    "Romance",
+    "Sci-Fi",
+    "Sport",
+    "Thriller",
+    "War",
+    "Western",
+] as const;
+
+// Rating options (minimum IMDb rating)
+const RATINGS = [
+    { label: "9+", value: 9 },
+    { label: "8+", value: 8 },
+    { label: "7+", value: 7 },
+    { label: "6+", value: 6 },
+    { label: "5+", value: 5 },
+];
+
+// Sort options matching YTS API
+const SORT_OPTIONS = [
+    { label: "Name (A-Z)", sort_by: "title" as const, order_by: "asc" as const },
+    { label: "Name (Z-A)", sort_by: "title" as const, order_by: "desc" as const },
+    { label: "Highest Rated", sort_by: "rating" as const, order_by: "desc" as const },
+    { label: "Lowest Rated", sort_by: "rating" as const, order_by: "asc" as const },
+    { label: "Newest", sort_by: "year" as const, order_by: "desc" as const },
+    { label: "Oldest", sort_by: "year" as const, order_by: "asc" as const },
+    { label: "Most Downloaded", sort_by: "download_count" as const, order_by: "desc" as const },
+    { label: "Most Liked", sort_by: "like_count" as const, order_by: "desc" as const },
+    { label: "Recently Added", sort_by: "date_added" as const, order_by: "desc" as const },
+];
+
+// // Quality options
+// const QUALITY_OPTIONS = [
+//     { label: "All", value: "all" },
+//     { label: "720p", value: "720p" },
+//     { label: "1080p", value: "1080p" },
+//     { label: "2160p (4K)", value: "2160p" },
+//     { label: "3D", value: "3D" },
+// ];
 
 interface FilterBarProps {
-    onSortChange: (value: string) => void;
-    onGenreChange: (value: string) => void;
-    onRatingChange: (value: string) => void;
-    onYearChange: (value: string) => void;
-    onHideWatchedChange: (value: boolean) => void;
+    filters: MovieFilters;
+    onFiltersChange: (filters: MovieFilters) => void;
 }
 
 export function FilterBar({
-    onSortChange,
-    onGenreChange,
-    onRatingChange,
-    onYearChange,
-    onHideWatchedChange,
+    filters,
+    onFiltersChange,
 }: FilterBarProps) {
-    const [hideWatched, setHideWatched] = useState(false);
     const [searchOpen, setSearchOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState(filters.query_term || "");
 
-    // Mock data for dropdowns
-    const genres = ["Action", "Sci-Fi", "Thriller", "Adventure", "Drama"];
-    const years = ["2024", "2023", "2022", "2021", "2020", "Older"];
-    const ratings = ["9+", "8+", "7+", "6+"];
+    const handleSortChange = useCallback((sort_by: MovieFilters['sort_by'], order_by: MovieFilters['order_by']) => {
+        onFiltersChange({ ...filters, sort_by, order_by });
+    }, [filters, onFiltersChange]);
 
-    const toggleHideWatched = () => {
-        const newVal = !hideWatched;
-        setHideWatched(newVal);
-        onHideWatchedChange(newVal);
-    };
+    const handleGenreChange = useCallback((genre: string | undefined) => {
+        onFiltersChange({ ...filters, genre });
+    }, [filters, onFiltersChange]);
+
+    const handleRatingChange = useCallback((minimum_rating: number | undefined) => {
+        onFiltersChange({ ...filters, minimum_rating });
+    }, [filters, onFiltersChange]);
+
+    const handleQualityChange = useCallback((quality: string | undefined) => {
+        onFiltersChange({ ...filters, quality: quality === 'all' ? undefined : quality });
+    }, [filters, onFiltersChange]);
+
+    const handleSearchSubmit = useCallback(() => {
+        if (searchQuery.trim()) {
+            onFiltersChange({ ...filters, query_term: searchQuery.trim() });
+        } else {
+            onFiltersChange({ ...filters, query_term: undefined });
+        }
+    }, [filters, searchQuery, onFiltersChange]);
+
+    const handleClearSearch = useCallback(() => {
+        setSearchQuery("");
+        onFiltersChange({ ...filters, query_term: undefined });
+        setSearchOpen(false);
+    }, [filters, onFiltersChange]);
+
+    const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            handleSearchSubmit();
+        }
+    }, [handleSearchSubmit]);
+
+    // Get current sort label
+    const currentSort = SORT_OPTIONS.find(
+        opt => opt.sort_by === filters.sort_by && opt.order_by === filters.order_by
+    ) || SORT_OPTIONS[8]; // Default to "Recently Added"
+
+    // Get current genre label
+    const currentGenre = filters.genre || "All Genres";
+
+    // Get current rating label
+    const currentRating = filters.minimum_rating 
+        ? RATINGS.find(r => r.value === filters.minimum_rating)?.label || "Any Rating"
+        : "Any Rating";
+
+    // // Get current quality label
+    // const currentQuality = filters.quality 
+    //     ? QUALITY_OPTIONS.find(q => q.value === filters.quality)?.label || "All"
+    //     : "All";
 
     return (
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div className="flex flex-wrap items-center gap-3">
                 <span className="text-muted-foreground mr-2 font-medium">Sort by:</span>
+                
+                {/* Sort Dropdown */}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="secondary" className="bg-card hover:bg-card/80 border border-border/50">
-                            Name <ChevronDown className="ml-2 h-4 w-4" />
+                            {currentSort.label} <ChevronDown className="ml-2 h-4 w-4" />
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                        <DropdownMenuItem onClick={() => onSortChange("name_asc")}>Name (A-Z)</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onSortChange("name_desc")}>Name (Z-A)</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onSortChange("rating_desc")}>Highest Rated</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onSortChange("year_desc")}>Newest</DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="secondary" className="bg-card hover:bg-card/80 border border-border/50">
-                            Genre <ChevronDown className="ml-2 h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => onGenreChange("")}>All Genres</DropdownMenuItem>
-                        {genres.map(g => (
-                            <DropdownMenuItem key={g} onClick={() => onGenreChange(g)}>{g}</DropdownMenuItem>
+                    <DropdownMenuContent align="start" className="max-h-80 overflow-y-auto">
+                        {SORT_OPTIONS.map((opt) => (
+                            <DropdownMenuItem 
+                                key={`${opt.sort_by}-${opt.order_by}`} 
+                                onClick={() => handleSortChange(opt.sort_by, opt.order_by)}
+                                className="flex items-center justify-between"
+                            >
+                                {opt.label}
+                                {currentSort.sort_by === opt.sort_by && currentSort.order_by === opt.order_by && (
+                                    <Check className="h-4 w-4 ml-2" />
+                                )}
+                            </DropdownMenuItem>
                         ))}
                     </DropdownMenuContent>
                 </DropdownMenu>
 
+                {/* Genre Dropdown */}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="secondary" className="bg-card hover:bg-card/80 border border-border/50">
-                            IMDb Grade <ChevronDown className="ml-2 h-4 w-4" />
+                            {currentGenre} <ChevronDown className="ml-2 h-4 w-4" />
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => onRatingChange("")}>Any Rating</DropdownMenuItem>
-                        {ratings.map(r => (
-                            <DropdownMenuItem key={r} onClick={() => onRatingChange(r)}>{r}</DropdownMenuItem>
+                    <DropdownMenuContent className="max-h-80 overflow-y-auto">
+                        <DropdownMenuItem 
+                            onClick={() => handleGenreChange(undefined)}
+                            className="flex items-center justify-between"
+                        >
+                            All Genres
+                            {!filters.genre && <Check className="h-4 w-4 ml-2" />}
+                        </DropdownMenuItem>
+                        {GENRES.map((genre) => (
+                            <DropdownMenuItem 
+                                key={genre} 
+                                onClick={() => handleGenreChange(genre)}
+                                className="flex items-center justify-between"
+                            >
+                                {genre}
+                                {filters.genre === genre && <Check className="h-4 w-4 ml-2" />}
+                            </DropdownMenuItem>
                         ))}
                     </DropdownMenuContent>
                 </DropdownMenu>
 
+                {/* Rating Dropdown */}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="secondary" className="bg-card hover:bg-card/80 border border-border/50">
-                            Year <ChevronDown className="ml-2 h-4 w-4" />
+                            IMDb {currentRating} <ChevronDown className="ml-2 h-4 w-4" />
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => onYearChange("")}>Any Year</DropdownMenuItem>
-                        {years.map(y => (
-                            <DropdownMenuItem key={y} onClick={() => onYearChange(y)}>{y}</DropdownMenuItem>
+                        <DropdownMenuItem 
+                            onClick={() => handleRatingChange(undefined)}
+                            className="flex items-center justify-between"
+                        >
+                            Any Rating
+                            {!filters.minimum_rating && <Check className="h-4 w-4 ml-2" />}
+                        </DropdownMenuItem>
+                        {RATINGS.map((rating) => (
+                            <DropdownMenuItem 
+                                key={rating.value} 
+                                onClick={() => handleRatingChange(rating.value)}
+                                className="flex items-center justify-between"
+                            >
+                                {rating.label}
+                                {filters.minimum_rating === rating.value && <Check className="h-4 w-4 ml-2" />}
+                            </DropdownMenuItem>
                         ))}
                     </DropdownMenuContent>
                 </DropdownMenu>
+
+                {/* Quality Dropdown */}
+                {/* <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="secondary" className="bg-card hover:bg-card/80 border border-border/50">
+                            Quality: {currentQuality} <ChevronDown className="ml-2 h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        {QUALITY_OPTIONS.map((quality) => (
+                            <DropdownMenuItem 
+                                key={quality.value} 
+                                onClick={() => handleQualityChange(quality.value)}
+                                className="flex items-center justify-between"
+                            >
+                                {quality.label}
+                                {(filters.quality === quality.value || (!filters.quality && quality.value === 'all')) && (
+                                    <Check className="h-4 w-4 ml-2" />
+                                )}
+                            </DropdownMenuItem>
+                        ))}
+                    </DropdownMenuContent>
+                </DropdownMenu> */}
             </div>
 
             <div className="flex items-center gap-4">
@@ -111,11 +251,14 @@ export function FilterBar({
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <input
                                 className="w-full bg-card border border-border/50 rounded-full py-2 pl-9 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                                placeholder="Search..."
+                                placeholder="Search movies..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onKeyDown={handleKeyDown}
                                 autoFocus
                             />
                             <button
-                                onClick={() => setSearchOpen(false)}
+                                onClick={handleClearSearch}
                                 className="absolute right-3 top-1/2 -translate-y-1/2 hover:text-white"
                             >
                                 <X className="w-4 h-4" />
@@ -133,22 +276,17 @@ export function FilterBar({
                     )}
                 </div>
 
-                {/* Hide Watched & Toggle */}
-                <div
-                    className="flex items-center gap-3 bg-card px-4 py-2 rounded-lg border border-border/50 cursor-pointer select-none hover:bg-card/80 transition-colors"
-                    onClick={toggleHideWatched}
-                >
-                    <span className="text-sm font-medium text-muted-foreground">Hide Watched</span>
-                    <div className={cn(
-                        "w-10 h-5 rounded-full relative transition-colors duration-300",
-                        hideWatched ? "bg-primary" : "bg-muted"
-                    )}>
-                        <div className={cn(
-                            "absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform duration-300",
-                            hideWatched ? "translate-x-5" : "translate-x-0"
-                        )} />
-                    </div>
-                </div>
+                {/* Active Filters Indicator */}
+                {(filters.genre || filters.minimum_rating || filters.quality || filters.query_term) && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onFiltersChange({ sort_by: filters.sort_by, order_by: filters.order_by })}
+                        className="text-muted-foreground hover:text-foreground"
+                    >
+                        Clear Filters <X className="ml-1 h-4 w-4" />
+                    </Button>
+                )}
             </div>
         </div>
     );
