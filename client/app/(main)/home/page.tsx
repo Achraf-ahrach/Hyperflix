@@ -49,7 +49,7 @@ export default function HomePage() {
                 (movie, j) =>
                   movie && (
                     <MovieCard
-                      key={movie.imdb_code || `${i}-${j}`}
+                      key={`${i}-${j}-${movie.imdb_code}`}
                       movie={movie}
                     />
                   ),

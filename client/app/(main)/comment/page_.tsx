@@ -1,13 +1,20 @@
-"use client"
+"use client";
 
-import React, { useState, useRef, useContext } from 'react';
+import React, { useState, useRef, useContext } from "react";
 import {
-  Send, Heart, MessageCircle, MoreVertical, Trash2,
-  X, Loader2, ImageIcon, ChevronDown
-} from 'lucide-react';
-import { CommentItem } from './components/CommentItem';
-import api from '@/lib/axios';
-import { API_URL } from '@/app/utils';
+  Send,
+  Heart,
+  MessageCircle,
+  MoreVertical,
+  Trash2,
+  X,
+  Loader2,
+  ImageIcon,
+  ChevronDown,
+} from "lucide-react";
+import { CommentItem } from "./components/CommentItem";
+import api from "@/lib/axios";
+import { API_URL } from "@/app/utils";
 
 // --- Types ---
 export interface User {
@@ -18,7 +25,7 @@ export interface User {
 }
 export interface CommentMedia {
   id: string;
-  type: 'image';
+  type: "image";
   url: string;
   alt?: string;
 }
@@ -55,10 +62,10 @@ export const INITIAL_BATCH = 10;
 export const LOAD_MORE_BATCH = 3;
 
 export const currentUser: User = {
-  id: 'user-1',
-  username: 'JohnDoe',
-  avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John',
-  isVerified: true
+  id: "user-1",
+  username: "JohnDoe",
+  avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=John",
+  isVerified: true,
 };
 
 // --- API Service ---
@@ -67,48 +74,46 @@ export const comment_api = {
     // Simulate API call
     // await new Promise(r => setTimeout(r, 500));
 
-    // Mock data - in production, this would be: 
+    // Mock data - in production, this would be:
     // const response = await fetch(`/api/movies/${movieId}/comments?limit=${limit}&offset=${offset}`);
     // return response.json();
-
-
 
     const endpoint = `${API_URL}/comments/2?limit=${limit}&offset=${offset}`;
 
     const response = await fetch(endpoint, {
-      method: 'GET',
-      credentials: 'include',
+      method: "GET",
+      credentials: "include",
       // body: formData
     });
     return await response.json();
-
   },
 
-  async createComment(movieId: string, content: string, media?: File): Promise<Comment> {
+  async createComment(
+    movieId: string,
+    content: string,
+    media?: File,
+  ): Promise<Comment> {
     // await new Promise(r => setTimeout(r, 800));
-
 
     const endpoint = `${API_URL}/comments/2`;
     const formData = new FormData();
-    formData.append('content', content);
+    formData.append("content", content);
     console.log(content);
-    if (media) formData.append('media', media);
+    if (media) formData.append("media", media);
     const response = await fetch(endpoint, {
-      method: 'POST',
-      body: formData
+      method: "POST",
+      body: formData,
     });
     return await response.json();
-
   },
 
   async createReply(commentId: string, content: string): Promise<Reply> {
-
     const endpoint = `${API_URL}/comments/${commentId}/replies`;
 
     const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content })
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
     });
     return response.json();
 
@@ -120,27 +125,24 @@ export const comment_api = {
       content,
       likes: 0,
       isLiked: false,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     };
   },
 
   async toggleLike(commentId: string, replyId?: string): Promise<boolean> {
-    try
-    {
+    try {
       console.log(`/comments/${commentId}/like`);
       api.post(`/comments/${commentId}/like`);
       return true;
-    }
-    catch
-    {
+    } catch {
       return false;
     }
   },
 
   async deleteComment(commentId: string): Promise<void> {
-    await new Promise(r => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 400));
     // await fetch(`/api/comments/${commentId}`, { method: 'DELETE' });
-  }
+  },
 };
 
 // --- Spoiler Text Component ---
@@ -151,14 +153,17 @@ const SpoilerText = ({ text }: { text: string }) => {
   return (
     <p className="text-slate-300 whitespace-pre-wrap leading-relaxed text-sm">
       {parts.map((part, i) => {
-        if (part.startsWith('||') && part.endsWith('||')) {
+        if (part.startsWith("||") && part.endsWith("||")) {
           const content = part.slice(2, -2);
           return (
             <span
               key={i}
               onClick={() => setRevealed(!revealed)}
-              className={`cursor-pointer rounded px-1 transition-all mx-0.5 ${revealed ? 'bg-slate-700 text-slate-200' : 'bg-slate-800 text-transparent select-none blur-sm'
-                }`}
+              className={`cursor-pointer rounded px-1 transition-all mx-0.5 ${
+                revealed
+                  ? "bg-slate-700 text-slate-200"
+                  : "bg-slate-800 text-transparent select-none blur-sm"
+              }`}
             >
               {content}
             </span>
@@ -178,8 +183,13 @@ interface CommentInputProps {
   compact?: boolean;
 }
 
-const CommentInput = ({ onSubmit, placeholder = "Write a comment...", autoFocus, compact }: CommentInputProps) => {
-  const [content, setContent] = useState('');
+const CommentInput = ({
+  onSubmit,
+  placeholder = "Write a comment...",
+  autoFocus,
+  compact,
+}: CommentInputProps) => {
+  const [content, setContent] = useState("");
   const [media, setMedia] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -190,10 +200,10 @@ const CommentInput = ({ onSubmit, placeholder = "Write a comment...", autoFocus,
     setIsSubmitting(true);
     try {
       await onSubmit(content, media || undefined);
-      setContent('');
+      setContent("");
       setMedia(null);
     } catch (error) {
-      console.error('Failed to submit:', error);
+      console.error("Failed to submit:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -208,14 +218,18 @@ const CommentInput = ({ onSubmit, placeholder = "Write a comment...", autoFocus,
           placeholder={placeholder}
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSubmit()}
+          onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSubmit()}
         />
         <button
           onClick={handleSubmit}
           disabled={!content.trim() || isSubmitting}
           className="bg-red-600 p-2 rounded-lg disabled:opacity-50 hover:bg-red-500 transition-colors"
         >
-          {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+          {isSubmitting ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <Send size={14} />
+          )}
         </button>
       </div>
     );
@@ -224,7 +238,11 @@ const CommentInput = ({ onSubmit, placeholder = "Write a comment...", autoFocus,
   return (
     <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-2xl backdrop-blur-sm">
       <div className="flex gap-4">
-        <img src={currentUser.avatar} className="w-10 h-10 rounded-full border border-red-500/50" alt={currentUser.username} />
+        <img
+          src={currentUser.avatar}
+          className="w-10 h-10 rounded-full border border-red-500/50"
+          alt={currentUser.username}
+        />
         <div className="flex-1">
           <textarea
             className="w-full bg-transparent border-none outline-none resize-none text-sm placeholder:text-slate-600"
@@ -235,7 +253,11 @@ const CommentInput = ({ onSubmit, placeholder = "Write a comment...", autoFocus,
           />
           {media && (
             <div className="relative mt-2 inline-block">
-              <img src={URL.createObjectURL(media)} className="h-24 w-24 object-cover rounded-lg border border-slate-700" alt="Upload preview" />
+              <img
+                src={URL.createObjectURL(media)}
+                className="h-24 w-24 object-cover rounded-lg border border-slate-700"
+                alt="Upload preview"
+              />
               <button
                 onClick={() => setMedia(null)}
                 className="absolute -top-2 -right-2 bg-red-600 p-1 rounded-full hover:bg-red-500"
@@ -265,7 +287,11 @@ const CommentInput = ({ onSubmit, placeholder = "Write a comment...", autoFocus,
               disabled={isSubmitting || (!content.trim() && !media)}
               className="bg-red-600 hover:bg-red-500 disabled:opacity-50 px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all active:scale-95"
             >
-              {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+              {isSubmitting ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Send size={16} />
+              )}
               Post
             </button>
           </div>
@@ -303,33 +329,6 @@ const CommentInput = ({ onSubmit, placeholder = "Write a comment...", autoFocus,
 //   </div>
 // );
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 interface ReplyItemProps {
   reply: Reply;
   onLike: () => void;
@@ -337,27 +336,39 @@ interface ReplyItemProps {
 }
 
 export const ReplyItem = ({ reply, onLike, onDelete }: ReplyItemProps) => {
-
-
   // const [showMenu, setShowMenu] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   console.log(showMenu);
   return (
-
     <div className="flex gap-3">
-      <img src={reply.userAvatar} className="w-7 h-7 rounded-full bg-slate-800" alt={reply.username} />
+      <img
+        src={reply.userAvatar}
+        className="w-7 h-7 rounded-full bg-slate-800"
+        alt={reply.username}
+      />
       <div className="flex-1">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-xs text-slate-300">{reply.username}</span>
+            <span className="font-bold text-xs text-slate-300">
+              {reply.username}
+            </span>
             <span className="text-[10px] text-slate-600">• Just now</span>
           </div>
 
           {/* Three dots menu for deletion */}
           <div className="relative group">
-            <button className="p-1 text-slate-500 hover:text-slate-300 transition-colors"
-              onClick={() => setShowMenu(!showMenu)} >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <button
+              className="p-1 text-slate-500 hover:text-slate-300 transition-colors"
+              onClick={() => setShowMenu(!showMenu)}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <circle cx="12" cy="6" r="1" />
                 <circle cx="12" cy="12" r="1" />
                 <circle cx="12" cy="18" r="1" />
@@ -375,38 +386,26 @@ export const ReplyItem = ({ reply, onLike, onDelete }: ReplyItemProps) => {
                   Delete
                 </button>
               </div>
-            )
-            }
+            )}
           </div>
         </div>
 
         <p className="text-slate-400 text-sm mt-0.5">{reply.content}</p>
         <button
           onClick={onLike}
-          className={`mt-2 flex items-center gap-1 text-[10px] transition-colors ${reply.isLiked ? 'text-red-500 font-bold' : 'text-slate-600 hover:text-red-400'
-            }`}
+          className={`mt-2 flex items-center gap-1 text-[10px] transition-colors ${
+            reply.isLiked
+              ? "text-red-500 font-bold"
+              : "text-slate-600 hover:text-red-400"
+          }`}
         >
           <Heart size={10} fill={reply.isLiked ? "currentColor" : "none"} />
           {reply.likes}
         </button>
       </div>
     </div>
-  )
+  );
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // --- Main Comments Section Component ---
 const CommentsSection = ({ movieId }: { movieId: string }) => {
@@ -418,15 +417,12 @@ const CommentsSection = ({ movieId }: { movieId: string }) => {
   // Load initial comments
   React.useEffect(() => {
     const loadComments = async () => {
-      try
-      {
+      try {
         const data = await comment_api.getComments(movieId, INITIAL_BATCH, 0);
         setComments(data);
-      }
-      catch (error) {
-        console.error('Failed to load comments:', error);
-      }
-      finally {
+      } catch (error) {
+        console.error("Failed to load comments:", error);
+      } finally {
         setIsInitialLoading(false);
       }
     };
@@ -435,49 +431,67 @@ const CommentsSection = ({ movieId }: { movieId: string }) => {
 
   const handleAddComment = async (content: string, media?: File) => {
     const newComment = await comment_api.createComment(movieId, content, media);
-    setComments(prev => [newComment, ...prev]);
-    setVisibleCount(prev => prev + 1);
+    setComments((prev) => [newComment, ...prev]);
+    setVisibleCount((prev) => prev + 1);
   };
 
   const handleAddReply = async (commentId: string, content: string) => {
     const newReply = await comment_api.createReply(commentId, content);
-    setComments(prev => prev.map(c =>
-      c.id === commentId
-        ? { ...c, replies: [...c.replies, newReply], replyCount: c.replyCount + 1 }
-        : c
-    ));
+    setComments((prev) =>
+      prev.map((c) =>
+        c.id === commentId
+          ? {
+              ...c,
+              replies: [...c.replies, newReply],
+              replyCount: c.replyCount + 1,
+            }
+          : c,
+      ),
+    );
   };
 
   const handleToggleLike = async (commentId: string, replyId?: string) => {
     await comment_api.toggleLike(commentId, replyId);
-    setComments(prev => prev.map(c => {
-      if (!replyId && c.id === commentId) {
-        return { ...c, isLiked: !c.isLiked, likes: c.isLiked ? c.likes - 1 : c.likes + 1 };
-      }
-      if (replyId && c.id === commentId) {
-        return {
-          ...c,
-          replies: c.replies.map(r => r.id === replyId
-            ? { ...r, isLiked: !r.isLiked, likes: r.isLiked ? r.likes - 1 : r.likes + 1 }
-            : r)
-        };
-      }
-      return c;
-    }));
+    setComments((prev) =>
+      prev.map((c) => {
+        if (!replyId && c.id === commentId) {
+          return {
+            ...c,
+            isLiked: !c.isLiked,
+            likes: c.isLiked ? c.likes - 1 : c.likes + 1,
+          };
+        }
+        if (replyId && c.id === commentId) {
+          return {
+            ...c,
+            replies: c.replies.map((r) =>
+              r.id === replyId
+                ? {
+                    ...r,
+                    isLiked: !r.isLiked,
+                    likes: r.isLiked ? r.likes - 1 : r.likes + 1,
+                  }
+                : r,
+            ),
+          };
+        }
+        return c;
+      }),
+    );
   };
 
   const handleDeleteComment = async (commentId: string) => {
     await comment_api.deleteComment(commentId);
-    setComments(prev => prev.filter(c => c.id !== commentId));
+    setComments((prev) => prev.filter((c) => c.id !== commentId));
   };
 
   const handleLoadMore = async () => {
     setIsLoadingMore(true);
     try {
-      await new Promise(r => setTimeout(r, 700));
-      setVisibleCount(prev => prev + LOAD_MORE_BATCH);
+      await new Promise((r) => setTimeout(r, 700));
+      setVisibleCount((prev) => prev + LOAD_MORE_BATCH);
     } catch (error) {
-      console.error('Failed to load more:', error);
+      console.error("Failed to load more:", error);
     } finally {
       setIsLoadingMore(false);
     }
@@ -505,11 +519,14 @@ const CommentsSection = ({ movieId }: { movieId: string }) => {
         </h2>
 
         <div className="mb-10">
-          <CommentInput onSubmit={handleAddComment} placeholder="Write a comment... use ||spoiler|| for twists!" />
+          <CommentInput
+            onSubmit={handleAddComment}
+            placeholder="Write a comment... use ||spoiler|| for twists!"
+          />
         </div>
 
         <div className="space-y-6">
-          {displayedComments.map(comment => (
+          {displayedComments.map((comment) => (
             <CommentItem
               key={comment.id}
               comment={comment}
@@ -542,7 +559,9 @@ const CommentsSection = ({ movieId }: { movieId: string }) => {
 
         {!hasMore && comments.length > 0 && (
           <div className="mt-16 text-center border-t border-slate-900 pt-8">
-            <p className="text-slate-700 text-xs uppercase tracking-[0.2em]">End of Discussion</p>
+            <p className="text-slate-700 text-xs uppercase tracking-[0.2em]">
+              End of Discussion
+            </p>
           </div>
         )}
       </div>
@@ -551,15 +570,3 @@ const CommentsSection = ({ movieId }: { movieId: string }) => {
 };
 
 export default CommentsSection;
-
-
-
-
-
-
-
-
-
-
-
-
