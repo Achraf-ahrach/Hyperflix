@@ -12,12 +12,13 @@ import Navbar from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
 import { Movie } from "@/lib/types/Movie";
 import { useSelector } from "react-redux";
+import CommentsSection from "@/app/comment/page";
 
 export default function MovieDetailsPage() {
 
     const [showNoMagnetPopup, setShowNoMagnetPopup] = useState(false);
     const router = useRouter();
-    const { id } = useParams();
+    const { id }: { id: string } = useParams();
 
     const { data: movieQ, isLoading } = useQuery<Movie>({
         queryKey: ["movie", id],
@@ -236,6 +237,7 @@ export default function MovieDetailsPage() {
                     </div>
                 </div>
             )}
+            <CommentsSection movieId={id} />
         </div>
     );
 }

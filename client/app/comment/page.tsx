@@ -20,7 +20,7 @@ interface CommentInputProps {
 
 
 // --- Main Comments Section Component ---
-const CommentsSection = ({ movieId }: { movieId: string }) => {
+export const CommentsSection = ({ movieId }: { movieId: string }) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [page, setPage] = useState<number>(0);
   const [total, setTotal] = useState<number>(0);

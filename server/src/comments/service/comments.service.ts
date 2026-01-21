@@ -8,7 +8,7 @@ import { drizzle, NodePgDatabase } from 'drizzle-orm/node-postgres';
 interface PaginationParams {
   page: number;
   limit: number;
-  movieId: number;
+  movieId: string;
   currentUserId?: number;
 }
 

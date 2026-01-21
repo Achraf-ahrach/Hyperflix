@@ -73,13 +73,20 @@ export const comment_api = {
 
 
 
-    const endpoint = `${API_URL}/comments/2?limit=${limit}&offset=${offset}`;
+    const endpoint = `${API_URL}/comments/${movieId}?limit=${limit}&offset=${offset}`;
 
     const response = await fetch(endpoint, {
       method: 'GET',
       credentials: 'include',
       // body: formData
     });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized');
+      }
+    throw new Error('Failed to load comments');
+    }
     return await response.json();
 
   },

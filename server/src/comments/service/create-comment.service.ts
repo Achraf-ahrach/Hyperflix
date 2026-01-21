@@ -6,7 +6,7 @@ import { DRIZZLE } from 'src/database/database.module';
 import { drizzle } from 'drizzle-orm/node-postgres';
 
 interface CreateCommentDto {
-  movieId: number;
+  movieId: string;
   userId: number;
   content: string;
   parentId?: number;

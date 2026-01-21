@@ -52,15 +52,16 @@ export class CreateCommentController {
 
 
 
-  // @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'))
+  @Post()
   async createComment(
-    @Param('movieId', ParseIntPipe) movieId: number,
+    @Param('movieId') movieId: string,
     @Body('content') content: string,
     @UploadedFile() media: Express.Multer.File,
     @Req() req: any,
   ) {
     
-    // console.log(req.user.id);
+    console.log(req.user.id);
 
     if (!content || content.trim().length === 0) {
       throw new BadRequestException('Content is required');
@@ -71,10 +72,10 @@ export class CreateCommentController {
     }
 
     // const userId = req.user.id;
-    const idd : number = 2;
+    
     return this.createCommentsService.createComment({
       movieId,
-      userId: idd,
+      userId: req.user.id,
       content: content.trim(),
       mediaFile: media,
     });

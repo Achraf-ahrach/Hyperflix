@@ -10,6 +10,7 @@ import {
   Req,
   Delete,
   UseGuards,
+  Body,
 } from '@nestjs/common';
 import { CommentDto } from '../dto/comment.dto';
 import { CommentsService } from '../service/comments.service';
@@ -27,7 +28,7 @@ export class CommentsController {
   @UseGuards(AuthGuard('jwt'))
   @Get(':movieId')
   async getMovieComments(
-    @Param('movieId') movieId: number,
+    @Param('movieId') movieId: string,
     @Query('limit', new ParseIntPipe({ optional: true })) limit = 10,
     @Query('offset', new ParseIntPipe({ optional: true })) offset = 1,
     @Req() req: any,
@@ -36,6 +37,19 @@ export class CommentsController {
     console.log(req.user);
     return this.commentService.getCommentsByMovie({ movieId, limit, page: offset,currentUserId: req.user.id});
   }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post(':movieId')
+   async createComment(
+      @Param('movieId') movieId: string,
+      @Body('content') content: string,
+      @Req() req: any,
+    ) {
+      
+      console.log(req.user.id);
+      console.log("DSDS");
+      return "true;"
+    }
 
   @UseGuards(AuthGuard('jwt'))
   @Post(':commentId/like')

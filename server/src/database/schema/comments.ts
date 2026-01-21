@@ -6,6 +6,7 @@ import {
   timestamp,
   index,
   check,
+  varchar,
 } from "drizzle-orm/pg-core";
 import { users } from "./users";
 import { movies } from "./movies";
@@ -25,7 +26,7 @@ export const comments = pgTable(
     parentId: bigint("parent_id", { mode: "number" })
       .references(() => comments.id, { onDelete: "cascade" }),
 
-    movieId: bigint("movie_id", { mode: "number" })
+    movieId: varchar("movie_id", { length: 50 })
       .notNull()
       .references(() => movies.id, { onDelete: "cascade" }),
 

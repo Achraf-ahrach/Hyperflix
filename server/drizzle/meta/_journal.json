@@ -5,43 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1766136707641,
-      "tag": "0000_modern_legion",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1766487532792,
-      "tag": "0001_hot_junta",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1766487741177,
-      "tag": "0002_nice_zarek",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1767367946202,
-      "tag": "0003_big_masked_marvel",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1768039230076,
-      "tag": "0004_lyrical_wolfsbane",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1768569192701,
-      "tag": "0005_gray_wolfsbane",
+      "when": 1768930212332,
+      "tag": "0000_spooky_wallflower",
       "breakpoints": true
     }
   ]
