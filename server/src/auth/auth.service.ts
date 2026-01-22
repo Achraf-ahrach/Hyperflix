@@ -3,6 +3,8 @@ import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
+import { EmailService } from './email.service';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class AuthService {
@@ -10,6 +12,7 @@ export class AuthService {
     private jwtService: JwtService,
     private usersService: UsersService,
     private configService: ConfigService,
+    private emailService: EmailService,
   ) {}
 
   async validateLocalUser(userData: { email: string; password: string }) {
@@ -90,7 +93,13 @@ export class AuthService {
     if (existingUser) {
       throw new Error('User already exists');
     }
+    
     const hashedPassword = await bcrypt.hash(userData.password, 10);
+    
+    // Generate verification token
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+    
     const newUser = await this.usersService.createUser({
       email: userData.email,
       username: userData.username,
@@ -98,8 +107,54 @@ export class AuthService {
       lastName: userData.lastName,
       passwordHash: hashedPassword,
       provider: 'local',
+      emailVerificationToken: verificationToken,
+      emailVerificationExpires: verificationExpires,
     });
-    const { passwordHash, ...result } = newUser;
+    
+    // Send verification email
+    await this.emailService.sendVerificationEmail(userData.email, verificationToken);
+    
+    const { passwordHash, emailVerificationToken: token, ...result } = newUser;
     return result;
+  }
+
+  async verifyEmail(token: string) {
+    const user = await this.usersService.findByVerificationToken(token);
+    
+    if (!user) {
+      throw new Error('Invalid verification token');
+    }
+    
+    if (user.emailVerificationExpires && new Date(user.emailVerificationExpires) < new Date()) {
+      throw new Error('expired');
+    }
+    
+    await this.usersService.verifyUserEmail(user.id);
+    
+    return { message: 'Email verified successfully' };
+  }
+
+  async resendVerificationEmail(email: string) {
+    const user = await this.usersService.findByEmail(email);
+    
+    if (!user) {
+      throw new Error('User not found');
+    }
+    
+    if (user.isEmailVerified) {
+      throw new Error('Email already verified');
+    }
+    
+    // Generate new verification token
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    
+    // Update user with new token
+    await this.usersService.updateVerificationToken(user.id, verificationToken, verificationExpires);
+    
+    // Send new verification email
+    await this.emailService.sendVerificationEmail(email, verificationToken);
+    
+    return { message: 'Verification email sent successfully' };
   }
 }

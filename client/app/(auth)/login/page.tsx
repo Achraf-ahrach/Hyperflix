@@ -31,7 +31,7 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await api.post("/auth/login", { email, password });
-      router.push("/");
+      router.push("/home");
     } catch (err) {
       setError("Incorrect password. Please try again.");
     } finally {

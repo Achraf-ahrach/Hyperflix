@@ -1,5 +1,5 @@
 
-import { pgTable, serial, varchar } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, boolean } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
@@ -11,6 +11,9 @@ export const users = pgTable('users', {
   passwordHash: varchar('password_hash', { length: 255 }),
   provider: varchar('provider', { length: 50 }),
   providerId: varchar('provider_id', { length: 255 }),
+  isEmailVerified: boolean('is_email_verified').notNull().default(false),
+  emailVerificationToken: varchar('email_verification_token', { length: 255 }),
+  emailVerificationExpires: varchar('email_verification_expires', { length: 50 }),
   createdAt: varchar('created_at', { length: 50 }).notNull(),
   updatedAt: varchar('updated_at', { length: 50 }).notNull(),
 });

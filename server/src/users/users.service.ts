@@ -50,6 +50,8 @@ export class UsersService {
     passwordHash: string;
     avatarUrl?: string;
     provider?: string;
+    emailVerificationToken?: string;
+    emailVerificationExpires?: string;
   }) {
     const now = new Date().toISOString();
 
@@ -61,9 +63,11 @@ export class UsersService {
         firstName: userData.firstName || '',
         lastName: userData.lastName || '',
         passwordHash: userData.passwordHash,
-        avatarUrl: userData.avatarUrl || null,
+        avatarUrl: userData.avatarUrl ?? null,
         provider: userData.provider || 'local',
         providerId: null,
+        emailVerificationToken: userData.emailVerificationToken ?? null,
+        emailVerificationExpires: userData.emailVerificationExpires ?? null,
         createdAt: now,
         updatedAt: now,
       })
@@ -91,9 +95,12 @@ export class UsersService {
         firstName: oauthData.firstName || '',
         lastName: oauthData.lastName || '',
         passwordHash: '', // No password for OAuth users
-        avatarUrl: oauthData.avatarUrl || null,
+        avatarUrl: oauthData.avatarUrl ?? null,
         provider: oauthData.provider,
         providerId: oauthData.providerId,
+        isEmailVerified: true, // OAuth users are pre-verified
+        emailVerificationToken: null,
+        emailVerificationExpires: null,
         createdAt: now,
         updatedAt: now,
       })
@@ -113,6 +120,48 @@ export class UsersService {
       .set({
         provider: providerData.provider,
         providerId: providerData.providerId,
+        updatedAt: now,
+      })
+      .where(eq(schema.users.id, userId))
+      .returning();
+
+    return result[0];
+  }
+
+  async findByVerificationToken(token: string) {
+    const result = await this.db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.emailVerificationToken, token))
+      .limit(1);
+    return result[0] || null;
+  }
+
+  async verifyUserEmail(userId: number) {
+    const now = new Date().toISOString();
+
+    const result = await this.db
+      .update(schema.users)
+      .set({
+        isEmailVerified: true,
+        emailVerificationToken: null,
+        emailVerificationExpires: null,
+        updatedAt: now,
+      })
+      .where(eq(schema.users.id, userId))
+      .returning();
+
+    return result[0];
+  }
+
+  async updateVerificationToken(userId: number, token: string, expires: string) {
+    const now = new Date().toISOString();
+
+    const result = await this.db
+      .update(schema.users)
+      .set({
+        emailVerificationToken: token,
+        emailVerificationExpires: expires,
         updatedAt: now,
       })
       .where(eq(schema.users.id, userId))
