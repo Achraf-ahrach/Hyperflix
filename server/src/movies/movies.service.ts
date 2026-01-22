@@ -8,9 +8,9 @@ import * as cacheManager_1 from 'cache-manager';
 
 // ===== TYPES =====
 export interface NormalizedMovie {
-  source: 'YTS' | 'APIBay' | 'TMDb';
+  source: 'YTS' | 'APIBay' | 'TMDb' | 'OMDb';
   imdb_code: string;
-  tmdb_id?: number;
+  // tmdb_id?: number;
   title: string;
   year: number;
   rating: number;
@@ -23,6 +23,8 @@ export interface NormalizedMovie {
   backdrop_image?: string | null;
   torrents?: Torrent[];
 }
+
+
 
 export interface Torrent {
   url: string;
@@ -70,10 +72,37 @@ interface TMDbMovieDetails {
   };
 }
 
+interface OMDbMetadata {
+  posterUrl: string | null;
+  movieTitle: string;
+  movieYear: number;
+  imdbRating: number;
+  plot: string;
+  runtime: number;
+  rated: string;
+  genres: string[];
+  imdbId: string;
+}
+
+interface OMDbResponse {
+  Title: string;
+  Year: string;
+  Rated: string;
+  Runtime: string;
+  Genre: string;
+  Plot: string;
+  Poster: string;
+  imdbID: string;
+  imdbRating: string;
+  Response: string;
+  Error?: string;
+}
+
 // ===== CONSTANTS =====
 const CACHE_KEYS = {
   ALL_MOVIES: 'all_movies',
   TMDB_MOVIE: (id: string) => `tmdb_movie_${id}`,
+  OMDB_MOVIE: (id: string) => `omdb_movie_${id}`,
   SEARCH_MOVIES: (query: string) => `search_movies_${query.toLowerCase().trim()}`,
   MOVIE: (id: string) => `movie_${id}`,
 } as const;
@@ -83,6 +112,7 @@ const API_URLS = {
   YTS_TRENDING: 'https://yts.lt/api/v2/list_movies.json?sort_by=download_count&limit=50',
   APIBAY_SEARCH: 'https://apibay.org/q.php',
   APIBAY_TRENDING: 'https://apibay.org/precompiled/data_top100_207.json',
+  OMDB_BASE: 'https://www.omdbapi.com',
   TMDB_BASE: 'https://api.themoviedb.org/3',
   TMDB_IMAGE_BASE: 'https://image.tmdb.org/t/p',
 } as const;
@@ -102,6 +132,7 @@ const LIMITS = {
 @Injectable()
 export class MoviesService {
   private readonly logger = new Logger(MoviesService.name);
+  private readonly omdbApiKey: string | undefined;
   private readonly tmdbApiKey: string | undefined;
 
   constructor(
@@ -109,8 +140,16 @@ export class MoviesService {
     private readonly configService: ConfigService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: cacheManager_1.Cache
   ) {
-    const key = this.configService.get<string>('TMDB_API_KEY');
-    this.tmdbApiKey = key?.trim();
+    const key = this.configService.get<string>('OMDB_API_KEY');
+    this.omdbApiKey = key?.trim();
+    this.tmdbApiKey = this.configService.get<string>('TMDB_API_KEY')?.trim();
+
+    if (!this.omdbApiKey) {
+      this.logger.error('OMDB_API_KEY not configured');
+    } else {
+      this.logger.log(`OMDB_API_KEY configured: '${this.omdbApiKey.substring(0, 4)}...' (length: ${this.omdbApiKey.length})`);
+    }
+
 
     if (!this.tmdbApiKey) {
       this.logger.error('TMDB_API_KEY not configured');
@@ -179,15 +218,15 @@ export class MoviesService {
       return specificCachedMovie;
     }
 
-    // Fallback to TMDb
-    this.logger.log(`Movie ${id} not found in cache, fetching from TMDb`);
-    const tmdbData = await this.fetchFromTMDb(id);
+    // Fallback to OMDb
+    this.logger.log(`Movie ${id} not found in cache, fetching from OMDb`);
+    const omdbData = await this.fetchFromOMDb(id);
 
-    if (!tmdbData) {
+    if (!omdbData) {
       return null;
     }
 
-    return this.normalizeTMDbMovie(tmdbData);
+    return this.normalizeOMDbMovie(omdbData);
   }
 
   // ===== SEARCH METHODS =====
@@ -220,30 +259,28 @@ export class MoviesService {
   private async enrichYTSMovie(movie: any): Promise<NormalizedMovie> {
     const normalizedYTS = this.normalizeYTSMovie(movie);
 
-    // Attempt to enrich with TMDb data
-    const tmdbMetadata = await this.fetchFromTMDb(normalizedYTS.imdb_code);
+    // Attempt to enrich with OMDb data
+    const omdbMetadata = await this.fetchFromOMDb(normalizedYTS.imdb_code);
 
-    if (tmdbMetadata) {
-      // Merge TMDb metadata but keep YTS torrents and source identifier (or maybe update source to indicate dual origin if needed, but 'YTS' is fine for now as it indicates the torrent source)
+    if (omdbMetadata) {
+      // Merge OMDb metadata but keep YTS torrents and source identifier
       return {
         ...normalizedYTS,
-        tmdb_id: tmdbMetadata.tmdbId,
-        title: tmdbMetadata.movieTitle,
-        year: tmdbMetadata.movieYear,
-        rating: tmdbMetadata.voteAverage,
-        thumbnail: tmdbMetadata.posterUrl || normalizedYTS.thumbnail,
-        synopsis: tmdbMetadata.plot || normalizedYTS.synopsis,
-        runtime: tmdbMetadata.runtime || normalizedYTS.runtime,
-        mpa_rating: tmdbMetadata.rated || normalizedYTS.mpa_rating,
-        genres: tmdbMetadata.genres.length > 0 ? tmdbMetadata.genres : normalizedYTS.genres,
-        background_image: tmdbMetadata.posterUrl || normalizedYTS.background_image,
-        backdrop_image: tmdbMetadata.backdropUrl || normalizedYTS.backdrop_image,
+        title: omdbMetadata.movieTitle,
+        year: omdbMetadata.movieYear,
+        rating: omdbMetadata.imdbRating,
+        thumbnail: omdbMetadata.posterUrl || normalizedYTS.thumbnail,
+        synopsis: omdbMetadata.plot || normalizedYTS.synopsis,
+        runtime: omdbMetadata.runtime || normalizedYTS.runtime,
+        mpa_rating: omdbMetadata.rated || normalizedYTS.mpa_rating,
+        genres: omdbMetadata.genres.length > 0 ? omdbMetadata.genres : normalizedYTS.genres,
+        background_image: omdbMetadata.posterUrl || normalizedYTS.background_image,
         // Ensure torrents are preserved
         torrents: normalizedYTS.torrents,
       };
     }
 
-    // Fallback if TMDb fails
+    // Fallback if OMDb fails
     return normalizedYTS;
   }
 
@@ -307,21 +344,35 @@ export class MoviesService {
         return [];
       }
 
-      return response.data.movies.map((movie: any) => this.normalizeYTSMovie(movie));
+      const enrichedMovies = await Promise.allSettled(
+        response.data.movies.map((movie: any) => this.enrichYTSMovie(movie))
+      );
+
+      return enrichedMovies
+        .filter((result): result is PromiseFulfilledResult<NormalizedMovie> =>
+          result.status === 'fulfilled'
+        )
+        .map((result) => result.value);
     } catch (error) {
       this.logger.error('YTS trending fetch failed', error.stack);
       return [];
     }
   }
 
+
+
+
   private async getApiBayTrending(): Promise<NormalizedMovie[]> {
     try {
       const topMovies = await this.fetchData<any[]>(API_URLS.APIBAY_TRENDING);
+
+      console.log('APIBay trending movies fetched:', topMovies.length);
 
       if (!Array.isArray(topMovies)) {
         return [];
       }
 
+      console.log('Enriching APIBay trending movies...');
       const enrichedMovies = await Promise.allSettled(
         topMovies.map((movie: any) => this.enrichAPIBayMovie(movie))
       );
@@ -363,24 +414,25 @@ export class MoviesService {
     };
   }
 
-  private normalizeTMDbMovie(metadata: TMDbMetadata): NormalizedMovie {
+  private normalizeOMDbMovie(metadata: OMDbMetadata): NormalizedMovie {
     return {
-      source: 'TMDb',
+      source: 'OMDb',
       imdb_code: metadata.imdbId,
-      tmdb_id: metadata.tmdbId,
       title: metadata.movieTitle,
       year: metadata.movieYear,
-      rating: metadata.voteAverage,
+      rating: metadata.imdbRating,
       thumbnail: metadata.posterUrl,
       synopsis: metadata.plot,
       runtime: metadata.runtime,
       mpa_rating: metadata.rated,
       genres: metadata.genres,
       background_image: metadata.posterUrl,
-      backdrop_image: metadata.backdropUrl,
       torrents: [],
     };
   }
+
+
+
 
   // ===== TMDB API METHODS =====
 
@@ -466,27 +518,100 @@ export class MoviesService {
     }
   }
 
+
+    // ===== OMDB API METHODS =====
+
+  private async fetchFromOMDb(imdbCode: string): Promise<OMDbMetadata | null> {
+    if (!imdbCode || !imdbCode.startsWith('tt')) {
+      this.logger.warn(`Invalid IMDB code: ${imdbCode}`);
+      return null;
+    }
+
+    if (!this.omdbApiKey) {
+      this.logger.error('OMDB_API_KEY not configured');
+      return null;
+    }
+
+    try {
+      // Check cache first
+      const cacheKey = CACHE_KEYS.OMDB_MOVIE(imdbCode);
+      const cached = await this.cacheManager.get<OMDbMetadata>(cacheKey);
+      if (cached) {
+        this.logger.debug(`Returning cached OMDb data for ${imdbCode}`);
+        return cached;
+      }
+
+      // Fetch from OMDb API using IMDB ID
+      const omdbUrl = `${API_URLS.OMDB_BASE}/?apikey=${this.omdbApiKey}&i=${imdbCode}&type=movie`;
+      this.logger.log(`Fetching OMDb data for ${imdbCode} from URL: ${omdbUrl}`);
+      const response = await this.fetchData<OMDbResponse>(omdbUrl);
+
+      if (response.Response === 'False' || response.Error) {
+        this.logger.warn(`OMDb returned no results for ${imdbCode}: ${response.Error}`);
+        return null;
+      }
+
+      // Parse runtime (format: "120 min" -> 120)
+      const runtimeMatch = response.Runtime?.match(/(\d+)/);
+      const runtime = runtimeMatch ? parseInt(runtimeMatch[1]) : 0;
+
+      // Parse year (format: "2020" -> 2020)
+      const year = response.Year ? parseInt(response.Year) : 0;
+
+      // Parse genres (format: "Action, Drama, Sci-Fi" -> ["Action", "Drama", "Sci-Fi"])
+      const genres = response.Genre
+        ? response.Genre.split(',').map((g) => g.trim())
+        : [];
+
+      // Parse IMDB rating
+      const imdbRating = response.imdbRating && response.imdbRating !== 'N/A'
+        ? parseFloat(response.imdbRating)
+        : 0;
+
+      const metadata: OMDbMetadata = {
+        posterUrl: response.Poster && response.Poster !== 'N/A' ? response.Poster : null,
+        movieTitle: response.Title || '',
+        movieYear: year,
+        imdbRating,
+        plot: response.Plot && response.Plot !== 'N/A' ? response.Plot : '',
+        runtime,
+        rated: response.Rated && response.Rated !== 'N/A' ? response.Rated : 'Not Rated',
+        genres,
+        imdbId: response.imdbID || imdbCode,
+      };
+
+      // Cache the result
+      await this.cacheManager.set(cacheKey, metadata, LIMITS.CACHE_TTL);
+
+      return metadata;
+    } catch (error) {
+      this.logger.error(`Failed to fetch OMDb metadata for ${imdbCode}`, error.stack);
+      return null;
+    }
+  }
+
   private async enrichAPIBayMovie(res: any): Promise<NormalizedMovie | null> {
-    const metadata = await this.fetchFromTMDb(res.imdb);
+    // this.logger.log(`Enriching APIBay movie: ${res} (${res.imdb})`);
+    const metadata = await this.fetchFromOMDb(res.imdb);
 
     if (!metadata) {
       return null;
     }
 
+    // this.logger.log(`APIBay movie enriched with OMDb data: ${metadata.movieTitle} (${metadata.movieYear})`);
+
     return {
       source: 'APIBay',
       imdb_code: res.imdb,
-      tmdb_id: metadata.tmdbId,
       title: metadata.movieTitle,
       year: metadata.movieYear,
-      rating: metadata.voteAverage,
+      rating: metadata.imdbRating,
       thumbnail: metadata.posterUrl,
       synopsis: metadata.plot,
       runtime: metadata.runtime,
       mpa_rating: metadata.rated,
       genres: metadata.genres,
       background_image: metadata.posterUrl,
-      backdrop_image: metadata.backdropUrl,
       torrents: [
         {
           url: `magnet:?xt=urn:btih:${res.info_hash}&dn=${encodeURIComponent(res.name)}`,
@@ -506,18 +631,5 @@ export class MoviesService {
     return lastValueFrom(
       this.httpService.get<T>(url).pipe(map((res) => res.data))
     );
-  }
-
-  /**
-   * Helper method to get TMDb image URL with specific size
-   * Useful if you want to get different quality images on demand
-   */
-  getTMDbImageUrl(path: string, type: 'poster' | 'backdrop', size?: string): string {
-    const baseUrl = API_URLS.TMDB_IMAGE_BASE;
-    const defaultSize = type === 'poster'
-      ? TMDB_IMAGE_SIZES.POSTER_ORIGINAL
-      : TMDB_IMAGE_SIZES.BACKDROP_ORIGINAL;
-
-    return `${baseUrl}/${size || defaultSize}${path}`;
   }
 }
