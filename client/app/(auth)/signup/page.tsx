@@ -56,7 +56,13 @@ function SignUpForm() {
 
     setIsLoading(true);
     try {
-      await api.post("/auth/register", { email, username, firstName, lastName, password });
+      await api.post("/auth/register", {
+        email,
+        username,
+        firstName,
+        lastName,
+        password,
+      });
       router.push("/");
     } catch (err: any) {
       console.error("Registration error:", err.response?.data);
@@ -101,7 +107,7 @@ function SignUpForm() {
       <div className="absolute inset-0 bg-linear-to-b from-black/60 via-black/30 to-black/80" />
 
       <Card className="w-full min-w-[320px] max-w-md rounded-2xl shadow-lg shadow-black/50 border-border/50 p-0 relative z-10 bg-black/80 ">
-        <CardHeader className="text-center pt-8 pb-6 bg-background/50 rounded-br-[25px] rounded-bl-[25px]">
+        <CardHeader className="text-center pt-7 pb-5 bg-background/50 rounded-br-[25px] rounded-bl-[25px]">
           <CardTitle className="text-3xl font-bold bg-linear-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
             Create Account
           </CardTitle>
@@ -110,7 +116,7 @@ function SignUpForm() {
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-5 pt-6">
+        <CardContent className="space-y-5">
           <form onSubmit={handleSignUp} className="space-y-5">
             {/* Email Field */}
             <div className="space-y-2.5">
@@ -142,12 +148,12 @@ function SignUpForm() {
                 <Input
                   id="username"
                   type="text"
-                  placeholder="johndoe"
+                  placeholder="your username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
                   disabled={isLoading}
-                  className="h-13 bg-card border-border/60 pl-10 group-hover:border-border transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary"
+                  className="h-12 bg-card border-border/60 pl-10 group-hover:border-border transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary"
                 />
               </div>
             </div>
@@ -162,12 +168,12 @@ function SignUpForm() {
                   <Input
                     id="firstName"
                     type="text"
-                    placeholder="John"
+                    placeholder="first name"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     required
                     disabled={isLoading}
-                    className="h-13 bg-card border-border/60 group-hover:border-border transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary"
+                    className="h-10 bg-card border-border/60 group-hover:border-border transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary"
                   />
                 </div>
               </div>
@@ -180,12 +186,12 @@ function SignUpForm() {
                   <Input
                     id="lastName"
                     type="text"
-                    placeholder="Doe"
+                    placeholder="last name"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     required
                     disabled={isLoading}
-                    className="h-13 bg-card border-border/60 group-hover:border-border transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary"
+                    className="h-10 bg-card border-border/60 group-hover:border-border transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary"
                   />
                 </div>
               </div>
