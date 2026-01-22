@@ -43,7 +43,7 @@ export function Hero() {
           width={140}
           height={40}
           priority
-          className="w-32 md:w-44 lg:w-48 object-contain"
+          className="w-36 md:w-48 lg:w-60 object-contain"
         />
         <div className="flex items-center gap-4">
           <Link href="/login">

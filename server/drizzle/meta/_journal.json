@@ -8,6 +8,13 @@
       "when": 1768930212332,
       "tag": "0000_spooky_wallflower",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1769076692451,
+      "tag": "0006_normal_moira_mactaggert",
+      "breakpoints": true
     }
   ]
 }

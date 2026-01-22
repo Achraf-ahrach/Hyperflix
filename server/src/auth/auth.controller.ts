@@ -7,6 +7,7 @@ import {
   Get,
   Body,
   BadRequestException,
+  Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -34,6 +35,8 @@ export class AuthController {
             id: { type: 'number', example: 1 },
             email: { type: 'string', example: 'user@example.com' },
             username: { type: 'string', example: 'johndoe' },
+            firstName: { type: 'string', example: 'John' },
+            lastName: { type: 'string', example: 'Doe' },
             avatarUrl: { type: 'string', nullable: true, example: null },
             provider: { type: 'string', example: 'local' },
           },
@@ -52,16 +55,96 @@ export class AuthController {
   ) {
     try {
       const user = await this.authService.register(registerDto);
-      const { access_token } = await this.authService.login(user);
 
-      response.cookie('Authentication', access_token, {
-        httpOnly: true,
-        secure: false, // Set to true in production with HTTPS
-        sameSite: 'lax',
-        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-      });
+      return { 
+        message: 'Registration successful. Please check your email to verify your account.',
+        user 
+      };
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
+  }
 
-      return { message: 'Registration successful', user };
+  // ============== Email Verification ==============
+  @ApiOperation({ 
+    summary: 'Verify email address',
+    description: 'Verifies user email address using the token sent via email. The token is valid for 24 hours.'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Email verified successfully',
+    schema: {
+      properties: {
+        message: { type: 'string', example: 'Email verified successfully' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid or expired token',
+    schema: {
+      properties: {
+        statusCode: { type: 'number', example: 400 },
+        message: { type: 'string', example: 'Invalid verification token' },
+        error: { type: 'string', example: 'Bad Request' },
+      },
+    },
+  })
+  @Get('verify-email')
+  async verifyEmail(@Query('token') token: string) {
+    try {
+      return await this.authService.verifyEmail(token);
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
+  }
+
+  @ApiOperation({ 
+    summary: 'Resend verification email',
+    description: 'Sends a new verification email to the user if the previous token expired or was not received.'
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        email: {
+          type: 'string',
+          format: 'email',
+          example: 'user@example.com',
+          description: 'Email address of the user who needs a new verification link',
+        },
+      },
+      required: ['email'],
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Verification email sent successfully',
+    schema: {
+      properties: {
+        message: { type: 'string', example: 'Verification email sent successfully' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'User not found or email already verified',
+    schema: {
+      properties: {
+        statusCode: { type: 'number', example: 400 },
+        message: { 
+          type: 'string', 
+          example: 'Email already verified',
+          description: 'Could be: "User not found", "Email already verified", or "Failed to send verification email"'
+        },
+        error: { type: 'string', example: 'Bad Request' },
+      },
+    },
+  })
+  @Post('resend-verification')
+  async resendVerification(@Body('email') email: string) {
+    try {
+      return await this.authService.resendVerificationEmail(email);
     } catch (error) {
       throw new BadRequestException(error.message);
     }
@@ -160,7 +243,6 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt'))
   @Get('profile')
   getProfile(@Request() req) {
-    console.log('\n\nprofile API Authenticated user:', req.user);
     return req.user;
   }
 

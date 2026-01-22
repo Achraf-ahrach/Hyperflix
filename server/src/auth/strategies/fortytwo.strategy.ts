@@ -35,17 +35,16 @@ export class FortyTwoStrategy extends PassportStrategy(
     profile: any,
     done: any,
   ): Promise<any> {
-    const { id, emails, displayName, username, firstName, lastName, photos } =
-      profile;
+    const { id, emails, displayName, username, name, _json } = profile;
 
     const user = await this.authService.validateOAuthUser({
       provider: '42',
       providerId: id,
       email: emails?.[0]?.value || `${username}@student.42.fr`,
       username: username || displayName,
-      firstName: firstName,
-      lastName: lastName,
-      avatarUrl: photos?.[0]?.value || profile._json?.image?.link,
+      firstName: name?.givenName || _json?.first_name || '',
+      lastName: name?.familyName || _json?.last_name || '',
+      avatarUrl: _json?.image?.link || null,
     });
 
     done(null, user);
