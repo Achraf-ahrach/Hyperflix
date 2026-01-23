@@ -44,7 +44,7 @@ import { join } from 'path';
     MoviesModule,
     UserSettingsModule,
     UserProfileModule,
-    CommentsModule
+    CommentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

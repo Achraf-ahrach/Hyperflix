@@ -1,6 +1,7 @@
+import { API_URL } from "@/app/utils";
+import { useUser } from "@/lib/contexts/UserContext";
 import { ImageIcon, Loader2, Send, X } from "lucide-react";
 import { useRef, useState } from "react";
-import { currentUser } from "../page_";
 
 // --- Comment Input Component ---
 interface CommentInputProps {
@@ -15,6 +16,9 @@ export const CommentInput = ({ onSubmit, placeholder = "Write a comment...", aut
   const [media, setMedia] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useUser();
+
+  if (!user) return null;
 
   const handleSubmit = async () => {
     if (!content.trim() && !media) return;
@@ -53,10 +57,19 @@ export const CommentInput = ({ onSubmit, placeholder = "Write a comment...", aut
     );
   }
 
+  let imageUrl : string =  ''
+  if (!user.avatarUrl) {
+    imageUrl = '';
+  } else if (!user.avatarUrl.startsWith('http')) {
+    imageUrl = `${API_URL}${user.avatarUrl}`;
+  } else {
+    imageUrl = user.avatarUrl;
+  }
+
   return (
     <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-2xl backdrop-blur-sm">
       <div className="flex gap-4">
-        <img src={currentUser.avatar} className="w-10 h-10 rounded-full border border-red-500/50" alt={currentUser.username} />
+        <img src={imageUrl} className="w-10 h-10 rounded-full border border-red-500/50" alt={user.username} />
         <div className="flex-1">
           <textarea
             className="w-full bg-transparent border-none outline-none resize-none text-sm placeholder:text-slate-600"

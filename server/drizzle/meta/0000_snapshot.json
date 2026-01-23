@@ -1,5 +1,5 @@
 {
-  "id": "20bb6965-d819-4e27-8aaa-2fd8222562ad",
+  "id": "3bea2d82-c412-45d7-b455-a4a210a1de3d",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -399,6 +399,25 @@
         "provider_id": {
           "name": "provider_id",
           "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_email_verified": {
+          "name": "is_email_verified",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "email_verification_token": {
+          "name": "email_verification_token",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email_verification_expires": {
+          "name": "email_verification_expires",
+          "type": "varchar(50)",
           "primaryKey": false,
           "notNull": false
         },

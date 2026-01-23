@@ -5,11 +5,10 @@ import {
   Send, Heart, MessageCircle, MoreVertical, Trash2,
   X, Loader2, ImageIcon, ChevronDown
 } from 'lucide-react';
-import { comment_api, INITIAL_BATCH, LOAD_MORE_BATCH, Comment } from './page_';
+import { comment_api, INITIAL_BATCH } from './utils';
 import { CommentInput } from './components/CommentInput';
 import { CommentItem } from './components/CommentItem';
-
-
+import { Comment } from './types/types';
 
 interface CommentInputProps {
   onSubmit: (content: string, media?: File) => Promise<void>;
@@ -52,7 +51,7 @@ export const CommentsSection = ({ movieId }: { movieId: string }) => {
     setComments(prev => [newComment, ...prev]);
   };
 
-  const handleAddReply = async (commentId: string, content: string) => {
+  const handleAddReply = async (commentId: number, content: string) => {
     const newReply = await comment_api.createReply(commentId, content);
     setComments(prev => prev.map(c =>
       c.id === commentId
@@ -61,7 +60,7 @@ export const CommentsSection = ({ movieId }: { movieId: string }) => {
     ));
   };
 
-  const handleToggleLike = async (commentId: string, replyId?: string) => {
+  const handleToggleLike = async (commentId: number, replyId?: number) => {
     const result : boolean =  await comment_api.toggleLike(commentId, replyId);
     if (result)
     {
@@ -83,10 +82,24 @@ export const CommentsSection = ({ movieId }: { movieId: string }) => {
     }
   };
 
-  const handleDeleteComment = async (commentId: string) => {
-    await comment_api.deleteComment(commentId);
-    setComments(prev => prev.filter(c => c.id !== commentId));
-  };
+  const handleDeleteComment = async (commentId: number, replyId?: number) => {
+    const result : boolean = await comment_api.deleteComment(commentId, replyId);
+    if (result) {
+      if (!replyId) {
+      setComments(prev => prev.filter(c => c.id !== commentId));
+    }else {
+      setComments(prev => prev.map(c => {
+        if (c.id === commentId) {
+          return {
+            ...c,
+            replies: c.replies.filter(r => r.id !== replyId),
+            replyCount: c.replyCount - 1
+          };
+        }
+        return c;
+      }));
+  }}
+};
 
   const handleLoadMore = async () => {
     setIsLoadingMore(true);
@@ -146,6 +159,7 @@ export const CommentsSection = ({ movieId }: { movieId: string }) => {
               onReply={(content) => handleAddReply(comment.id, content)}
               onDelete={() => handleDeleteComment(comment.id)}
               onReplyLike={(replyId) => handleToggleLike(comment.id, replyId)}
+              onReplyDelete={(replyId) => handleDeleteComment(comment.id, replyId)}
             />
           ))}
         </div>

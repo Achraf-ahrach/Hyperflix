@@ -59,10 +59,11 @@ export class CommentsController {
     @Req() req: any,
   ) {
     const userId = req.user.id;
+    console.log(commentId);
     return this.commentService.toggleLike(commentId, userId);
   }
 
-  // Delete a comment
+    @UseGuards(AuthGuard('jwt'))
   @Delete(':commentId')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteComment(

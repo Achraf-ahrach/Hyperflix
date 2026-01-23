@@ -1,5 +1,6 @@
 // src/users/users.controller.ts
-import { Controller, Patch, Body, Param, ParseIntPipe, Req, Post, UseInterceptors, UploadedFile, UseGuards } from '@nestjs/common';
+import { Controller, Patch, Body, Param, ParseIntPipe, Req, Post, UseInterceptors, UploadedFile, UseGuards, Get, Query, Redirect, Res, BadRequestException } from '@nestjs/common';
+import express from 'express'; 
 import { SettingsService } from '../service/settings.service';
 import { AccountSettingsDto } from '../dto/account-settings.dto';
 import type { Request } from 'express';
@@ -13,7 +14,6 @@ import { AuthGuard } from '@nestjs/passport';
 import { ProfileSettingsDto } from '../dto/profile-settings.dto';
 import { UpdateMailService } from '../service/updateMail.service';
 
-
 @Controller('settings')
 export class UsersSettingsController {
     constructor(
@@ -21,30 +21,45 @@ export class UsersSettingsController {
         private updatePasswordService: UpdatePasswordService,
         private updateMailService: UpdateMailService
     ) { }
-    
+
 
     @UseGuards(AuthGuard('jwt'))
     @Patch('profile')
     async updateProfileSettings(
         @Body() dto: ProfileSettingsDto,
         @Req() request,
-    )
-    {
+    ) {
         return this.usersService.updateProfileSettings(request.user.id, dto);
     }
 
 
     @UseGuards(AuthGuard('jwt'))
-    @Patch('profile')
+    @Patch('account')
     async updateEmailSettings(
         @Body() dto: AccountSettingsDto,
         @Req() request,
-    )
-    {
+    ) {
         if (dto.email)
             return this.updateMailService.updateEmailSettings(request.user.id, dto);
     }
 
+
+@UseGuards(AuthGuard('jwt'))
+@Get('confirm-email-update')
+async verifyUpdateMail(
+  @Query('token') token: string,
+  @Res() res: express.Response
+) {
+  try {
+    if (!token) throw new BadRequestException('Token is missing');
+
+    await this.updateMailService.verifyUpdateMail(token);
+
+    return res.redirect(302, 'http://localhost:3000/update-email?status=success');
+  } catch (err) {
+    return res.redirect(302, 'http://localhost:3000/update-email?status=error');
+  }
+}
 
     @UseGuards(AuthGuard('jwt'))
     @Patch('image')

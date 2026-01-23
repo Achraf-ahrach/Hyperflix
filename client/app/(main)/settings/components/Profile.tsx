@@ -107,7 +107,6 @@ export default function Profile({ setSaveSuccess, setError, error }: SettingProp
 
         try {
 
-
             let endpoint = `/settings/profile`;
             let payload = {
                 first_name: formData.firstName,
