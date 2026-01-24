@@ -69,3 +69,6 @@ cypress/screenshots
 # Ignore the actual downloaded movies/torrents locally (so you don't commit a 2GB movie!)
 server/downloads/
 server/torrents/
+
+
+uploads/
