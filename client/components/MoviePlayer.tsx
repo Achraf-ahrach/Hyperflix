@@ -2,8 +2,18 @@ import * as React from 'react';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Box, CircularProgress, Typography, Button, IconButton, Slider } from '@mui/material';
 import { PlayArrow, Pause, Fullscreen, Forward10, Replay10, Subtitles } from '@mui/icons-material';
-import { api, API_BASE_URL } from './api/axiosConfig';
-import { moviePlayerStyles } from './shared/styles';
+import axios from 'axios';
+
+const API_BASE_URL = 'http://localhost:8000/api';
+
+
+const api = axios.create({
+    baseURL: API_BASE_URL,
+    headers: {
+        'Content-Type': 'application/json',
+    },
+});
+
 
 // --- Interfaces ---
 interface MovieStatus {
@@ -163,47 +173,6 @@ const MoviePlayer: React.FC<MoviePlayerComponentProps> = ({ movieId }) => {
     };
     loadSubtitleFile();
   }, [currentSubtitle, movieId]);
-  // Load Subtitle File
-  // useEffect(() => {
-  //   if (!currentSubtitle) {
-  //     setSubtitleCues([]);
-  //     setCurrentSubtitleText('');
-  //     return;
-  //   }
-
-  //   const loadSubtitleFile = async () => {
-  //     try {
-  //       // CONSTRUCTION: We use the file_path from the JSON response.
-  //       // Assuming Nginx serves media at http://localhost/media/
-  //       // If file_path is "subtitles/tt.../en.vtt", we prepend the media root.
-        
-  //       // Option A: If your backend returns a full URL (unlikely based on your JSON)
-  //       // const fileUrl = currentSubtitle.file_path; 
-
-  //       // Option B: Relative path (Most likely based on your JSON)
-  //       // We assume your Nginx /media/ location handles this.
-  //       // If you are running on localhost:80, this relative path works.
-  //       const fileUrl = `/media/${currentSubtitle.file_path}`;
-
-  //       console.log("Fetching subtitle from:", fileUrl);
-
-  //       const response = await fetch(`${API_BASE_URL}/subtitles/${movieId}/file/${currentSubtitle.language}/`);
-        
-  //       if (response.ok) {
-  //         const vttContent = await response.text();
-  //         const cues = parseVTTContent(vttContent);
-  //         setSubtitleCues(cues);
-  //       } else {
-  //           console.error("Failed to fetch subtitle file:", response.statusText);
-  //       }
-  //     } catch (error) {
-  //       console.error('Error loading subtitle file:', error);
-  //       setSubtitleCues([]);
-  //     }
-  //   };
-
-  //   loadSubtitleFile();
-  // }, [currentSubtitle, movieId]);
 
   // Init Buffer Videos
   useEffect(() => {
@@ -242,7 +211,7 @@ const MoviePlayer: React.FC<MoviePlayerComponentProps> = ({ movieId }) => {
       setSegmentsData(response.data);
       if (response.data.total_duration) setTotalDuration(response.data.total_duration);
       
-      const lastAvailableSegment = Math.max(...response.data.available_segments.map(seg => seg.segment));
+      const lastAvailableSegment = Math.max(...response.data.available_segments.map((seg: any) => seg.segment));
       setAvailableTime((lastAvailableSegment + 1) * response.data.segment_duration);
       
       // Init first segment
@@ -486,8 +455,8 @@ const MoviePlayer: React.FC<MoviePlayerComponentProps> = ({ movieId }) => {
               <Box sx={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${(virtualTime / totalDuration) * 100}%`, backgroundColor: '#ff0000', pointerEvents: 'none' }} />
               <Slider
                 value={virtualTime} min={0} max={totalDuration}
-                onChange={(_, val) => { const t = val as number; if (isTimeAvailable(t)) { setVirtualTime(t); setIsDragging(true); } }}
-                onChangeCommitted={(_, val) => { const t = val as number; if (isTimeAvailable(t)) handleSeek(t); setIsDragging(false); }}
+                onChange={(_, val:any) => { const t = val as number; if (isTimeAvailable(t)) { setVirtualTime(t); setIsDragging(true); } }}
+                onChangeCommitted={(_, val:any) => { const t = val as number; if (isTimeAvailable(t)) handleSeek(t); setIsDragging(false); }}
                 sx={{
                   ...moviePlayerStyles.progressSlider, position: 'absolute', padding: 0, width: '100%', top: '50%', transform: 'translateY(-50%)',
                   '& .MuiSlider-rail': { opacity: 0, backgroundColor: 'transparent' },
@@ -518,3 +487,103 @@ const MoviePlayer: React.FC<MoviePlayerComponentProps> = ({ movieId }) => {
 };
 
 export default MoviePlayer;
+
+
+
+
+
+
+
+
+// Basic styles to prevent crashes
+const moviePlayerStyles = {
+  loadingContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100%',
+    minHeight: '400px',
+    bgcolor: '#000',
+  },
+  errorContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100%',
+    minHeight: '400px',
+    bgcolor: '#000',
+    gap: 2,
+  },
+  videoContainer: {
+    position: 'relative',
+    width: '100%',
+    bgcolor: '#000',
+    overflow: 'hidden',
+    borderRadius: '8px',
+  },
+  controlsOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)',
+    padding: '20px',
+    zIndex: 2,
+  },
+  bufferingOverlay: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    zIndex: 1,
+  },
+  progressBarContainer: {
+    marginBottom: '10px',
+    padding: '0 10px',
+  },
+  controlsContainer: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  leftControls: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 1,
+  },
+  rightControls: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+  controlButton: {
+    color: 'white',
+    '&:hover': {
+      backgroundColor: 'rgba(255,255,255,0.1)',
+    },
+  },
+  timeDisplay: {
+    color: 'white',
+    ml: 2,
+    fontSize: '0.875rem',
+  },
+  progressSlider: {
+    color: '#ff0000',
+    height: 4,
+    '& .MuiSlider-thumb': {
+      width: 12,
+      height: 12,
+      transition: '0.3s cubic-bezier(.47,1.64,.41,.8)',
+      '&:before': {
+        boxShadow: '0 2px 12px 0 rgba(0,0,0,0.4)',
+      },
+      '&:hover, &.Mui-focusVisible': {
+        boxShadow: '0px 0px 0px 8px rgba(255, 0, 0, 0.16)',
+      },
+      '&.Mui-active': {
+        width: 16,
+        height: 16,
+      },
+    },
+  }
+};

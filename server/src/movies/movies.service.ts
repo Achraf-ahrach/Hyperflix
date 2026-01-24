@@ -107,9 +107,12 @@ const CACHE_KEYS = {
   MOVIE: (id: string) => `movie_${id}`,
 } as const;
 
+
+const YTS_DOMAIN = 'https://yts.lt';
+
 const API_URLS = {
-  YTS_SEARCH: 'https://yts.lt/api/v2/list_movies.json',
-  YTS_TRENDING: 'https://yts.lt/api/v2/list_movies.json?sort_by=download_count&limit=50',
+  YTS_SEARCH:  YTS_DOMAIN + '/api/v2/list_movies.json',
+  YTS_TRENDING: YTS_DOMAIN + '/api/v2/list_movies.json?sort_by=download_count&limit=50',
   APIBAY_SEARCH: 'https://apibay.org/q.php',
   APIBAY_TRENDING: 'https://apibay.org/precompiled/data_top100_207.json',
   OMDB_BASE: 'https://www.omdbapi.com',
