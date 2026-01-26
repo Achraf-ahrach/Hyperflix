@@ -21,4 +21,4 @@ RUN mkdir -p /app/downloads /app/static /app/media
 
 # 5. Start command
 # We use 'sh -c' to chain the commands (migrate -> run server)
-CMD ["sh", "-c", "python manage.py collectstatic --noinput && python manage.py makemigrations && python manage.py migrate && gunicorn --bind 0.0.0.0:8000 torrent.wsgi --reload"]
+CMD ["sh", "-c", "python manage.py collectstatic --noinput && python manage.py makemigrations && python manage.py migrate && gunicorn --bind 0.0.0.0:8000 torrent.wsgi --timeout 300 --reload"]

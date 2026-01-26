@@ -131,6 +131,15 @@ def process_video_thread(video_id):
             while True:
                 status = handle.status()
                 progress = status.progress * 100
+                if int(time.time()) % 2 == 0: # Log every 2 seconds
+                    state_str = ['queued', 'checking', 'downloading meta', 'downloading', 'finished', 'seeding', 'allocating']
+                    print(
+                        f"Progress: {progress:.2f}% | "
+                        f"Peers: {status.num_peers} | "
+                        f"Speed: {status.download_rate / 1000:.1f} kB/s | "
+                        f"State: {state_str[status.state]}", 
+                        flush=True
+                    )
                 movie_file.download_progress = progress
                 
                 # Try to start segmentation as soon as possible
@@ -264,7 +273,11 @@ class VideoViewSet(viewsets.ViewSet):
                 i += 1
             else:
                 break
-
+        for f in all_files:
+            match = pattern.match(f)
+            if match: segments.append((int(match.group(1)), f))
+        
+        segments.sort(key=lambda x: x[0])
         # 3. Determine Playlist Type
         # If status is READY, use 'VOD' (Video on Demand) to fix seeking/duration
         is_finished = movie.download_status == 'READY'

@@ -100,7 +100,8 @@ class VideoService:
                     format='mpegts',
                     vcodec='libx264',
                     acodec='aac',
-                    preset='ultrafast',    
+                    preset='ultrafast',
+                    **{'output_ts_offset': start_time}  
                 )
                 .overwrite_output()
             )
@@ -120,6 +121,9 @@ class VideoService:
             # Log the specific FFmpeg error output
             error_msg = e.stderr.decode() if hasattr(e, 'stderr') else str(e)
             logging.error(f"FFmpeg error for segment {current_segment}: {error_msg}")
+            self.segment_retry_count[current_segment] = self.segment_retry_count.get(current_segment, 0) + 1
+            if self.segment_retry_count[current_segment] >= self.max_retries:
+                self.failed_segments.add(current_segment)
             return False
         except Exception as e:
             logging.error(f"Exception during segment {current_segment} conversion: {e}")
