@@ -91,7 +91,7 @@ export class CreateCommentsService {
     let mediaData : any = [];
     if (mediaFile) {
       const mediaType = mediaFile.mimetype.startsWith('video/') ? 'video' : 'image';
-      const mediaUrl = `/uploads/comments/${mediaFile.filename}`;
+      const mediaUrl = `/comments_public/${mediaFile.filename}`;
 
       const [media] = await this.db
         .insert(commentMedia)

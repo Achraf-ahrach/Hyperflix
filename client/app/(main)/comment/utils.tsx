@@ -39,35 +39,51 @@ export const comment_api = {
     content: string,
     media?: File,
   ): Promise<Comment> {
-    // await new Promise(r => setTimeout(r, 800));
+    try {
+      const formData = new FormData();
+      formData.append("content", content);
 
-    const endpoint = `${API_URL}/comments/${movieId}`;
-    const formData = new FormData();
-    formData.append("content", content);
-    console.log(content);
-    if (media) formData.append("media", media);
-    const response = await fetch(endpoint, {
-      method: "POST",
-      body: formData,
-      credentials: "include",
-    });
-    return await response.json();
+      if (media) {
+        formData.append("media", media);
+      }
+      const response = await api.post(
+        `/comments/${movieId}`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      throw error;
+    }
+  }
+
+  ,
+
+  async createReply(
+    commentId: number,
+    content: string
+  ): Promise<Reply> {
+    try {
+      const response = await api.post(
+        `/comments/${commentId}/replies`,
+        { content },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      return response.data;
+
+    } catch (error: any) {
+      throw error;
+    }
   },
 
-  async createReply(commentId: number, content: string): Promise<Reply> {
-    const endpoint = `${API_URL}/comments/${commentId}/replies`;
-
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
-      credentials: "include",
-
-    });
-    return response.json();
-
-
-  },
 
   async toggleLike(commentId: number, replyId?: number): Promise<boolean> {
     try {

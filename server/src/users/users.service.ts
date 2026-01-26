@@ -68,8 +68,6 @@ export class UsersService {
         providerId: null,
         emailVerificationToken: userData.emailVerificationToken ?? null,
         emailVerificationExpires: userData.emailVerificationExpires ?? null,
-        createdAt: now,
-        updatedAt: now,
       })
       .returning();
 
@@ -101,8 +99,6 @@ export class UsersService {
         isEmailVerified: true, // OAuth users are pre-verified
         emailVerificationToken: null,
         emailVerificationExpires: null,
-        createdAt: now,
-        updatedAt: now,
       })
       .returning();
 
@@ -113,14 +109,13 @@ export class UsersService {
     userId: number,
     providerData: { provider: string; providerId: string },
   ) {
-    const now = new Date().toISOString();
 
     const result = await this.db
       .update(schema.users)
       .set({
         provider: providerData.provider,
         providerId: providerData.providerId,
-        updatedAt: now,
+        updatedAt: new Date(),
       })
       .where(eq(schema.users.id, userId))
       .returning();
@@ -138,7 +133,6 @@ export class UsersService {
   }
 
   async verifyUserEmail(userId: number) {
-    const now = new Date().toISOString();
 
     const result = await this.db
       .update(schema.users)
@@ -146,7 +140,7 @@ export class UsersService {
         isEmailVerified: true,
         emailVerificationToken: null,
         emailVerificationExpires: null,
-        updatedAt: now,
+        updatedAt: new Date(),
       })
       .where(eq(schema.users.id, userId))
       .returning();
@@ -155,14 +149,13 @@ export class UsersService {
   }
 
   async updateVerificationToken(userId: number, token: string, expires: string) {
-    const now = new Date().toISOString();
 
     const result = await this.db
       .update(schema.users)
       .set({
         emailVerificationToken: token,
         emailVerificationExpires: expires,
-        updatedAt: now,
+        updatedAt: new Date(),
       })
       .where(eq(schema.users.id, userId))
       .returning();

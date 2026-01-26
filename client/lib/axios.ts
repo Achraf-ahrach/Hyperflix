@@ -3,8 +3,24 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://localhost:3001", // NestJS URL
-  withCredentials: true,            // This allows cookies to be sent/received
+  baseURL: "http://localhost:3001",
+  withCredentials: true,
 });
+
+
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      if (typeof window !== "undefined" && window.location.pathname !== '/login'
+        && window.location.pathname !== '/signup'
+      ) {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default api;

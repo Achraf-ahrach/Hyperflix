@@ -27,7 +27,7 @@ export class CreateCommentController {
   @UseInterceptors(
     FileInterceptor('media', {
       storage: diskStorage({
-        destination: './uploads/comments',
+        destination: './uploads/comments_public',
         filename: (req, file, callback) => {
           const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
           const ext = extname(file.originalname);
@@ -63,13 +63,17 @@ export class CreateCommentController {
     
     console.log(req.user.id);
 
-    if (!content || content.trim().length === 0) {
+    if (!media && (!content || content.trim().length === 0)) {
       throw new BadRequestException('Content is required');
     }
 
     if (content.length > 2000) {
       throw new BadRequestException('Content must be 2000 characters or less');
     }
+
+    if (media && (!content || content.trim().length === 0))
+      content = '_';
+
 
     // const userId = req.user.id;
     

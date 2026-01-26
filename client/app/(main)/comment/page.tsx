@@ -47,17 +47,25 @@ export const CommentsSection = ({ movieId }: { movieId: string }) => {
   }, [movieId]);
 
   const handleAddComment = async (content: string, media?: File) => {
+    try {
     const newComment = await comment_api.createComment(movieId, content, media);
     setComments(prev => [newComment, ...prev]);
+    } catch (error) {
+      console.error('Failed to add comment:', error);
+    }
   };
 
   const handleAddReply = async (commentId: number, content: string) => {
-    const newReply = await comment_api.createReply(commentId, content);
-    setComments(prev => prev.map(c =>
-      c.id === commentId
-        ? { ...c, replies: [...c.replies, newReply], replyCount: c.replyCount + 1 }
-        : c
-    ));
+    try {
+      const newReply = await comment_api.createReply(commentId, content);
+      setComments(prev => prev.map(c =>
+        c.id === commentId
+          ? { ...c, replies: [...c.replies, newReply], replyCount: c.replyCount + 1 }
+          : c
+      ));
+    } catch (error) {
+      console.error('Failed to add reply:', error);
+    }
   };
 
   const handleToggleLike = async (commentId: number, replyId?: number) => {

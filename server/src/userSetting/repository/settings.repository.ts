@@ -63,4 +63,9 @@ export class SettingsRepository {
         await this.db.update(users).set({avatarUrl: url}).where(eq(users.id, id));
         return true;
       }
+
+      async updateLanguage(id: number, langue_code: number) {
+        await this.db.update(users).set({langue_code: langue_code}).where(eq(users.id, id));
+        return true;
+      }
 }

@@ -13,6 +13,7 @@ import { UpdatePasswordService } from '../service/updatePassword.service';
 import { AuthGuard } from '@nestjs/passport';
 import { ProfileSettingsDto } from '../dto/profile-settings.dto';
 import { UpdateMailService } from '../service/updateMail.service';
+import { LanguageSettingsDto } from '../dto/language-settings.dto';
 
 @Controller('settings')
 export class UsersSettingsController {
@@ -97,6 +98,16 @@ async verifyUpdateMail(
     ) {
         console.log(request.user);
         return this.updatePasswordService.updatePassword(request.user.id, dto);
+    }
+
+
+    @UseGuards(AuthGuard('jwt'))
+    @Patch('language')
+    async updateLanguage(
+        @Body() dto: LanguageSettingsDto,
+        @Req() request,
+    ) {
+        return this.usersService.updateLanguage(request.user.id, dto);
     }
 }
 

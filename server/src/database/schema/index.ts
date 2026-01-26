@@ -6,3 +6,4 @@ export * from './comment-like';
 export * from './comment-media';
 export * from './movies-watched';
 export * from './movies-watch-later';
+export * from './languages';
