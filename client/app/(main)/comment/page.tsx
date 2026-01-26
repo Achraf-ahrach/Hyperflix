@@ -5,11 +5,10 @@ import {
   Send, Heart, MessageCircle, MoreVertical, Trash2,
   X, Loader2, ImageIcon, ChevronDown
 } from 'lucide-react';
-import { comment_api, INITIAL_BATCH, LOAD_MORE_BATCH, Comment } from './page_';
+import { comment_api, INITIAL_BATCH } from './utils';
 import { CommentInput } from './components/CommentInput';
 import { CommentItem } from './components/CommentItem';
-
-
+import { Comment } from './types/types';
 
 interface CommentInputProps {
   onSubmit: (content: string, media?: File) => Promise<void>;
@@ -20,7 +19,7 @@ interface CommentInputProps {
 
 
 // --- Main Comments Section Component ---
-const CommentsSection = ({ movieId }: { movieId: string }) => {
+export const CommentsSection = ({ movieId }: { movieId: string }) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [page, setPage] = useState<number>(0);
   const [total, setTotal] = useState<number>(0);
@@ -48,20 +47,28 @@ const CommentsSection = ({ movieId }: { movieId: string }) => {
   }, [movieId]);
 
   const handleAddComment = async (content: string, media?: File) => {
+    try {
     const newComment = await comment_api.createComment(movieId, content, media);
     setComments(prev => [newComment, ...prev]);
+    } catch (error) {
+      console.error('Failed to add comment:', error);
+    }
   };
 
-  const handleAddReply = async (commentId: string, content: string) => {
-    const newReply = await comment_api.createReply(commentId, content);
-    setComments(prev => prev.map(c =>
-      c.id === commentId
-        ? { ...c, replies: [...c.replies, newReply], replyCount: c.replyCount + 1 }
-        : c
-    ));
+  const handleAddReply = async (commentId: number, content: string) => {
+    try {
+      const newReply = await comment_api.createReply(commentId, content);
+      setComments(prev => prev.map(c =>
+        c.id === commentId
+          ? { ...c, replies: [...c.replies, newReply], replyCount: c.replyCount + 1 }
+          : c
+      ));
+    } catch (error) {
+      console.error('Failed to add reply:', error);
+    }
   };
 
-  const handleToggleLike = async (commentId: string, replyId?: string) => {
+  const handleToggleLike = async (commentId: number, replyId?: number) => {
     const result : boolean =  await comment_api.toggleLike(commentId, replyId);
     if (result)
     {
@@ -83,10 +90,24 @@ const CommentsSection = ({ movieId }: { movieId: string }) => {
     }
   };
 
-  const handleDeleteComment = async (commentId: string) => {
-    await comment_api.deleteComment(commentId);
-    setComments(prev => prev.filter(c => c.id !== commentId));
-  };
+  const handleDeleteComment = async (commentId: number, replyId?: number) => {
+    const result : boolean = await comment_api.deleteComment(commentId, replyId);
+    if (result) {
+      if (!replyId) {
+      setComments(prev => prev.filter(c => c.id !== commentId));
+    }else {
+      setComments(prev => prev.map(c => {
+        if (c.id === commentId) {
+          return {
+            ...c,
+            replies: c.replies.filter(r => r.id !== replyId),
+            replyCount: c.replyCount - 1
+          };
+        }
+        return c;
+      }));
+  }}
+};
 
   const handleLoadMore = async () => {
     setIsLoadingMore(true);
@@ -146,6 +167,7 @@ const CommentsSection = ({ movieId }: { movieId: string }) => {
               onReply={(content) => handleAddReply(comment.id, content)}
               onDelete={() => handleDeleteComment(comment.id)}
               onReplyLike={(replyId) => handleToggleLike(comment.id, replyId)}
+              onReplyDelete={(replyId) => handleDeleteComment(comment.id, replyId)}
             />
           ))}
         </div>

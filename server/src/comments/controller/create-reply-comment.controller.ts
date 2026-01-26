@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { CreateReplyCommentsService } from '../service/create-reply-comment.service';
 import { ReplyDto } from '../dto/CreateReply.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 
 @Controller('comments')
@@ -18,6 +19,7 @@ import { ReplyDto } from '../dto/CreateReply.dto';
 export class CreateReplyCommentController {
   constructor(private readonly commentsService: CreateReplyCommentsService) {}
 
+  @UseGuards(AuthGuard('jwt'))
   @Post(':commentId/replies')
   async createReply(
     @Param('commentId', ParseIntPipe) commentId: number,
@@ -36,7 +38,7 @@ export class CreateReplyCommentController {
 
     return this.commentsService.createReply({
       commentId,
-      userId:2,
+      userId: req.user.id,
       content: createReplyDto.content.trim(),
     });
   }

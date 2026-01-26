@@ -15,8 +15,7 @@ import {
   export const movies = pgTable(
     "movies",
     {
-      id: bigserial("id", { mode: "number" }).primaryKey(),
-      // id: varchar("id", { length: 50 }).primaryKey(),
+      id: varchar("movie_id", { length: 50 }).primaryKey(),
 
       title: varchar("title", { length: 500 }).notNull(),
   

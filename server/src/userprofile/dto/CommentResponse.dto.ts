@@ -1,6 +1,6 @@
 export class CommentResponseDto {
   id: number
-  movieId: number;
+  movieId: string;
   movieTitle: string;
   moviePosterUrl: string;
   content: string;

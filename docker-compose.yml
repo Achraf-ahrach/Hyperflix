@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:18-alpine
+    image: postgres:16-alpine
     container_name: hypertube_db
     env_file:
       - ./.env
@@ -12,6 +12,8 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "${POSTGRES_PORT}:5432"
+    networks:
+      - hypertube_network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -21,7 +23,7 @@ services:
   backend:
     build: ./server
     container_name: hypertube_backend
-    command: sh -c "npm run db:migrate && npm run start:dev"
+    command: sh -c "npm run db:migrate && npm run db:seed && npm run start:dev"
     depends_on:
       db:
         condition: service_healthy
@@ -33,6 +35,8 @@ services:
     ports:
       - "${BACKEND_PORT}:${BACKEND_PORT}"
     working_dir: /app
+    networks:
+      - hypertube_network
     volumes:
       - ./server:/app
       - /app/node_modules
@@ -45,6 +49,8 @@ services:
       - backend
     env_file:
       - ./.env
+    networks:
+      - hypertube_network
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     ports:
@@ -54,5 +60,65 @@ services:
       - ./client:/app
       - /app/node_modules
 
+# test torrent integration
+
+  torrent:
+    build: ./torrent/torrent_service/
+    container_name: hypertube_backend_torrent
+    depends_on:
+      - db
+    env_file:
+      - ./.env
+    environment:
+      - DEBUG=true
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+    ports:
+      - "8000:8000"
+    networks:
+      - hypertube_network
+    volumes:
+      - ./torrent/torrent_service:/app
+      - static_volume:/app/static
+      - media_volume:/app/media
+    restart: always
+
+  frontend_torrent:
+    build: ./torrent/frontend_torrent/
+    container_name: hypertube-frontend-builder
+    volumes:
+      - ./torrent/frontend_torrent/:/app
+      - react_build:/app/dist
+      - /app/node_modules
+    command: npm run build
+  
+  nginx_torrent:
+    image: nginx:alpine
+    container_name: nginx_torrent_container
+    volumes:
+      - ./torrent/nginx.conf:/etc/nginx/nginx.conf:ro
+      - react_build:/var/www/frontend
+      - static_volume:/var/www/static
+      - media_volume:/var/www/media
+    ports:
+      - "8001:80"
+    depends_on:
+      - torrent
+      - frontend_torrent
+    restart: always
+    networks:
+      - hypertube_network
+
 volumes:
   postgres_data:
+  media_volume:
+  static_volume:
+  react_build:
+
+
+networks:
+  hypertube_network:
+    driver: bridge

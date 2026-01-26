@@ -1,5 +1,8 @@
 
+import { timestamp } from 'drizzle-orm/pg-core';
 import { pgTable, serial, varchar, boolean } from 'drizzle-orm/pg-core';
+import { languages } from './languages';
+import { integer } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
@@ -14,8 +17,14 @@ export const users = pgTable('users', {
   isEmailVerified: boolean('is_email_verified').notNull().default(false),
   emailVerificationToken: varchar('email_verification_token', { length: 255 }),
   emailVerificationExpires: varchar('email_verification_expires', { length: 50 }),
-  createdAt: varchar('created_at', { length: 50 }).notNull(),
-  updatedAt: varchar('updated_at', { length: 50 }).notNull(),
+  langue_code: integer('langue_code').notNull().references(() => languages.id).default(1),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 

@@ -1,0 +1,24 @@
+FROM python:3.10
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+# 1. Set the working directory explicitly
+# This is required so that 'manage.py' is found in the current directory
+WORKDIR /app
+
+# 2. Copy requirements and install
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+# 3. Copy project files
+COPY . .
+
+# 4. Create directories for static/media files
+RUN mkdir -p /app/downloads /app/static /app/media
+
+# 5. Start command
+# We use 'sh -c' to chain the commands (migrate -> run server)
+CMD ["sh", "-c", "python manage.py collectstatic --noinput && python manage.py makemigrations && python manage.py migrate && gunicorn --bind 0.0.0.0:8000 torrent.wsgi --reload"]

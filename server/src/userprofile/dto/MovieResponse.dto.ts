@@ -1,5 +1,5 @@
 export class MovieResponseDto {
-  id: number;
+  id: string;
   title: string;
   year: number | null;
   rating: string | null;

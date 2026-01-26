@@ -1,10 +1,14 @@
 import { HttpService } from '@nestjs/axios';
-import { HttpException, HttpStatus, Logger } from '@nestjs/common';
+import { HttpException, HttpStatus, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { lastValueFrom, map } from 'rxjs';
 import { Injectable, Inject } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import * as cacheManager_1 from 'cache-manager';
+import { DRIZZLE } from 'src/database/database.module';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { and, eq } from 'drizzle-orm';
+import { movies, watchedMovies, watchLaterMovies } from 'src/database/schema';
 
 // ===== TYPES =====
 export interface NormalizedMovie {
@@ -138,7 +142,9 @@ export class MoviesService {
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
-    @Inject(CACHE_MANAGER) private readonly cacheManager: cacheManager_1.Cache
+    @Inject(CACHE_MANAGER) private readonly cacheManager: cacheManager_1.Cache,
+    @Inject(DRIZZLE) private readonly db: ReturnType<typeof drizzle>,
+
   ) {
     const key = this.configService.get<string>('OMDB_API_KEY');
     this.omdbApiKey = key?.trim();
@@ -225,6 +231,7 @@ export class MoviesService {
     if (!omdbData) {
       return null;
     }
+    this.logger.log(`Successfully fetched movie ${id} from TMDb`);
 
     return this.normalizeOMDbMovie(omdbData);
   }
@@ -438,6 +445,7 @@ export class MoviesService {
 
   private async fetchFromTMDb(imdbCode: string): Promise<TMDbMetadata | null> {
     if (!imdbCode || !imdbCode.startsWith('tt')) {
+      this.logger.warn(`${imdbCode}`)
       this.logger.warn(`Invalid IMDB code: ${imdbCode}`);
       return null;
     }
@@ -519,7 +527,7 @@ export class MoviesService {
   }
 
 
-    // ===== OMDB API METHODS =====
+  // ===== OMDB API METHODS =====
 
   private async fetchFromOMDb(imdbCode: string): Promise<OMDbMetadata | null> {
     if (!imdbCode || !imdbCode.startsWith('tt')) {
@@ -631,5 +639,98 @@ export class MoviesService {
     return lastValueFrom(
       this.httpService.get<T>(url).pipe(map((res) => res.data))
     );
+  }
+
+
+
+
+  async addMovieToWatchLater(userId: number, movieId: string): Promise<{ message: string }> {
+
+    const result = await this.db.select().from(movies).where(
+      eq(movies.id, movieId)).limit(1);
+
+    if (result.length === 0) {
+      const movie = await this.getMovie(movieId);
+    }
+
+    const new_movie: NormalizedMovie | null = await this.getMovie(movieId);
+    if (!new_movie) {
+      throw new NotFoundException('Movie not found');
+    }
+    else {
+      await this.db.insert(movies).values({
+        id: new_movie.imdb_code,
+        title: new_movie.title,
+        productionYear: new_movie.year,
+        // imdbRating: new_movie.rating,
+        coverImageUrl: new_movie.thumbnail,
+      });
+    }
+    try {
+      await this.db.insert(watchLaterMovies).values({
+        userId,
+        movieId,
+      });
+    }
+    catch (error) {
+      this.logger.error(`Failed to add movie ${movieId} to user ${userId}'s watch-later list: ${error.message}`);
+      throw new HttpException('Failed to add movie to watch-later list', HttpStatus.FORBIDDEN);
+    }
+
+    return { message: `Movie ${movieId} added to user ${userId}'s watch-later list` };
+  }
+
+  async removeMovieFromWatchLater(userId: number, movieId: string): Promise<{ message: string }> {
+    try {
+      await this.db.delete(watchLaterMovies).where(
+        and(
+          eq(watchLaterMovies.userId, userId),
+          eq(watchLaterMovies.movieId, movieId)
+
+        )
+      );
+
+    }
+    catch (error) {
+      this.logger.error(`Failed to remove movie ${movieId} from user ${userId}'s watch-later list: ${error.message}`);
+      throw new HttpException('Failed to remove movie from watch-later list', HttpStatus.FORBIDDEN);
+    }
+
+    return { message: `Movie ${movieId} removed from user ${userId}'s watch-later list` };
+  }
+
+  async addMovieToWatched(userId: number, movieId: string): Promise<{ message: string }> {
+    const result = await this.db.select().from(movies).where(
+      eq(movies.id, movieId)).limit(1);
+
+    if (result.length === 0) {
+      const movie = await this.getMovie(movieId);
+    }
+
+    const new_movie: NormalizedMovie | null = await this.getMovie(movieId);
+    if (!new_movie) {
+      throw new NotFoundException('Movie not found');
+    }
+    else {
+      await this.db.insert(movies).values({
+        id: new_movie.imdb_code,
+        title: new_movie.title,
+        productionYear: new_movie.year,
+        // imdbRating: new_movie.rating,
+        coverImageUrl: new_movie.thumbnail,
+      });
+    }
+    try {
+      await this.db.insert(watchedMovies).values({
+        userId,
+        movieId,
+      });
+    }
+    catch (error) {
+      this.logger.error(`Failed to add movie ${movieId} to user ${userId}'s watched list: ${error.message}`);
+      throw new HttpException('Failed to add movie to watched list', HttpStatus.FORBIDDEN);
+    }
+
+    return { message: `Movie ${movieId} added to user ${userId}'s watched list` };
   }
 }

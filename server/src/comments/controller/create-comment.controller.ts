@@ -27,7 +27,7 @@ export class CreateCommentController {
   @UseInterceptors(
     FileInterceptor('media', {
       storage: diskStorage({
-        destination: './uploads/comments',
+        destination: './uploads/comments_public',
         filename: (req, file, callback) => {
           const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
           const ext = extname(file.originalname);
@@ -52,17 +52,18 @@ export class CreateCommentController {
 
 
 
-  // @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'))
+  @Post()
   async createComment(
-    @Param('movieId', ParseIntPipe) movieId: number,
+    @Param('movieId') movieId: string,
     @Body('content') content: string,
     @UploadedFile() media: Express.Multer.File,
     @Req() req: any,
   ) {
     
-    // console.log(req.user.id);
+    console.log(req.user.id);
 
-    if (!content || content.trim().length === 0) {
+    if (!media && (!content || content.trim().length === 0)) {
       throw new BadRequestException('Content is required');
     }
 
@@ -70,11 +71,15 @@ export class CreateCommentController {
       throw new BadRequestException('Content must be 2000 characters or less');
     }
 
+    if (media && (!content || content.trim().length === 0))
+      content = '_';
+
+
     // const userId = req.user.id;
-    const idd : number = 2;
+    
     return this.createCommentsService.createComment({
       movieId,
-      userId: idd,
+      userId: req.user.id,
       content: content.trim(),
       mediaFile: media,
     });
