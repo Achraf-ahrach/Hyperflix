@@ -6,9 +6,21 @@ import { useRouter } from "next/navigation";
 import { useParams } from "next/navigation";
 import { useSelector } from "react-redux";
 import axios from "@/lib/axios";
-import MoviePlayer from "@/components/MoviePlayer";
 
-const API_BASE_URL = 'http://localhost:8000/api';
+import { Container, TextField, Button, Box, Typography, Paper, CircularProgress } from '@mui/material';
+import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+import VideoPlayer from "@/components/MoviePlayer";
+
+
+const API_BASE_URL = 'http://localhost:8001/api';
+
+const darkTheme = createTheme({
+    palette: {
+        mode: 'dark',
+        primary: { main: '#e50914' }, // Netflix Red
+        background: { default: '#141414', paper: '#1f1f1f' }
+    }
+});
 
 
 const api = axios.create({
@@ -73,11 +85,26 @@ export default function StreamingPage() {
         }
     };
 
-    const handleReset = () => {
-        setDbId(null);
-        setImdbId('');
-        setMagnet('');
-        setError(null);
+    const handleStart = async () => {
+        if (!imdbId || !magnet) return;
+        setLoading(true);
+        setError('');
+
+        try {
+            // POST to start torrent/conversion
+            const res = await api.post(`/video/${imdbId}/start/`, {
+                magnet_link: magnet,
+                imdb_id: imdbId
+            });
+            
+            if (res.data.id) {
+                setDbId(res.data.id);
+            }
+        } catch (err: any) {
+            setError(err.response?.data?.message || "Failed to start movie");
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
@@ -104,48 +131,52 @@ export default function StreamingPage() {
 
 
 
-            <div>
-                <p>
-                    Hypertube Player
-                </p>
+        <ThemeProvider theme={darkTheme}>
+            <CssBaseline />
+            <Container maxWidth="md" sx={{ mt: 5 }}>
+                <Typography variant="h3" fontWeight="bold" gutterBottom sx={{ color: '#e50914' }}>
+                    Hypertube
+                </Typography>
 
-                {/* INPUT FORM (Only visible if movie hasn't started) */}
-                {!dbId && (
-                    <div>
-                        <div>
-                            <p>Initialize Movie</p>
-                            {error && <div style={{ color: 'red' }}>{error}</div>}
-
-                        </div>
-                    </div>
+                {!dbId ? (
+                    <Paper sx={{ p: 4 }}>
+                        <Box display="flex" flexDirection="column" gap={3}>
+                            <TextField 
+                                label="IMDB ID" 
+                                placeholder="tt1375666"
+                                value={imdbId}
+                                onChange={e => setImdbId(e.target.value)}
+                            />
+                            <TextField 
+                                label="Magnet Link" 
+                                multiline 
+                                rows={3}
+                                value={magnet}
+                                onChange={e => setMagnet(e.target.value)}
+                            />
+                            {error && <Typography color="error">{error}</Typography>}
+                            
+                            <Button 
+                                variant="contained" 
+                                size="large" 
+                                onClick={handleStart}
+                                disabled={loading}
+                                sx={{ py: 1.5, fontSize: '1.1rem' }}
+                            >
+                                {loading ? <CircularProgress size={24} /> : "Start Streaming"}
+                            </Button>
+                        </Box>
+                    </Paper>
+                ) : (
+                    <Box>
+                        <Button onClick={() => setDbId(null)} sx={{ mb: 2 }}>
+                            ← Watch Another Movie
+                        </Button>
+                        <VideoPlayer movieId={dbId} />
+                    </Box>
                 )}
-
-                {/* PLAYER (Only visible once we have the DB ID) */}
-                {
-                    dbId 
-                }
-                {dbId && (
-                    <div style={{
-                        width: '100%',
-                        height: '80vh',
-                        maxWidth: '1200px',
-                        margin: '0 auto',
-                        borderRadius: 2,
-                        overflow: 'hidden',
-                    }}>
-                        {/* <div sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#1e1e1e' }}> */}
-                            {/* <p sx={{ color: '#aaa' }}>
-                                Playing IMDB: {imdbId} (DB_ID: {dbId})
-                            </p>
-                            <Button size="small" onClick={handleReset} sx={{ color: '#ff0000' }}>
-                                Close / New Movie
-                            </Button> */}
-                        {/* </div> */}
-
-                        <MoviePlayer movieId={dbId} />
-                    </div>
-                )} 
-            </div>
+            </Container>
+        </ThemeProvider>
         </div>
     );
 
