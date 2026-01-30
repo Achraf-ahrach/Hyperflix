@@ -79,3 +79,6 @@ uploads/
 /torrent/torrent_service/stream/__pycache__
 /torrent/torrent_service/torrent/__pycache__
 /torrent/torrent_service/stream/migrations
+
+
+.env

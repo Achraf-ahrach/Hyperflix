@@ -8,7 +8,7 @@ import axios from 'axios';
 
 // Matches your Nginx /api/ proxy setup
 
-const API_BASE_URL = 'http://localhost:8001/api';
+const API_BASE_URL = (process.env.STREAMING_API_URL || 'http://localhost:8001') + '/api';
 const API_URL = API_BASE_URL;
 
  const api = axios.create({

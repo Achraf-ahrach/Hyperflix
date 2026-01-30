@@ -20,45 +20,45 @@ services:
       timeout: 5s
       retries: 5
 
-  # backend:
-  #   build: ./server
-  #   container_name: hypertube_backend
-  #   command: sh -c "npm run db:migrate && npm run start:dev"
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #   env_file:
-  #     - ./.env
-  #   environment:
-  #     PORT: ${BACKEND_PORT}
-  #     DATABASE_URL: ${DATABASE_URL}
-  #   ports:
-  #     - "${BACKEND_PORT}:${BACKEND_PORT}"
-  #   working_dir: /app
-  #   networks:
-  #     - hypertube_network
-  #   volumes:
-  #     - ./server:/app
-  #     - /app/node_modules
+  backend:
+    build: ./server
+    container_name: hypertube_backend
+    command: sh -c "npm run db:migrate && npm run start:dev"
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ./.env
+    environment:
+      PORT: ${BACKEND_PORT}
+      DATABASE_URL: ${DATABASE_URL}
+    ports:
+      - "${BACKEND_PORT}:${BACKEND_PORT}"
+    working_dir: /app
+    networks:
+      - hypertube_network
+    volumes:
+      - ./server:/app
+      - /app/node_modules
 
-  # frontend:
-  #   build: ./client
-  #   container_name: hypertube_frontend
-  #   command: npm run dev
-  #   depends_on:
-  #     - backend
-  #   env_file:
-  #     - ./.env
-  #   networks:
-  #     - hypertube_network
-  #   environment:
-  #     NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-  #   ports:
-  #     - "${FRONTEND_PORT}:${FRONTEND_PORT}"
-  #   working_dir: /app
-  #   volumes:
-  #     - ./client:/app
-  #     - /app/node_modules
+  frontend:
+    build: ./client
+    container_name: hypertube_frontend
+    command: npm run dev
+    depends_on:
+      - backend
+    env_file:
+      - ./.env
+    networks:
+      - hypertube_network
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    ports:
+      - "${FRONTEND_PORT}:${FRONTEND_PORT}"
+    working_dir: /app
+    volumes:
+      - ./client:/app
+      - /app/node_modules
 
 # test torrent integration
 

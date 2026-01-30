@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Play, Plus, ThumbsUp, Share2, Flag } from "lucide-react";
+import { Play, Plus, ThumbsUp, Share2 } from "lucide-react";
 
 import api from "@/lib/axios";
 import { Button } from "@/components/ui/button";
@@ -82,8 +82,8 @@ export default function MovieDetailsPage() {
             priority
           />
           {/* Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/20 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#141414] via-[#141414]/40 to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-t from-[#141414] via-[#141414]/20 to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-r from-[#141414] via-[#141414]/40 to-transparent" />
         </div>
 
         {/* Play Button (Centered) */}
@@ -153,10 +153,6 @@ export default function MovieDetailsPage() {
                 <Share2 className="w-4 h-4" />
                 Share
               </Button>
-              {/* <Button variant="ghost" className="gap-2 text-gray-400 hover:text-white hover:bg-white/10 ml-auto">
-                                <Flag className="w-4 h-4" />
-                                Report
-                            </Button> */}
             </div>
           </div>
         </div>
@@ -172,18 +168,6 @@ export default function MovieDetailsPage() {
               {movie.synopsis || "No synopsis available."}
             </p>
           </div>
-
-          {/* Torrent Information (Optional/Tech details) */}
-          {/* <div className="p-4 rounded-lg bg-white/5 border border-white/10">
-                        <h4 className="text-sm font-medium text-gray-400 mb-2">Available Qualities</h4>
-                        <div className="flex gap-2">
-                            {movie.torrents.map((t, i) => (
-                                <span key={i} className="px-2 py-1 bg-primary/20 text-primary text-xs rounded">
-                                    {t.quality}
-                                </span>
-                            ))}
-                        </div>
-                    </div> */}
         </div>
 
         {/* Right Column: Rating & Metadata */}
@@ -203,7 +187,7 @@ export default function MovieDetailsPage() {
                 {[...Array(5)].map((_, i) => (
                   <Play
                     key={i}
-                    className={`w-4 h-4 ${i < Math.round(movie.rating / 2) ? "fill-current" : "fill-gray-700 text-gray-700"} rotate-[-90deg]`}
+                    className={`w-4 h-4 ${i < Math.round(movie.rating / 2) ? "fill-current" : "fill-gray-700 text-gray-700"} -rotate-90`}
                   />
                 ))}
               </div>
