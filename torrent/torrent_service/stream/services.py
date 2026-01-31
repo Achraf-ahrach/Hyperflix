@@ -73,10 +73,20 @@ class VideoService:
                 .output(
                     segment_path,
                     format='mpegts',
+                    
+                    # VIDEO: Force x264 for browser compatibility
                     vcodec='libx264',
+                    preset='ultrafast',  # Fast encoding, larger file size. Use 'veryfast' if buffering occurs.
+                    
+                    # AUDIO: Force AAC Stereo (Safe for all browsers)
                     acodec='aac',
-                    preset='ultrafast',
-                    **{'output_ts_offset': start_time}  
+                    ac=2,  # Downmix 5.1/7.1 to Stereo to prevent browser audio decoder issues
+                    
+                    # HLS MAGIC: Shift timestamps so this segment continues where the last left off
+                    output_ts_offset=start_time,
+                    
+                    # LATENCY: Reduce container overhead delay
+                    muxdelay=0
                 )
                 .overwrite_output()
             )

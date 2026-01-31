@@ -33,9 +33,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
 
     // 1. Fetch Subtitles
     useEffect(() => {
-        api.get(`/subtitles/?movie_id=${movieId}&language=fr`)
-           .then(res => setSubtitles(res.data))
-           .catch(err => console.error("Subtitle load failed", err));
+        // ... (your existing subtitle logic is fine)
     }, [movieId]);
 
     // 2. Initialize HLS
@@ -45,76 +43,115 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
 
         const hlsUrl = `${API_URL}/video/${movieId}/playlist/`;
 
+        // === ERROR LISTENER (The "Black Box" Recorder) ===
+        // This catches if the browser rejects the video (e.g. Codec error)
+        const handleNativeError = () => {
+            if (video.error) {
+                console.error("Native Video Error:", video.error);
+                if (video.error.code === 3) {
+                    setError("Fatal: Browser failed to decode video. (Likely Codec Issue)");
+                } else if (video.error.code === 4) {
+                    setError("Fatal: Source format not supported.");
+                }
+            }
+        };
+        video.addEventListener('error', handleNativeError);
+
+        let hls: Hls | null = null;
+
         if (Hls.isSupported()) {
-            const hls = new Hls({
+            hls = new Hls({
                 debug: false,
-                startPosition: 0,
-                liveSyncDurationCount: 0, 
+                enableWorker: true, // Improve performance on separate thread
                 
-                // === RETRY LOGIC (Wait for Backend) ===
-                manifestLoadingTimeOut: 10000,    // Wait 10s before timing out a request
-                manifestLoadingRetryDelay: 2000,  // Wait 2s before retrying after a 404
-                manifestLoadingMaxRetry: 60,      // Retry 60 times (approx 2 mins of waiting)
+                // === RETRY LOGIC (Wait for Backend Transcoding) ===
+                manifestLoadingTimeOut: 10000, 
+                manifestLoadingRetryDelay: 2000,
+                manifestLoadingMaxRetry: 60, // Wait up to ~2 mins for playlist
                 
-                // Optional: Also retry loading individual segments if they are slow to generate
+                fragLoadingTimeOut: 20000,   // Segments might take time to transcode
                 fragLoadingRetryDelay: 1000,
-                fragLoadingMaxRetry: 60,
+                fragLoadingMaxRetry: 60,     // Be very patient with segments
             });
             
             hls.loadSource(hlsUrl);
             hls.attachMedia(video);
             
             hls.on(Hls.Events.ERROR, (_, data) => {
-                // Only destroy if it's a fatal error AND we have exhausted our retries
+                // Filter out non-fatal errors (like buffer stalls)
                 if (data.fatal) {
                     console.error("HLS Fatal Error:", data);
                     switch (data.type) {
                         case Hls.ErrorTypes.NETWORK_ERROR:
-                            // Try to recover network errors (though maxRetry usually handles this)
-                            console.log("fatal network error encountered, trying to recover");
-                            hls.startLoad();
+                            console.log("Network error, trying to recover...");
+                            hls?.startLoad();
                             break;
                         case Hls.ErrorTypes.MEDIA_ERROR:
-                            console.log("fatal media error encountered, trying to recover");
-                            hls.recoverMediaError();
+                            console.log("Media error, trying to recover...");
+                            hls?.recoverMediaError();
                             break;
                         default:
-                            // Cannot recover, stop playback
-                            setError("Playback Error: " + data.type);
-                            hls.destroy();
+                            hls?.destroy();
+                            setError("Playback Error: " + data.details);
                             break;
                     }
                 }
             });
-
-            return () => hls.destroy();
         } 
         else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            // Native support (Safari) - Safari does not allow detailed retry config easily
-            video.src = hlsUrl;
+            // === SAFARI FALLBACK WITH POLLING ===
+            // Safari will error instantly if the playlist is 404. We must poll first.
+            const checkStreamReady = async () => {
+                try {
+                    const response = await fetch(hlsUrl, { method: 'HEAD' });
+                    if (response.ok) {
+                        video.src = hlsUrl;
+                    } else {
+                        // Not ready yet, retry in 2s
+                        setTimeout(checkStreamReady, 2000);
+                    }
+                } catch (e) {
+                    setTimeout(checkStreamReady, 2000);
+                }
+            };
+            checkStreamReady();
         } 
         else {
             setError("Your browser does not support HLS.");
         }
+
+        // Cleanup
+        return () => {
+            if (hls) hls.destroy();
+            video.removeEventListener('error', handleNativeError);
+            video.removeAttribute('src'); // Stop downloading when component unmounts
+            video.load();
+        };
     }, [movieId]);
 
-    if (error) return <Typography color="error">{error}</Typography>;
+    if (error) return (
+        <Box sx={{ p: 2, bgcolor: '#330000', color: 'white', borderRadius: 2 }}>
+            <Typography variant="h6">Error</Typography>
+            <Typography>{error}</Typography>
+        </Box>
+    );
 
     return (
         <Box sx={{ width: '100%', bgcolor: 'black', borderRadius: 2, overflow: 'hidden' }}>
             <video 
                 ref={videoRef} 
                 controls 
-                style={{ width: '100%', display: 'block' }}
+                style={{ width: '100%', aspectRatio: '16/9', display: 'block' }}
                 crossOrigin="anonymous"
+                playsInline // Important for iOS
             >
+                {/* Subtitle mapping... */}
                 {subtitles.map((sub) => (
                     <track
                         key={sub.language}
                         kind="subtitles"
                         label={sub.language_name}
                         srcLang={sub.language}
-                        // Ensure path is relative to Nginx root (/media/)
                         src={sub.file_path.startsWith('http') ? sub.file_path : `/media/${sub.file_path}`}
                         default={sub.language === 'fr'}
                     />
