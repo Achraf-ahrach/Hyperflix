@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useContext } from 'react';
+import React, { useState, useRef, useContext, useEffect } from 'react';
 import {
   Send, Heart, MessageCircle, MoreVertical, Trash2,
   X, Loader2, ImageIcon, ChevronDown
@@ -27,8 +27,8 @@ export const CommentsSection = ({ movieId }: { movieId: string }) => {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   console.log((process.env.BACKEND_URL))
-  // Load initial comments
-  React.useEffect(() => {
+
+  useEffect(() => {
     const loadComments = async () => {
       try
       {
@@ -138,18 +138,18 @@ export const CommentsSection = ({ movieId }: { movieId: string }) => {
 
   if (isInitialLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-200 font-sans p-4 md:p-8 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-950  font-sans p-4 md:p-8 flex items-center justify-center">
         <Loader2 size={32} className="animate-spin text-red-500" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background text-slate-200 font-sans p-4 md:p-8">
+    <div className="min-h-screen bg-background font-sans p-4 md:p-8">
       <div className="max-w-3xl mx-auto">
         <h2 className="text-3xl font-bold mb-8 flex items-center gap-3">
           Comments
-          <span className="text-sm font-normal text-slate-500 bg-slate-900 px-3 py-1 rounded-full">
+          <span className="text-sm font-normal px-3 py-1 rounded-full">
             {total}
           </span>
         </h2>
@@ -177,7 +177,7 @@ export const CommentsSection = ({ movieId }: { movieId: string }) => {
             <button
               onClick={handleLoadMore}
               disabled={isLoadingMore}
-              className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-8 py-3 rounded-full text-sm font-semibold text-slate-400 hover:text-white hover:border-slate-600 transition-all active:scale-95 disabled:opacity-50"
+              className="flex items-center gap-2 border  px-8 py-3 rounded-full text-sm font-semibold active:scale-95 disabled:opacity-50"
             >
               {isLoadingMore ? (
                 <Loader2 size={16} className="animate-spin text-red-500" />
@@ -192,8 +192,8 @@ export const CommentsSection = ({ movieId }: { movieId: string }) => {
         )}
 
         {!hasMore && comments.length > 0 && (
-          <div className="mt-16 text-center border-t border-slate-900 pt-8">
-            <p className="text-slate-700 text-xs uppercase tracking-[0.2em]">
+          <div className="mt-16 text-center border-t pt-8">
+            <p className="text-xs uppercase tracking-[0.2em]">
               End of Discussion
             </p>
           </div>

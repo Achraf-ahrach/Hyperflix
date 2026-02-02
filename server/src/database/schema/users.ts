@@ -17,7 +17,7 @@ export const users = pgTable('users', {
   isEmailVerified: boolean('is_email_verified').notNull().default(false),
   emailVerificationToken: varchar('email_verification_token', { length: 255 }),
   emailVerificationExpires: varchar('email_verification_expires', { length: 50 }),
-  langue_code: integer('langue_code').notNull().references(() => languages.id).default(1),
+  langue_code: varchar('langue_code',{ length: 2 }).notNull().references(() => languages.code).default('en'),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),

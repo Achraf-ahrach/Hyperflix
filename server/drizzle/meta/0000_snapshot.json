@@ -1,5 +1,5 @@
 {
-  "id": "2c522133-c024-4923-bf5d-9e8815a65763",
+  "id": "eff05806-d738-445b-b9aa-3a117b1ff247",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -423,10 +423,10 @@
         },
         "langue_code": {
           "name": "langue_code",
-          "type": "integer",
+          "type": "varchar(2)",
           "primaryKey": false,
           "notNull": true,
-          "default": 1
+          "default": "'en'"
         },
         "created_at": {
           "name": "created_at",
@@ -445,15 +445,15 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "users_langue_code_languages_id_fk": {
-          "name": "users_langue_code_languages_id_fk",
+        "users_langue_code_languages_code_fk": {
+          "name": "users_langue_code_languages_code_fk",
           "tableFrom": "users",
           "tableTo": "languages",
           "columnsFrom": [
             "langue_code"
           ],
           "columnsTo": [
-            "id"
+            "code"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -839,7 +839,15 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "languages_code_unique": {
+          "name": "languages_code_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "code"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

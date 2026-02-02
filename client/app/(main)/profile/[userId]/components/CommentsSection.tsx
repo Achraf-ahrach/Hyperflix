@@ -16,7 +16,7 @@ export
   }) => {
       return (
         <div className="space-y-0">
-          <div className="text-sm text-zinc-500 px-6 py-4 bg-zinc-900">
+          <div className="text-sm px-6 py-4  border">
             {comments.length} comments
           </div>
 

@@ -41,16 +41,17 @@ export class SettingsService {
 
 
   async updateLanguage(id: number, dto: any) {
-    const updateData: Partial<any> = {};
-    if (dto.langue_code !== undefined)
+    if (dto.language_code !== undefined)
     {
-      updateData.langue_code = dto.langue_code;
+
+      console.log(dto);
       try
       {
-        await this.settingRepository.updateLanguage(id, dto.langue_code);
+        await this.settingRepository.updateLanguage(id, dto.language_code);
       }
       catch (err)
       {
+        console.error(err);
         throw new NotFoundException('Language not found');
       }
       return {message: 'Language updated successfully'};

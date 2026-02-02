@@ -177,7 +177,7 @@ export default function Profile({ setSaveSuccess, setError, error }: SettingProp
 
     return (
         <div className="space-y-6">
-            <h2 className="text-xl font-bold text-white mb-6">Profile Information</h2>
+            <h2 className="text-xl font-bold mb-6">Profile Information</h2>
 
             {/* Profile Picture */}
             <div className="flex items-center gap-6">
@@ -186,11 +186,11 @@ export default function Profile({ setSaveSuccess, setError, error }: SettingProp
                         {formData.profilePicture ? (
                             <img src={formData.profilePicture} alt="Profile" className="w-full h-full object-cover" />
                         ) : (
-                            <User size={40} className="text-white" />
+                            <User size={40}  />
                         )}
                     </div>
                     <label className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                        <Camera size={24} className="text-white" />
+                        <Camera size={24}  />
                         <input
                             type="file"
                             accept="image/*"
@@ -201,7 +201,7 @@ export default function Profile({ setSaveSuccess, setError, error }: SettingProp
                     </label>
                 </div>
                 <div>
-                    <h3 className="text-white font-semibold mb-1">Profile Picture</h3>
+                    <h3 className="font-semibold mb-1">Profile Picture</h3>
                     <p className="text-slate-400 text-sm">JPG, PNG or GIF. Max 5MB</p>
                 </div>
             </div>
@@ -209,37 +209,37 @@ export default function Profile({ setSaveSuccess, setError, error }: SettingProp
             {/* Name Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label className="block text-slate-300 font-medium mb-2">First Name</label>
+                    <label className="block font-medium mb-2">First Name</label>
                     <input
                         type="text"
                         name="firstName"
                         value={formData.firstName}
                         onChange={handleInputChange}
-                        className={`w-full bg-slate-800/50 border ${error?.field === 'firstName' ? 'border-red-500' : 'border-slate-700'} rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all`}
+                        className={`w-full  border ${error?.field === 'firstName' ? 'border-red-500' : 'border-slate-700'} rounded-lg px-4 py-3 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all`}
                         placeholder="Enter first name"
                     />
                 </div>
                 <div>
-                    <label className="block text-slate-300 font-medium mb-2">Last Name</label>
+                    <label className="block  font-medium mb-2">Last Name</label>
                     <input
                         type="text"
                         name="lastName"
                         value={formData.lastName}
                         onChange={handleInputChange}
-                        className={`w-full bg-slate-800/50 border ${error?.field === 'lastName' ? 'border-red-500' : 'border-slate-700'} rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all`}
+                        className={`w-full border ${error?.field === 'lastName' ? 'border-red-500' : 'border-slate-700'} rounded-lg px-4 py-3  placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all`}
                         placeholder="Enter last name"
                     />
                 </div>
             </div>
 
             <div>
-                <label className="block text-slate-300 font-medium mb-2">Username</label>
+                <label className="block font-medium mb-2">Username</label>
                 <input
                     type="text"
                     name="username"
                     value={formData.username}
                     onChange={handleInputChange}
-                    className={`w-full bg-slate-800/50 border ${error?.field === 'username' ? 'border-red-500' : 'border-slate-700'} rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all`}
+                    className={`w-full border ${error?.field === 'username' ? 'border-red-500' : 'border-slate-700'} rounded-lg px-4 py-3 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all`}
                     placeholder="Enter username"
                 />
             </div>

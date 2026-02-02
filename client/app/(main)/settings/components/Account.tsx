@@ -103,15 +103,15 @@ export default function Account({setSaveSuccess, setError, error } : SettingProp
 
     return (
         <div className="space-y-6">
-            <h2 className="text-xl font-bold text-white mb-6">Account Settings</h2>
+            <h2 className="text-xl font-bold mb-6">Account Settings</h2>
             <div>
-                <label className="block text-slate-300 font-medium mb-2">Email Address</label>
+                <label className="block font-medium mb-2">Email Address</label>
                 <input
                     type="email"
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className={`w-full bg-slate-800/50 border ${error?.field === 'email' ? 'border-red-500' : 'border-slate-700'} rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all`}
+                    className={`w-full border ${error?.field === 'email' ? 'border-red-500' : 'border-slate-700'} rounded-lg px-4 py-3  placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all`}
                     placeholder="Enter email"
                 />
                 <p className="text-slate-500 text-sm mt-2">

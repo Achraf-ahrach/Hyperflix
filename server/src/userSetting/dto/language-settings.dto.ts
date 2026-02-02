@@ -6,6 +6,6 @@ export class LanguageSettingsDto
 {
 
   @IsOptional()
-  langue_code?: number;
+  language_code?: number;
 
 }
