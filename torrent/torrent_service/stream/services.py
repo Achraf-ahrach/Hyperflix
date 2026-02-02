@@ -16,13 +16,13 @@ range_re = re.compile(r"bytes\s*=\s*(\d+)\s*-\s*(\d*)", re.I)
 
 class VideoService:
     def __init__(self):
-        self.segment_duration = 10  # 10 seconds
+        self.segment_duration = 10
         self.processed_segments = set()
         self.failed_segments = set()
         self.segment_retry_count = {}
         self.segment_last_attempt = {}
         self.max_retries = 3
-        self.retry_cooldown = 30  # Wait 30 seconds before retrying a failed segment
+        self.retry_cooldown = 30
 
     def get_video_duration(self, video_path: str) -> Optional[float]:
         """Get video duration using ffprobe."""
@@ -40,14 +40,12 @@ class VideoService:
     def convert_segment(self, input_path: str, output_dir: str, current_segment: int, video_duration: float) -> bool:
         """Convert a single segment of the video to HLS-compatible .ts format."""
         
-        # 1. Sanity Check: Ensure file actually exists before asking FFmpeg
         if not os.path.exists(input_path):
             logging.error(f"convert_segment: Input file missing at {input_path}")
             return False
 
         start_time = current_segment * self.segment_duration
         
-        # Get relative path structure
         rel_path = os.path.relpath(input_path, output_dir)
         dir_path = os.path.dirname(rel_path)
         file_name = os.path.basename(rel_path)
@@ -64,7 +62,6 @@ class VideoService:
         self.segment_last_attempt[current_segment] = time.time()
 
         try:
-            # FIX: Prepend 'file:' to handle special chars like [] in filenames
             safe_input_path = f"file:{input_path}"
 
             stream = (
@@ -77,6 +74,7 @@ class VideoService:
                     # VIDEO: Force x264 for browser compatibility
                     vcodec='libx264',
                     preset='ultrafast',  # Fast encoding, larger file size. Use 'veryfast' if buffering occurs.
+                    pix_fmt='yuv420p',
                     
                     # AUDIO: Force AAC Stereo (Safe for all browsers)
                     acodec='aac',
@@ -91,7 +89,6 @@ class VideoService:
                 .overwrite_output()
             )
             
-            # Run ffmpeg
             stream.run(capture_stdout=True, capture_stderr=True)
 
             if os.path.exists(segment_path) and os.path.getsize(segment_path) > 0:
@@ -103,7 +100,6 @@ class VideoService:
                 return False
 
         except ffmpeg.Error as e:
-            # Log the specific FFmpeg error output
             error_msg = e.stderr.decode() if hasattr(e, 'stderr') else str(e)
             logging.error(f"FFmpeg error for segment {current_segment}: {error_msg}")
             self.segment_retry_count[current_segment] = self.segment_retry_count.get(current_segment, 0) + 1
@@ -116,7 +112,6 @@ class VideoService:
      
 
 # ++++++++++++++++++++++++++++++++++++++++++
-
 
 class SubtitleService:
     BASE_URL = "https://api.opensubtitles.com/api/v1"
@@ -142,10 +137,27 @@ class SubtitleService:
 
     def fetch_subtitles(self, movie: MovieFile, lang: str) -> list:
         """
-        Fetch and download subtitles for a movie in the specified language from OpenSubtitles API.
-        Returns a list of downloaded subtitle information.
+        Fetch subtitles with a Lock Mechanism to prevent parallel API spam.
         """
+        subtitles_dir = os.path.join(settings.MEDIA_ROOT, 'downloads', 'subtitles', str(movie.id))
+        os.makedirs(subtitles_dir, exist_ok=True)
+
+        lock_file = os.path.join(subtitles_dir, f"{lang}.lock")
+        not_found_marker = os.path.join(subtitles_dir, f"{lang}.notfound")
+
+        if os.path.exists(not_found_marker):
+            logging.info(f"Skipping fetch: Subtitles for {lang} previously not found.")
+            return []
+
+        if os.path.exists(lock_file):
+            logging.info(f"Download already in progress for {movie.id} [{lang}]. Skipping.")
+            return []
+
+        with open(lock_file, 'w') as f:
+            f.write("locked")
+
         try:
+            logging.info(f"Fetching subtitles for {movie.imdb_id} in {lang}...")
             response = requests.get(
                 f"{self.BASE_URL}/subtitles",
                 headers=self.headers,
@@ -158,10 +170,18 @@ class SubtitleService:
             response.raise_for_status()
             data = response.json()
 
+            if not data.get('data'):
+                logging.warning(f"No subtitles found for {lang}. Creating marker.")
+                with open(not_found_marker, 'w') as f: f.write("404")
+                return []
+
             subtitles = []
+            download_successful = False
+
             for item in data.get('data', []):
                 attributes = item.get('attributes', {})
                 files = attributes.get('files', [])
+                
                 if files:
                     file_id = files[0].get('file_id')
                     if file_id:
@@ -172,48 +192,44 @@ class SubtitleService:
                                 json={"file_id": file_id}
                             )
                             download_response.raise_for_status()
-                            download_data = download_response.json()
-                            download_url = download_data.get('link')
+                            download_url = download_response.json().get('link')
 
                             if download_url:
-                                subtitles_dir = os.path.join(settings.MEDIA_ROOT, 'downloads/subtitles', str(movie.id))
-                                os.makedirs(subtitles_dir, exist_ok=True)
-
                                 srt_path = os.path.join(subtitles_dir, f"{lang}.srt")
+                                
                                 file_response = requests.get(download_url)
                                 file_response.raise_for_status()
 
                                 with open(srt_path, 'wb') as f:
                                     f.write(file_response.content)
 
-                                # Convert SRT to VTT
                                 vtt_path = self.convert_srt_to_vtt(srt_path)
+                                
                                 if vtt_path:
-                                    vtt_relative_path = os.path.join('downloads/subtitles', str(movie.id), f"{lang}.vtt")
-                                else:
-                                    vtt_relative_path = None
+                                    vtt_relative_path = os.path.join(settings.MEDIA_URL, 'downloads', 'subtitles', str(movie.id), f"{lang}.vtt")
+                                    
+                                    subtitles.append({
+                                        'language': lang,
+                                        'language_name': lang.upper(),
+                                        'file_path': vtt_relative_path
+                                    })
+                                    logging.info(f"Successfully downloaded: {vtt_path}")
+                                    download_successful = True
+                                    break
 
-                                subtitles.append({
-                                    'language': attributes.get('language', lang),
-                                    'language_name': 'English' if lang == 'en' else lang.upper(),
-                                    'file_path': vtt_relative_path or os.path.join('subtitles', str(movie.id), f"{lang}.srt")
-                                })
-                                logging.info(f"Successfully downloaded subtitle to {srt_path} and converted to VTT")
-                                break
-
-                        except requests.exceptions.RequestException as e:
-                            logging.error(f"Error downloading subtitle with file_id {file_id}: {str(e)}")
-                            continue
                         except Exception as e:
-                            logging.error(f"Unexpected error downloading subtitle with file_id {file_id}: {str(e)}")
+                            logging.error(f"Failed to download specific file {file_id}: {e}")
                             continue
-
+            
+            if not download_successful and not subtitles:
+                with open(not_found_marker, 'w') as f: f.write("failed")
+            
             return subtitles
 
-        except requests.exceptions.RequestException as e:
-            logging.error(f"Error fetching subtitles: {str(e)}")
-            return []
         except Exception as e:
-            logging.error(f"Unexpected error while fetching subtitles: {str(e)}")
-            return [] 
-
+            logging.error(f"Unexpected error in fetch_subtitles: {str(e)}")
+            return []
+        
+        finally:
+            if os.path.exists(lock_file):
+                os.remove(lock_file)

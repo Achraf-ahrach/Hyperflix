@@ -23,21 +23,13 @@ class MovieFile(models.Model):
 		default="PENDING",
 	)
 	download_progress = models.FloatField(default=0)
-	last_watched = models.DateTimeField(auto_now_add=True)
+	last_watched = models.DateTimeField(default=timezone.now)
 	created_at = models.DateTimeField(auto_now_add=True)
+	
+	def update_last_watched(self):
+		"""Call this whenever the user plays the video"""
+		self.last_watched = timezone.now()
+		self.save(update_fields=['last_watched'])
 
 	def save(self, *args, **kwargs):
-		# Check if file should be deleted (unwatched for a month)
-		if self.last_watched:
-			month_ago = timezone.now() - timedelta(days=30)
-			if self.last_watched < month_ago:
-				if self.file_path and os.path.exists(self.file_path):
-					os.remove(self.file_path)
-				if self.subtitles_path and os.path.exists(self.subtitles_path):
-					os.remove(self.subtitles_path)
-				self.file_path = None
-				self.subtitles_path = None
-				self.download_status = "PENDING"
-				self.download_progress = 0
-
 		super().save(*args, **kwargs)

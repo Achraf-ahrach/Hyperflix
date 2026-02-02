@@ -1,0 +1,4 @@
+# /app/crontab
+
+# Run at 03:00 AM every day
+0 3 * * * root cd /app && /usr/local/bin/python manage.py cleanup_movies >> /var/log/cron.log 2>&1
