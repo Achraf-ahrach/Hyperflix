@@ -10,12 +10,14 @@ import threading
 import libtorrent as lt
 import logging
 import time
+from django.shortcuts import get_object_or_404
 from .models import MovieFile
 from rest_framework.pagination import PageNumberPagination
 from .services import SubtitleService
 from .utils import get_trackers, make_magnet_link
 from django.conf import settings
 from django.http import Http404, HttpResponse
+from urllib.parse import quote
 range_re = re.compile(r"bytes\s*=\s*(\d+)\s*-\s*(\d*)", re.I)
 
 logger = logging.getLogger(__name__)
@@ -86,8 +88,7 @@ def process_video_thread(video_id):
         movie_file.download_status = "DOWNLOADING"
         movie_file.save()
 
-        # Create standardized movie directory
-        downloads_dir = "/app/downloads"
+        downloads_dir = "/app/media"
         movie_dir = os.path.join(downloads_dir, "movies", str(movie_file.id))
         os.makedirs(movie_dir, exist_ok=True)
         logging.info(f"Using movie directory: {movie_dir}")
@@ -112,11 +113,9 @@ def process_video_thread(video_id):
             file_path_in_torrent = largest_file.path
             downloaded_path = os.path.join(movie_dir, file_path_in_torrent)
             
-            # Store the full relative path including any subdirectories
             movie_file.file_path = os.path.join("movies", str(movie_file.id), file_path_in_torrent)
             movie_file.save()
 
-            # Ensure the full directory structure exists
             os.makedirs(os.path.dirname(downloaded_path), exist_ok=True)
 
             video_service = VideoService()
@@ -129,9 +128,18 @@ def process_video_thread(video_id):
             while True:
                 status = handle.status()
                 progress = status.progress * 100
+                if int(time.time()) % 2 == 0:
+                    state_str = ['queued', 'checking', 'downloading meta', 'downloading', 'finished', 'seeding', 'allocating']
+                    print(
+                        f"Progress: {progress:.2f}% | "
+                        f"Peers: {status.num_peers} | "
+                        f"Speed: {status.download_rate / 1000:.1f} kB/s | "
+                        f"State: {state_str[status.state]}", 
+                        flush=True
+                    )
                 movie_file.download_progress = progress
                 
-                # Try to start segmentation as soon as possible
+
                 if not conversion_started and os.path.exists(downloaded_path):
                     current_time = time.time()
                     if current_time - last_attempt_time > 2:
@@ -169,7 +177,7 @@ def process_video_thread(video_id):
                                         base_name = os.path.splitext(os.path.basename(rel_path))[0]
                                         
                                         # Create segment path preserving directory structure
-                                        first_segment = f"{base_name}_segment_000.mp4"
+                                        first_segment = f"{base_name}_segment_000.ts"
                                         if dir_path:
                                             first_segment = os.path.join(dir_path, first_segment)
                                         
@@ -191,7 +199,6 @@ def process_video_thread(video_id):
 
                 time.sleep(1)
 
-            # Process remaining segments after download is complete
             if video_duration:
                 remaining_segments = int(video_duration / video_service.segment_duration) + 1
                 while current_segment < remaining_segments:
@@ -236,6 +243,94 @@ class VideoViewSet(viewsets.ViewSet):
     GET /video/:id/stream - Stream movie content
     """
 
+    @action(detail=True, methods=['get'])
+    def playlist(self, request, pk=None):
+        movie = get_object_or_404(MovieFile, pk=pk)
+        
+        if not movie.file_path:
+            raise Http404("File path not set yet.")
+            
+        absolute_file_path = os.path.join(settings.MEDIA_ROOT, movie.file_path)
+        output_dir = os.path.dirname(absolute_file_path)
+        
+        base_name = os.path.splitext(os.path.basename(movie.file_path))[0]
+        if base_name.endswith("_segment_000"):
+            base_name = base_name.replace("_segment_000", "")
+
+        timeout = 90 
+        start_time = time.time()
+        found_segments = []
+        
+        pattern = re.compile(rf"^{re.escape(base_name)}_segment_(\d+)\.ts$")
+
+        while time.time() - start_time < timeout:
+            try:
+                if os.path.exists(output_dir):
+                    all_files = os.listdir(output_dir)
+                    
+                    current_batch = []
+                    for f in all_files:
+                        match = pattern.match(f)
+                        if match:
+                            current_batch.append((int(match.group(1)), f))
+                    
+                    if current_batch:
+                        found_segments = current_batch
+                        break
+            except Exception as e:
+                pass
+            
+            time.sleep(1)
+
+        if not found_segments:
+            raise Http404("Transcoding starting... please retry in 5 seconds.")
+
+        found_segments.sort(key=lambda x: x[0])
+        segments = [x[1] for x in found_segments]
+
+        is_finished = movie.download_status == 'READY'
+        playlist_type = "VOD" if is_finished else "EVENT"
+
+        m3u8_content = [
+            "#EXTM3U",
+            "#EXT-X-VERSION:3",
+            "#EXT-X-TARGETDURATION:10",
+            "#EXT-X-MEDIA-SEQUENCE:0",
+            f"#EXT-X-PLAYLIST-TYPE:{playlist_type}", 
+        ]
+        
+        for seg in segments:
+            m3u8_content.append(f"#EXTINF:10.0,")
+            m3u8_content.append(f"/api/video/{pk}/stream_ts/?file={seg}")
+
+        if is_finished:
+            m3u8_content.append("#EXT-X-ENDLIST")
+            
+        return HttpResponse("\n".join(m3u8_content), content_type="application/vnd.apple.mpegurl")
+
+    @action(detail=True, methods=['get'])
+    def stream_ts(self, request, pk=None):
+        """
+        Helper to serve the specific .ts file via Nginx.
+        """
+        file_name = request.query_params.get('file')
+        movie = get_object_or_404(MovieFile, pk=pk)
+
+        relative_dir = os.path.dirname(movie.file_path)
+
+        absolute_path = os.path.join(settings.MEDIA_ROOT, relative_dir, file_name)
+
+        if not os.path.exists(absolute_path):
+            print(f"DEBUG: File not found: {absolute_path}")
+            return HttpResponse(status=404)
+        if relative_dir.startswith('/'):
+            relative_dir = relative_dir[1:]
+        nginx_path = os.path.join('/media', relative_dir, file_name)
+        
+        response = HttpResponse()
+        response['X-Accel-Redirect'] = quote(nginx_path)
+        response['Content-Type'] = 'video/MP2T'
+        return response
 
     @action(detail=True, methods=["post"], url_path="start")
     def start_stream(self, request, pk=None):
@@ -248,16 +343,13 @@ class VideoViewSet(viewsets.ViewSet):
         if not imdb_id:
             return Response({"error": "IMDB ID is required"}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Create or get existing movie file
         movie_file, created = MovieFile.objects.get_or_create(
             imdb_id=imdb_id, defaults={"magnet_link": magnet_link, "download_status": "PENDING", "download_progress": 0}
         )
 
-        # If already processing or ready, return current status
         if movie_file.download_status in ["DOWNLOADING", "CONVERTING", "READY"]:
             return Response({"status": movie_file.download_status, "progress": movie_file.download_progress, "id": movie_file.id})
 
-        # Start processing in background thread
         thread = threading.Thread(target=process_video_thread, args=(movie_file.id,))
         thread.daemon = True
         thread.start()
@@ -278,19 +370,15 @@ class VideoViewSet(viewsets.ViewSet):
                 "downloading": movie_file.download_status in ["DOWNLOADING", "DL_AND_CONVERT"]
             }
             
-            # If movie is playable or ready, add segment information and total duration
             if movie_file.download_status in ["READY", "PLAYABLE"]:
                 try:
-                    # Get the full path from the stored file path
                     file_path = os.path.join("/app/downloads", movie_file.file_path)
                     dir_path = os.path.dirname(file_path)
                     base_name = os.path.splitext(os.path.basename(file_path))[0]
                     
-                    # Remove _segment_000 suffix if it exists
                     if base_name.endswith("_segment_000"):
                         base_name = base_name[:-12]
                     
-                    # Get total movie duration from original file
                     original_file_path = None
                     for ext in ['.mkv', '.mp4', '.avi']:
                         test_path = os.path.join(dir_path, f"{base_name}{ext}")
@@ -303,7 +391,6 @@ class VideoViewSet(viewsets.ViewSet):
                         video_service = VideoService()
                         total_duration = video_service.get_video_duration(original_file_path)
                     
-                    # Count available segments
                     available_segments = 0
                     while True:
                         segment_filename = f"{base_name}_segment_{available_segments:03d}.mp4"
@@ -323,206 +410,56 @@ class VideoViewSet(viewsets.ViewSet):
         except MovieFile.DoesNotExist:
             return Response({"error": "Movie not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    @action(detail=True, methods=["get"], url_path="stream")
-    def stream(self, request, pk=None):
-        """Stream movie content"""
-        try:
-            movie_file = MovieFile.objects.get(id=pk)
-
-            if movie_file.download_status not in ["READY", "PLAYABLE"]:
-                return Response(
-                    {"error": f"Movie is not ready for streaming (status: {movie_file.download_status})"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # Get segment parameter (default to 0 for first segment)
-            segment = int(request.query_params.get("segment", 0))
-            
-            # Get the full path structure from the stored file path
-            file_path = os.path.join("/app/downloads", movie_file.file_path)
-            
-            if segment != 0:  # For segments other than 0, we need to construct the segment path
-                dir_path = os.path.dirname(file_path)
-                base_name = os.path.splitext(os.path.basename(file_path))[0]
-                
-                if base_name.endswith("_segment_000"):
-                    base_name = base_name[:-12]
-                
-                segment_filename = f"{base_name}_segment_{segment:03d}.mp4"
-                file_path = os.path.join(dir_path, segment_filename)
-            
-            if not os.path.exists(file_path):
-                return Response({"error": f"Segment {segment} not found"}, status=status.HTTP_404_NOT_FOUND)
-
-            video_service = VideoService()
-
-            range_header = request.META.get("HTTP_RANGE", "").strip()
-            start_time = float(request.query_params.get("start", 0))
-
-            response = video_service.stream_video(
-                file_path=file_path,
-                range_header=range_header,
-                start_time=start_time
-            )
-
-            return response
-
-        except MovieFile.DoesNotExist:
-            return Response({"error": "Movie not found"}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            logger.error(f"Streaming error: {str(e)}")
-            return Response({"error": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    @action(detail=True, methods=["get"], url_path="segments")
-    def segments(self, request, pk=None):
-        """Get segment information for the movie"""
-        try:
-            movie_file = MovieFile.objects.get(id=pk)
-            
-            if movie_file.download_status not in ["READY", "PLAYABLE"]:
-                return Response(
-                    {"error": f"Movie is not ready (status: {movie_file.download_status})"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            
-            # Get the full path from the stored file path
-            file_path = os.path.join("/app/downloads", movie_file.file_path)
-            dir_path = os.path.dirname(file_path)
-            base_name = os.path.splitext(os.path.basename(file_path))[0]
-            
-            # Remove _segment_000 suffix if it exists
-            if base_name.endswith("_segment_000"):
-                base_name = base_name[:-12]
-            
-            # Get total movie duration from original file
-            original_file_path = None
-            for ext in ['.mkv', '.mp4', '.avi']:
-                test_path = os.path.join(dir_path, f"{base_name}{ext}")
-                if os.path.exists(test_path):
-                    original_file_path = test_path
-                    break
-            
-            total_duration = None
-            if original_file_path:
-                video_service = VideoService()
-                total_duration = video_service.get_video_duration(original_file_path)
-            
-            # Find all available segments
-            available_segments = []
-            segment_num = 0
-            
-            while True:
-                segment_filename = f"{base_name}_segment_{segment_num:03d}.mp4"
-                segment_path = os.path.join(dir_path, segment_filename)
-                
-                if os.path.exists(segment_path):
-                    available_segments.append({
-                        "segment": segment_num,
-                        "filename": segment_filename,
-                        "size": os.path.getsize(segment_path)
-                    })
-                    segment_num += 1
-                else:
-                    break
-            
-            video_service = VideoService()
-            segment_duration = video_service.segment_duration
-            
-            return Response({
-                "available_segments": available_segments,
-                "segment_duration": segment_duration,
-                "total_segments": len(available_segments),
-                "total_duration": total_duration
-            })
-            
-        except MovieFile.DoesNotExist:
-            return Response({"error": "Movie not found"}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            logger.error(f"Segments info error: {str(e)}")
-            return Response({"error": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 # ++++++++++++++++++++++++++++++++++++++++++++++++
-# subtitle view
-
 
 class SubtitleViewSet(viewsets.ReadOnlyModelViewSet):
     """
-    ViewSet for subtitles operations.
-    GET /subtitles - Get available subtitles with the movie id and language
-    GET /subtitles/{movie_id}/file/{language}/ - Serve the subtitle VTT file
+    GET /api/subtitles/?movie_id=1&language=fr
     """
+    subtitle_service = SubtitleService() 
 
-    subtitle_service = SubtitleService()
+    def list(self, request):
+        movie_id = request.query_params.get("movie_id")
+        user_lang = request.query_params.get("language")
 
-    def get_subtitles(self, movie: MovieFile, languages: list = ['en', 'fr']) -> list:
-        """
-        Checks if VTT files exist locally. If not, downloads them.
-        Returns a list of dictionaries with 'lang' and 'url' for the frontend.
-        """
+        if not movie_id:
+            return Response({"error": "movie_id parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
+        base_sub_dir = os.path.join(settings.MEDIA_ROOT, 'downloads', 'subtitles', str(movie_id))
+
         subtitle_data = []
         
-        base_sub_dir = os.path.join(settings.MEDIA_ROOT, '/downloads/subtitles', str(movie.id))
-        
-        for lang in languages:
+        if user_lang:
+            target_languages = [user_lang]
+        else:
+            target_languages = ['en', 'fr']
+
+        for lang in target_languages:
             vtt_filename = f"{lang}.vtt"
             local_path = os.path.join(base_sub_dir, vtt_filename)
             
             if os.path.exists(local_path):
-                url = os.path.join(settings.MEDIA_URL, 'subtitles', str(movie.id), vtt_filename)
+                url = os.path.join(settings.MEDIA_URL, 'downloads', 'subtitles', str(movie_id), vtt_filename)
+                
                 subtitle_data.append({
-                    'lang': lang,
-                    'label': 'English' if lang == 'en' else lang.upper(),
+                    'language': lang,
+                    'language_name': lang.upper(),
                     'file_path': url
                 })
-            else:
-                return None
 
-        return subtitle_data
+        if subtitle_data:
+            return Response(subtitle_data, status=status.HTTP_200_OK)
 
-    def list(self, request):
-        """
-        Get subtitles for a specific movie in the user's preferred language.
-        Returns a list of subtitle URLs and metadata.
-        If the movie is not found (not yet downloaded), returns an empty list.
-        """
-        movie_id = request.query_params.get("movie_id")
-        language = request.query_params.get("language", "en")
-
-        if not movie_id:
-            return Response({"error": "movie_id is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            movie = MovieFile.objects.get(id=movie_id)
-        except MovieFile.DoesNotExist:
-            return Response([], status=status.HTTP_200_OK) 
-
-        if_local = self.get_subtitles(movie, language)
-        if if_local:
-            return Response(subtitles)
-        subtitles = self.subtitle_service.fetch_subtitles(movie, language)
-        return Response(subtitles)
-
-    @action(detail=False, methods=['get'], url_path=r'(?P<movie_id>\d+)/file/(?P<language>\w+)')
-    def serve_file(self, request, movie_id=None, language=None):
-        """
-        Serve the subtitle VTT file for a specific movie and language.
-        """
-        if not movie_id or not language:
-            raise Http404("Movie ID and language are required")
-
-        # Construct the file path
-        file_path = os.path.join(settings.MEDIA_ROOT, 'downloads', 'subtitles', movie_id, f'{language}.vtt')
-        
-        if not os.path.exists(file_path):
-            raise Http404("Subtitle file not found")
-
-        try:
-            with open(file_path, 'r', encoding='utf-8') as subtitle_file:
-                content = subtitle_file.read()
-            sys.stdout.write(file_path + "\n")
-            sys.stdout.flush()
-            response = HttpResponse(content, content_type='text/vtt')
-            response['Content-Disposition'] = f'inline; filename="{language}.vtt"'
-            return response
-        except Exception as e:
-            raise Http404(f"Error serving subtitle file: {str(e)}")
+        if not subtitle_data:
+            try:
+                movie = MovieFile.objects.get(id=movie_id)
+                self.subtitle_service.fetch_subtitles(movie, lang=user_lang or 'en')
+                
+                return Response(
+                    {"status": "download_triggered", "detail": f"Fetching subtitles for {user_lang or 'en'}"}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+                
+            except MovieFile.DoesNotExist:
+                return Response({"error": "Movie not found"}, status=status.HTTP_404_NOT_FOUND)
+            except Exception as e:
+                return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -1,24 +1,36 @@
 FROM python:3.10
 
-# Install system dependencies
+# 1. Install system dependencies + Cron
 RUN apt-get update && apt-get install -y \
     ffmpeg \
+    cron \
     && rm -rf /var/lib/apt/lists/*
 
-# 1. Set the working directory explicitly
-# This is required so that 'manage.py' is found in the current directory
 WORKDIR /app
 
-# 2. Copy requirements and install
+# 2. Install Python Dependencies
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-# 3. Copy project files
+# 3. Copy Project Files
 COPY . .
 
-# 4. Create directories for static/media files
+# 4. Setup Cron
+# Copy the crontab file to the cron.d directory
+COPY crontab /etc/cron.d/django-cron
+# Give execution rights on the cron job
+RUN chmod 0644 /etc/cron.d/django-cron
+# Apply cron job
+RUN crontab /etc/cron.d/django-cron
+# Create the log file to be able to run tail
+RUN touch /var/log/cron.log
+
+# 5. Create directories
 RUN mkdir -p /app/downloads /app/static /app/media
 
-# 5. Start command
-# We use 'sh -c' to chain the commands (migrate -> run server)
-CMD ["sh", "-c", "python manage.py collectstatic --noinput && python manage.py makemigrations && python manage.py migrate && gunicorn --bind 0.0.0.0:8000 torrent.wsgi --reload"]
+# 6. Copy and permission the Entrypoint
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# 7. Start via the Entrypoint script
+ENTRYPOINT ["sh", "/app/entrypoint.sh"]

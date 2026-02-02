@@ -3,7 +3,7 @@ import * as dotenv from 'dotenv';
 import { resolve } from 'path';
 
 // POINT TO ROOT .ENV
-dotenv.config({ path: resolve(__dirname, '../.env') });
+dotenv.config({ path: resolve(__dirname, '../.env.local') });
 
 // Only replace @db: with @localhost: when running locally (not in Docker)
 // const isDocker = process.env.NODE_ENV === 'production' || process.env.DOCKER === 'true';

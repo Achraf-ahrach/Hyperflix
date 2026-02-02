@@ -27,7 +27,7 @@ import { join } from 'path';
     }),
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '../.env',
+      envFilePath: '../.env.local',
     }),
     HttpModule,
     CacheModule.register({

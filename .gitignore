@@ -69,3 +69,16 @@ cypress/screenshots
 # Ignore the actual downloaded movies/torrents locally (so you don't commit a 2GB movie!)
 server/downloads/
 server/torrents/
+
+
+uploads/
+
+/torrent/torrent_service/downloads
+/torrent/torrent_service/media
+/torrent/torrent_service/static
+/torrent/torrent_service/stream/__pycache__
+/torrent/torrent_service/torrent/__pycache__
+/torrent/torrent_service/stream/migrations
+
+
+.env
