@@ -17,6 +17,7 @@ async function seed() {
       { id: 1, code: 'en' },
       { id: 2, code: 'fr' },
       { id: 3, code: 'ar' },
+      { id: 4, code: 'es' },
     ])
     .onConflictDoNothing();
 

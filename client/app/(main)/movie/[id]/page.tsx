@@ -66,7 +66,7 @@ export default function MovieDetailsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#141414] text-white font-sans">
+    <div className="min-h-screen bg-[#141414] font-sans">
       {/* Hero Section */}
       <div className="relative h-[85vh] w-full">
         {/* Background Image */}

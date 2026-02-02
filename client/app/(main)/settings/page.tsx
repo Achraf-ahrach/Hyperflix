@@ -1,12 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import Profile from "./components/Profile";
 import Account from "./components/Account";
 
 import { Mail, User, Lock, Globe, Check, AlertCircle } from 'lucide-react';
 import Security from "./components/Security";
 import LanguagePreference from "./components/Language";
+import { useUser } from "@/lib/contexts/UserContext";
 
 
 export interface ApiError {
@@ -17,6 +18,7 @@ export interface ApiError {
 
 export default function SettingsPage() {
 
+    const {user} = useUser();
     const [activeSection, setActiveSection] = useState<string>('profile');
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [error, setError] = useState<ApiError | null>(null);
@@ -42,13 +44,23 @@ export default function SettingsPage() {
         }
     }, [error]);
 
+    const sections = [
+    { id: 'profile', label: 'Profile', icon: User },
+    ...(user?.provider === 'local'
+        ? [
+            { id: 'account', label: 'Account', icon: Mail },
+            { id: 'security', label: 'Security', icon: Lock },
+        ]
+        : []),
+    { id: 'preferences', label: 'Preferences', icon: Globe },
+];
 
     return (
 
         <div className="min-h-screen bg-background">
             <div className="max-w-6xl mx-auto px-4 py-4">
                 <div className="mb-8">
-                    <h1 className="text-2xl font-bold text-white mb-2">Settings</h1>
+                    <h1 className="text-2xl font-bold  mb-2">Settings</h1>
                     <p className="text-slate-400">Manage your account and settings</p>
                 </div>
 
@@ -74,14 +86,8 @@ export default function SettingsPage() {
 
                     {/* Sidebar Navigation */}
                     <div className="lg:col-span-1">
-                        <nav className="bg-slate-900/50 backdrop-blur-sm rounded-xl border border-slate-800 p-2 sticky top-4">
-                            {[
-                                { id: 'profile', label: 'Profile', icon: User },
-                                { id: 'account', label: 'Account', icon: Mail },
-                                { id: 'security', label: 'Security', icon: Lock },
-                                // { id: 'pre', label: 'Security', icon: Lock },
-                                { id: 'preferences', label: 'Preferences', icon: Globe },
-                            ].map((section) => (
+                        <nav className="backdrop-blur-sm rounded-xl border border-slate-800 p-2 sticky top-4">
+                            {sections.map((section) => (
                                 <button
                                     key={section.id}
                                     onClick={() => {
@@ -91,8 +97,8 @@ export default function SettingsPage() {
                                     }
                                     }
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${activeSection === section.id
-                                        ? 'bg-[#E50914]/80 text-white'
-                                        : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                                        ? 'bg-[#E50914]/80 '
+                                        : 'text-slate-400  hover:bg-slate-800/50'
                                         }`}
                                 >
                                     <section.icon size={20} />
@@ -103,7 +109,7 @@ export default function SettingsPage() {
                     </div>
 
                     <div className="lg:col-span-3">
-                        <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl border border-slate-800 p-8">
+                        <div className="backdrop-blur-sm rounded-xl border border-slate-800 p-8">
 
                             {
                                 activeSection === "profile" && (

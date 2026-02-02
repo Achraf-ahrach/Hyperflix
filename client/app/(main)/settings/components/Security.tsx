@@ -119,41 +119,41 @@ export default function Security({ setSaveSuccess, setError, error }: SettingPro
 
     return (
         <div className="space-y-6">
-            <h2 className="text-xl font-bold text-white mb-6">Security</h2>
+            <h2 className="text-xl font-bold  mb-6">Security</h2>
 
             <div>
-                <label className="block text-slate-300 font-medium mb-2">Current Password</label>
+                <label className="block  font-medium mb-2">Current Password</label>
                 <input
                     type="password"
                     name="currentPassword"
                     value={formData.currentPassword}
                     onChange={handleInputChange}
-                    className={`w-full bg-slate-800/50 border ${error?.field === 'currentPassword' ? 'border-red-500' : 'border-slate-700'} rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all`}
+                    className={`w-full border ${error?.field === 'currentPassword' ? 'border-red-500' : 'border-slate-700'} rounded-lg px-4 py-3  placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all`}
                     placeholder="Enter current password"
                 />
             </div>
 
             <div>
-                <label className="block text-slate-300 font-medium mb-2">New Password</label>
+                <label className="block  font-medium mb-2">New Password</label>
                 <input
                     type="password"
                     name="newPassword"
                     value={formData.newPassword}
                     onChange={handleInputChange}
-                    className={`w-full bg-slate-800/50 border ${error?.field === 'newPassword' ? 'border-red-500' : 'border-slate-700'} rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all`}
+                    className={`w-full  border ${error?.field === 'newPassword' ? 'border-red-500' : 'border-slate-700'} rounded-lg px-4 py-3  placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all`}
                     placeholder="Enter new password"
                 />
                 <p className="text-slate-500 text-sm mt-2">Must be at least 8 characters</p>
             </div>
 
             <div>
-                <label className="block text-slate-300 font-medium mb-2">Confirm New Password</label>
+                <label className="block  font-medium mb-2">Confirm New Password</label>
                 <input
                     type="password"
                     name="confirmPassword"
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
-                    className={`w-full bg-slate-800/50 border ${error?.field === 'confirmPassword' ? 'border-red-500' : 'border-slate-700'} rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all`}
+                    className={`w-full  border ${error?.field === 'confirmPassword' ? 'border-red-500' : 'border-slate-700'} rounded-lg px-4 py-3  placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all`}
                     placeholder="Confirm new password"
                 />
             </div>

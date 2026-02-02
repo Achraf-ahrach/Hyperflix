@@ -20,7 +20,7 @@ interface CommentItemProps {
 export const CommentItem = ({ comment, onLike, onReply, onDelete, onReplyLike, onReplyDelete }: CommentItemProps) => {
   const [showReplyInput, setShowReplyInput] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  const {user} = useUser();
+  const { user } = useUser();
 
 
   if (!user) return null;
@@ -37,33 +37,36 @@ export const CommentItem = ({ comment, onLike, onReply, onDelete, onReplyLike, o
   } else {
     imageUrl = comment.userAvatar;
   }
-  console.log('Comment userAvatar:', comment.userId , ' :::' , user.id );
+  console.log('Comment userAvatar:', comment.userId, ' :::', user.id);
 
   return (
-    <div className="bg-slate-900/30 border border-slate-800/60 p-6 rounded-2xl group transition-all hover:border-slate-700/60">
+
+    <div className="
+          
+          border border-slate-700
+          p-6 rounded-2xl
+          transition-colors
+          hover:border-slate-600
+        ">
+
       <div className="flex gap-4">
         <img src={imageUrl} className="w-10 h-10 rounded-full bg-slate-800" alt={comment.username} />
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-start">
             <div className="flex items-center gap-2">
               <span className="font-bold text-sm">{comment.username}</span>
-              {comment.userId === user.id && (
-                <span className="text-[10px] bg-red-600/20 text-red-400 px-2 py-0.5 rounded-full uppercase tracking-tighter font-bold border border-red-600/30">
-                  You
-                </span>
-              )}
             </div>
             {comment.userId === user.id && (
               <div className="relative">
                 <button
                   onClick={() => setShowMenu(!showMenu)}
-                  className="text-slate-600 hover:text-white transition-colors"
+                  className="text-slate-600 hover:text-foreground transition-colors"
                   aria-label="Comment options"
                 >
                   <MoreVertical size={16} />
                 </button>
                 {showMenu && (
-                  <div className="absolute right-0 mt-2 w-32 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-10 overflow-hidden">
+                  <div className="absolute right-0 mt-2 w-32  border border-slate-700 rounded-lg shadow-xl z-10 overflow-hidden">
                     <button
                       onClick={() => {
                         onDelete();
@@ -103,7 +106,7 @@ export const CommentItem = ({ comment, onLike, onReply, onDelete, onReplyLike, o
             </button>
             <button
               onClick={() => setShowReplyInput(!showReplyInput)}
-              className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-white transition-colors"
+              className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-foreground transition-colors"
             >
               <MessageCircle size={14} />
               Reply

@@ -12,6 +12,7 @@ export interface User {
   lastName: string;
   avatarUrl: string | null;
   provider: string;
+  langue_code: string;
 }
 
 interface UserContextType {

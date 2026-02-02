@@ -43,7 +43,7 @@ CREATE TABLE "users" (
 	"is_email_verified" boolean DEFAULT false NOT NULL,
 	"email_verification_token" varchar(255),
 	"email_verification_expires" varchar(50),
-	"langue_code" integer DEFAULT 1 NOT NULL,
+	"langue_code" varchar(2) DEFAULT 'en' NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "users_email_unique" UNIQUE("email"),
@@ -86,13 +86,14 @@ CREATE TABLE "watch_later_movies" (
 --> statement-breakpoint
 CREATE TABLE "languages" (
 	"id" integer PRIMARY KEY NOT NULL,
-	"code" varchar(2) NOT NULL
+	"code" varchar(2) NOT NULL,
+	CONSTRAINT "languages_code_unique" UNIQUE("code")
 );
 --> statement-breakpoint
 ALTER TABLE "comments" ADD CONSTRAINT "comments_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "comments" ADD CONSTRAINT "comments_parent_id_comments_id_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."comments"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "comments" ADD CONSTRAINT "comments_movie_id_movies_movie_id_fk" FOREIGN KEY ("movie_id") REFERENCES "public"."movies"("movie_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "users" ADD CONSTRAINT "users_langue_code_languages_id_fk" FOREIGN KEY ("langue_code") REFERENCES "public"."languages"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "users" ADD CONSTRAINT "users_langue_code_languages_code_fk" FOREIGN KEY ("langue_code") REFERENCES "public"."languages"("code") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_mail_tokens" ADD CONSTRAINT "user_mail_tokens_id_users_id_fk" FOREIGN KEY ("id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "comment_likes" ADD CONSTRAINT "comment_likes_comment_id_comments_id_fk" FOREIGN KEY ("comment_id") REFERENCES "public"."comments"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "comment_likes" ADD CONSTRAINT "comment_likes_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint

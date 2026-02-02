@@ -25,7 +25,7 @@ export const ReplyItem = ({ reply, onLike, onDelete }: ReplyItemProps) => {
       <div className="flex-1">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-xs text-slate-300">{reply.username}</span>
+            <span className="font-bold text-xs ">{reply.username}</span>
             {/* <span className="text-[10px] text-slate-600">• Just now</span> */}
           </div>
 
@@ -35,7 +35,7 @@ export const ReplyItem = ({ reply, onLike, onDelete }: ReplyItemProps) => {
 
 
               <div className="relative group">
-                <button className="p-1 text-slate-500 hover:text-slate-300 transition-colors"
+                <button className="p-1 text-slate-500 hover:text-foreground transition-colors"
                   onClick={() => setShowMenu(!showMenu)} >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="12" cy="6" r="1" />
@@ -63,7 +63,7 @@ export const ReplyItem = ({ reply, onLike, onDelete }: ReplyItemProps) => {
           }
         </div>
 
-        <p className="text-slate-400 text-sm mt-0.5">{reply.content}</p>
+        <p className="text-foreground text-sm mt-0.5">{reply.content}</p>
         <button
           onClick={onLike}
           className={`mt-2 flex items-center gap-1 text-[10px] transition-colors ${reply.isLiked ? 'text-red-500 font-bold' : 'text-slate-600 hover:text-red-400'

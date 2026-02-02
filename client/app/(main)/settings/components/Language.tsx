@@ -7,14 +7,16 @@
 
 
 "use client"
-
-
 import ActionSetting from "./ActionSetting";
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { AlertCircle } from "lucide-react";
 import LoadingSetting from "./LoadingSetting";
 import { ApiError } from "../page";
+import api from "@/lib/axios";
+import { useQueryClient } from "@tanstack/react-query";
+import { useUser } from "@/lib/contexts/UserContext";
 
+import { User as UserData } from "@/lib/contexts/UserContext";
 
 
 interface SettingProps {
@@ -31,19 +33,35 @@ interface LanguageForm {
 
 export default function LanguagePreference({ setSaveSuccess, setError, error }: SettingProps) {
 
+    const queryClient = useQueryClient();
+    const { user } = useUser();
+
     const [originalData, setOriginalData] = useState<LanguageForm | null>(
-    {
-        language: 'en',
-    });
+        {
+            language: '',
+        });
     const [formData, setFormData] = useState<LanguageForm>({
-        language: 'en',
+        language: '',
     });
     const [isSaving, setIsSaving] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [currentLanguage, setCurrentLanguage] = useState('');
+    const code_langue = {
+        'en': 'English',
+        'es': 'Spanish',
+        'fr': 'French',
+    };
+    useEffect(() => {
+        if (!user) return;
 
-    const [pendingEmail, setPendingEmail] = useState<string>('');
-    // const [emailVerificationSent, setEmailVerificationSent] = useState(false);
-
+        const data = {
+            language: user.langue_code,
+        };
+        setFormData(data);
+        setOriginalData(data);
+        setIsLoading(false);
+        setCurrentLanguage(code_langue[user.langue_code as keyof typeof code_langue]);
+    }, [user]);
 
     const languages = [
         { code: 'en', name: 'English' },
@@ -74,39 +92,28 @@ export default function LanguagePreference({ setSaveSuccess, setError, error }: 
         setIsSaving(true);
 
         try {
-            // Prepare update payload based on active section
             let endpoint = '';
             let payload = {};
 
             endpoint = `settings/language`;
             payload = {
-                language: formData.language,
+                language_code: formData.language,
             };
 
-
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1500));
-
-            // In production:
-            // const response = await fetch(endpoint, {
-            //   method: 'PATCH',
-            //   headers: {
-            //     'Content-Type': 'application/json',
-            //     'Authorization': `Bearer ${token}`
-            //   },
-            //   body: JSON.stringify(payload)
-            // });
-            //
-            // if (!response.ok) {            setSaveSuccess(true);
-
-            //
-            // const updatedData = await response.json();
-
-            // Mock successful response
+            await api.patch(endpoint, payload);
+            console.log(user);
             const updatedData = { ...formData };
 
             setFormData(updatedData);
             setOriginalData(updatedData);
+            setSaveSuccess(true);
+            queryClient.setQueryData<UserData | null>(
+                ["auth", "profile"],
+                (oldUser) =>
+                    oldUser
+                        ? { ...oldUser, langue_code: formData.language }
+                        : oldUser
+            );
         } catch (err: any) {
             setError({
                 message: err.message || 'Failed to save changes. Please try again.'
@@ -124,15 +131,15 @@ export default function LanguagePreference({ setSaveSuccess, setError, error }: 
 
 
         <div className="space-y-6">
-            <h2 className="text-xl font-bold text-white mb-6">Preferences</h2>
+            <h2 className="text-xl font-bold  mb-6">Preferences</h2>
 
             <div>
-                <label className="block text-slate-300 font-medium mb-2">Preferred Language</label>
+                <label className="block  font-medium mb-2">Preferred Language</label>
                 <select
                     name="language"
                     value={formData.language}
                     onChange={handleInputChange}
-                    className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all cursor-pointer"
+                    className="w-full border border-slate-700 rounded-lg px-4 py-3  focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all cursor-pointer"
                 >
                     {languages.map((lang) => (
                         <option key={lang.code} value={lang.code} className="bg-slate-800">

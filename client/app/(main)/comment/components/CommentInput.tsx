@@ -40,7 +40,7 @@ export const CommentInput = ({ onSubmit, placeholder = "Write a comment...", aut
       <div className="flex gap-2">
         <input
           autoFocus={autoFocus}
-          className="flex-1 bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-red-500/50 transition-colors"
+          className="flex-1  border  rounded-lg px-3 py-2 text-sm outline-none focus:border-red-500/50 transition-colors"
           placeholder={placeholder}
           value={content}
           onChange={(e) => setContent(e.target.value)}
@@ -67,7 +67,8 @@ export const CommentInput = ({ onSubmit, placeholder = "Write a comment...", aut
   }
 
   return (
-    <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-2xl backdrop-blur-sm">
+<div className="border border-zinc-400 dark:border-zinc-600 p-5 rounded-2xl">
+
       <div className="flex gap-4">
         <img src={imageUrl} className="w-10 h-10 rounded-full border border-red-500/50" alt={user.username} />
         <div className="flex-1">
@@ -93,7 +94,7 @@ export const CommentInput = ({ onSubmit, placeholder = "Write a comment...", aut
           <div className="flex justify-between items-center mt-4 border-t border-slate-800/50 pt-4">
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="text-slate-500 hover:text-white transition-colors"
+              className="text-slate-500 hover:text-foreground transition-colors"
               aria-label="Attach image"
             >
               <ImageIcon size={20} />

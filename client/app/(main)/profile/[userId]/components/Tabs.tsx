@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import { TabType } from "../types/types";
 
 
@@ -13,18 +14,19 @@ export const Tabs: React.FC<{
   ];
 
   return (
-    <div className="sticky border-b border-zinc-800">
+    <div className="sticky border-b ">
       <div className="flex gap-8 px-6">
         {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => onTabChange(tab.id)}
-            className={`py-4 font-medium transition-all whitespace-nowrap relative ${
-              activeTab === tab.id
-                ? 'text-white'
-                : 'text-zinc-500 hover:text-zinc-300'
-            }`}
-          >
+        <button
+          key={tab.id}
+          onClick={() => onTabChange(tab.id)}
+          className={cn(
+            "py-4 font-medium transition-all whitespace-nowrap relative",
+            activeTab === tab.id
+              ? "text-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
             <span>{tab.label}</span>
             {activeTab === tab.id && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600" />

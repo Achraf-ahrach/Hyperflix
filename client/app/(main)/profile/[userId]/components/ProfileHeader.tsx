@@ -1,58 +1,58 @@
 import { API_URL } from "@/app/utils";
 import { User } from "../types/types";
 
-// ProfileHeader Component
 export const ProfileHeader: React.FC<{ user: User }> = ({ user }) => {
-  if (user.avatarUrl === '') user.avatarUrl = null;
+  if (user.avatarUrl === "") user.avatarUrl = null;
+
   return (
-    <div className="relative overflow-hidden bg-gradient-to-br ">
-      {/* Decorative background elements */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-0 right-0 w-40 h-40 bg-red-600 blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-32 h-32 bg-red-600 blur-3xl"></div>
-      </div>
-      
+    <div className="relative overflow-hidden bg-background">
       <div className="relative p-8">
-        {/* Profile Image with glow effect */}
+        {/* Profile Image */}
         <div className="flex justify-center mb-6">
-          <div className="relative">
-            <div className="absolute inset-0 bg-red-600 blur-xl opacity-20"></div>
-            {
-              user.avatarUrl ? (
-                <img
-                  src=  {user.avatarUrl.startsWith('/') ? `${API_URL}${user.avatarUrl}` : `${user.avatarUrl}`}
-                  alt="profile"
-                  className="relative w-28 h-28 object-cover border-2 border-red-600/30"
-                />) : (
-                  <img
-                  alt="profile"
-                  className="relative w-28 h-28 object-cover border-2 border-red-600/30"
-                />
-                )
-              
-              }
-          </div>
+          <img
+            src={
+              user.avatarUrl
+                ? user.avatarUrl.startsWith("/")
+                  ? `${API_URL}${user.avatarUrl}`
+                  : user.avatarUrl
+                : undefined
+            }
+            alt="profile"
+            className="w-28 h-28 object-cover border "
+          />
         </div>
 
         {/* User Info */}
-        <div className="text-center space-y-2 mb-8">
-          <h1 className="text-2xl font-semibold text-white tracking-tight">laz</h1>
-          <p className="text-zinc-400 text-sm">{user.username}</p>
+        <div className="text-center space-y-1 mb-8">
+          <h1 className="text-2xl font-semibold text-foreground tracking-tight">
+            laz
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {user.username}
+          </p>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-1 bg-black/30 p-1">
-          <div className="bg-zinc-900/50 p-4 text-center hover:bg-zinc-800/50 transition-colors">
-            <div className="text-2xl font-bold text-white mb-1">{user.watchedCount.toLocaleString()}</div>
-            <div className="text-xs text-zinc-400 uppercase tracking-wider">Watched</div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="border p-4 text-center">
+            <div className="text-2xl font-bold text-foreground mb-1">
+              {user.watchedCount.toLocaleString()}
+            </div>
+            <div className="text-xs text-muted-foreground uppercase tracking-wider">
+              Watched
+            </div>
           </div>
-          <div className="bg-zinc-900/50 p-4 text-center hover:bg-zinc-800/50 transition-colors">
-            <div className="text-2xl font-bold text-white mb-1">{user.commentsCount}</div>
-            <div className="text-xs text-zinc-400 uppercase tracking-wider">Comments</div>
+
+          <div className="border p-4 text-center">
+            <div className="text-2xl font-bold text-foreground mb-1">
+              {user.commentsCount}
+            </div>
+            <div className="text-xs text-muted-foreground uppercase tracking-wider">
+              Comments
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
 };
-
