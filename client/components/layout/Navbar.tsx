@@ -19,6 +19,7 @@ import api from "@/lib/axios";
 import ModeToggle from "../shared/mode-toggle";
 import { useUser } from "@/lib/contexts/UserContext";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { API_URL } from "@/app/utils";
 
 export default function Navbar() {
   const router = useRouter();
@@ -48,6 +49,20 @@ export default function Navbar() {
     return "U";
   };
 
+
+    let imageUrl : string =  ''
+    if (user)
+    {
+      if (!user.avatarUrl) {
+        imageUrl = '';
+      } else if (!user.avatarUrl.startsWith('http')) {
+        imageUrl = `${API_URL}${user.avatarUrl}`;
+      } else {
+        imageUrl = user.avatarUrl;
+      }
+
+    }
+
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur-sm">
       <div className="flex h-16 items-center px-6">
@@ -58,6 +73,7 @@ export default function Navbar() {
           height={40}
           priority
           className="w-32 md:w-44 lg:w-48 object-contain"
+          onClick={()=> router.push("/home")}
         />
 
         {/* Search Bar - Wide center area */}
@@ -90,7 +106,7 @@ export default function Navbar() {
               <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                 <Avatar className="h-9 w-9 border border-border">
                   <AvatarImage
-                    src={user?.avatarUrl || undefined}
+                    src={imageUrl}
                     alt={user?.username || "User"}
                   />
                   <AvatarFallback>{getUserInitials()}</AvatarFallback>

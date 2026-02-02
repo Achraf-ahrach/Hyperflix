@@ -3,6 +3,7 @@ import { Heart } from "lucide-react";
 import { Reply } from "../types/types";
 import { useState } from "react";
 import { useUser } from "@/lib/contexts/UserContext";
+import { API_URL } from "@/app/utils";
 
 
 
@@ -17,11 +18,21 @@ export const ReplyItem = ({ reply, onLike, onDelete }: ReplyItemProps) => {
 
   const [showMenu, setShowMenu] = useState(false);
   const {user} = useUser();
+
+
+  let imageUrl : string =  ''
+    if (!reply.userAvatar) {
+      imageUrl = '';
+    } else if (!reply.userAvatar.startsWith('http')) {
+      imageUrl = `${API_URL}${reply.userAvatar}`;
+    } else {
+      imageUrl = reply.userAvatar;
+    }
   console.log(reply);
   return (
 
     <div className="flex gap-3">
-      <img src={reply.userAvatar} className="w-7 h-7 rounded-full bg-slate-800" alt={reply.username} />
+      <img src={imageUrl} className="w-7 h-7 rounded-full bg-slate-800" alt={reply.username} />
       <div className="flex-1">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">

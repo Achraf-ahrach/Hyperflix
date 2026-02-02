@@ -3,7 +3,6 @@
 
 
 import api from "@/lib/axios";
-import { API_URL } from "@/app/utils";
 import { Reply } from "./types/types";
 import { Comment } from "./types/types";
 
@@ -13,26 +12,22 @@ export const LOAD_MORE_BATCH = 3;
 
 
 
-// --- API Service ---
 export const comment_api = {
   async getComments(movieId: string, limit: number, offset: number) {
+    try {
+      const response = await api.get(`/comments/${movieId}`, {
+        params: {
+          limit,
+          offset
+        },
+      });
 
-    const endpoint = `${API_URL}/comments/${movieId}?limit=${limit}&offset=${offset}`;
-
-    const response = await fetch(endpoint, {
-      method: "GET",
-      credentials: "include",
-      // body: formData
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error('Unauthorized');
-      }
-      throw new Error('Failed to load comments');
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to load comments');
     }
-    return await response.json();
   },
+
 
   async createComment(
     movieId: string,

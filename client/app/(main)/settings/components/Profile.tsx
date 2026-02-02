@@ -161,6 +161,14 @@ export default function Profile({ setSaveSuccess, setError, error }: SettingProp
             console.log(response);
             setFormData({ ...formData, profilePicture: `${API_URL}${response.data.url}` });
             setSaveSuccess(true);
+            queryClient.setQueryData<UserData | null>(
+                ["auth", "profile"],
+                (oldUser) =>
+                    oldUser
+                        ? { ...oldUser, avatarUrl: `${API_URL}${response.data.url}`}
+                        : oldUser
+            );
+
         } catch (err) {
             setError({ message: 'Failed to upload image', field: 'profilePicture' });
             setSaveSuccess(false);
