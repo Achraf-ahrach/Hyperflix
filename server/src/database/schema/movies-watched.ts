@@ -1,16 +1,15 @@
-import { pgTable, integer, varchar, primaryKey, index } from 'drizzle-orm/pg-core';
+import { pgTable, integer, varchar, primaryKey, index, bigserial } from 'drizzle-orm/pg-core';
 import { users } from './users';
+import { movies } from './movies';
 
 export const watchedMovies = pgTable('watched_movies', {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    
     userId: integer('user_id')
         .notNull()
         .references(() => users.id),
-    movieId: integer('movie_id')
+    movieId: varchar('movie_id')
         .notNull()
-        .references(() => users.id),
-},
-    (table) => [
-        primaryKey({ columns: [table.userId, table.movieId] }),
-        index('idx_watched_movies_user').on(table.userId),
-]
+        .references(() => movies.id),
+}
 );

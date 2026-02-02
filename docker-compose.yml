@@ -23,7 +23,7 @@ services:
   backend:
     build: ./server
     container_name: hypertube_backend
-    command: sh -c "npm run db:migrate && npm run start:dev"
+    command: sh -c "npm run db:migrate && npm run db:seed && npm run start:dev"
     depends_on:
       db:
         condition: service_healthy

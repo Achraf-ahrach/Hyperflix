@@ -39,4 +39,21 @@ export class SettingsService {
     return await this.settingRepository.updateProfileAvatar(id, url);
   }
 
+
+  async updateLanguage(id: number, dto: any) {
+    const updateData: Partial<any> = {};
+    if (dto.langue_code !== undefined)
+    {
+      updateData.langue_code = dto.langue_code;
+      try
+      {
+        await this.settingRepository.updateLanguage(id, dto.langue_code);
+      }
+      catch (err)
+      {
+        throw new NotFoundException('Language not found');
+      }
+      return {message: 'Language updated successfully'};
+    }
+  }
 }

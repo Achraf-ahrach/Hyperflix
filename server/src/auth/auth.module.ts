@@ -39,6 +39,6 @@ import { EmailService } from './email.service';
     GoogleStrategy,
     FortyTwoStrategy,
   ],
-  exports: [AuthService],
+  exports: [AuthService, EmailService],
 })
 export class AuthModule {}

@@ -1,5 +1,6 @@
-import { BadRequestException, Controller, Get, NotFoundException, Param, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Delete, Get, NotFoundException, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { MoviesService } from './movies.service';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('movies')
 export class MoviesController {
@@ -36,5 +37,27 @@ export class MoviesController {
     }
 
     return movie;
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post(':id/watch-later')
+  async addMovieToWatchLater(@Param('id') movieId: string, @Req() req: any) {
+    const userId = req.user.id;
+    return this.moviesService.addMovieToWatchLater(userId, movieId);
+  }
+
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post(':id/watched')
+  async addMovieToWatched(@Param('id') movieId: string, @Req() req: any) {
+    const userId = req.user.id;
+    return this.moviesService.addMovieToWatched(userId, movieId);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Delete(':id/watch-later')
+  async removeMovieFromWatchLater(@Param('id') movieId: string, @Req() req: any) {
+    const userId = req.user.id;
+    return this.moviesService.removeMovieFromWatchLater(userId, movieId);
   }
 }

@@ -16,8 +16,8 @@ export interface CommentMedia {
 }
 
 export interface Reply {
-  id: string;
-  userId: string;
+  id: number;
+  userId: number;
   username: string;
   userAvatar: string;
   content: string;
@@ -28,8 +28,8 @@ export interface Reply {
 }
 
 export interface Comment {
-  id: string;
-  userId: string;
+  id: number;
+  userId: number;
   username: string;
   userAvatar: string;
   content: string;

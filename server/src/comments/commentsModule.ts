@@ -6,8 +6,10 @@ import { CreateCommentController } from './controller/create-comment.controller'
 import { CreateReplyCommentController } from './controller/create-reply-comment.controller';
 import { CreateCommentsService } from './service/create-comment.service';
 import { CreateReplyCommentsService } from './service/create-reply-comment.service';
+import { MoviesModule } from 'src/movies/movies.module';
 
 @Module({
+  imports: [MoviesModule],
   controllers: [CommentsController, CreateCommentController, CreateReplyCommentController],
   providers: [CommentsService, CreateCommentsService, CreateReplyCommentsService],
   exports: [CommentsService, CreateCommentsService, CreateReplyCommentsService],

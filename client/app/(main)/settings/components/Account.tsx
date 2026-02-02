@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { AlertCircle } from "lucide-react";
 import LoadingSetting from "./LoadingSetting";
 import { ApiError } from "../page";
+import api from "@/lib/axios";
+import { API_URL } from "@/app/utils";
 
 interface AccountForm {
     email: string;
@@ -33,7 +35,6 @@ export default function Account({setSaveSuccess, setError, error } : SettingProp
     const [isLoading, setIsLoading] = useState(false);
 
     const [pendingEmail, setPendingEmail] = useState<string>('');
-    // const [emailVerificationSent, setEmailVerificationSent] = useState(false);
 
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -76,53 +77,20 @@ export default function Account({setSaveSuccess, setError, error } : SettingProp
             let endpoint = '';
             let payload = {};
 
-            let API_BASE_URL = "/"
-            endpoint = `${API_BASE_URL}/user/account`;
+            endpoint = `${API_URL}/settings/account`;
             payload = {
                 email: formData.email,
             };
 
 
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            await api.patch(endpoint, payload);
 
-            // In production:
-            // const response = await fetch(endpoint, {
-            //   method: 'PATCH',
-            //   headers: {
-            //     'Content-Type': 'application/json',
-            //     'Authorization': `Bearer ${token}`
-            //   },
-            //   body: JSON.stringify(payload)
-            // });
-            //
-            // if (!response.ok) {            setSaveSuccess(true);
+            setPendingEmail(formData.email);
 
-              if (formData.email === originalData?.email) {
-                setSaveSuccess(true);
-                setTimeout(() => setSaveSuccess(false), 3000);
-              }
-            //
-            // const updatedData = await response.json();
-
-            // Mock successful response
-            const updatedData = { ...formData };
-
-            // Handle email change - set pending email and show verification message
-            if (formData.email !== originalData?.email) {
-                setPendingEmail(formData.email);
-                // setEmailVerificationSent(true);
-                // Revert email to original until verified
-                updatedData.email = originalData?.email || formData.email;
-                // setTimeout(() => setEmailVerificationSent(false), 10000);
-            }
-
-
-            setFormData(updatedData);
-            setOriginalData(updatedData);
         } catch (err: any) {
+            const message = err.response?.data?.message;
             setError({
-                message: err.message || 'Failed to save changes. Please try again.'
+                message: message || 'Failed to save changes. Please try again.'
             });
         } finally {
             setIsSaving(false);
@@ -151,7 +119,7 @@ export default function Account({setSaveSuccess, setError, error } : SettingProp
                 </p>
             </div>
 
-            {pendingEmail && pendingEmail !== formData.email && (
+            {pendingEmail && (
                 <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4">
                     <div className="flex items-start gap-3">
                         <AlertCircle className="text-amber-400 flex-shrink-0 mt-0.5" size={18} />

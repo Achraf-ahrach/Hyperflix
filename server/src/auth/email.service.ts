@@ -102,4 +102,121 @@ export class EmailService {
       );
     }
   }
+
+
+
+
+
+
+async sendEmailUpdateVerification(email: string, token: string): Promise<void> {
+  if (!this.emailEnabled) {
+    this.logger.warn(
+      `Email update confirmation not sent to ${email} - SMTP not configured. Token: ${token}`,
+    );
+    this.logger.warn(
+      `Manual confirmation URL: ${
+        this.configService.get<string>('BACKEND_URL') || 'http://localhost:3001'
+      }/confirm-email-update?token=${token}`,
+    );
+    return;
+  }
+
+  const backendUrl =
+    this.configService.get<string>('BACKEND_URL') || 'http://localhost:3001';
+
+  const confirmationUrl = `${backendUrl}/settings/confirm-email-update?token=${token}`;
+
+  const mailOptions = {
+    from: `"Hyperflix" <${this.configService.get<string>('SMTP_USER')}>`,
+    to: email,
+    subject: 'Confirm Your New Email Address - Hyperflix',
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header {
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              padding: 30px;
+              text-align: center;
+              border-radius: 10px 10px 0 0;
+            }
+            .content {
+              background: #f9f9f9;
+              padding: 30px;
+              border-radius: 0 0 10px 10px;
+            }
+            .button {
+              display: inline-block;
+              padding: 12px 30px;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              text-decoration: none;
+              border-radius: 5px;
+              margin: 20px 0;
+            }
+            .footer {
+              text-align: center;
+              margin-top: 20px;
+              color: #666;
+              font-size: 12px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Email Change Request</h1>
+            </div>
+            <div class="content">
+              <h2>Confirm Your New Email Address</h2>
+              <p>
+                You requested to update the email address associated with your Hyperflix account.
+                Please confirm this change by clicking the button below:
+              </p>
+
+              <a href="${confirmationUrl}" class="button">
+                Confirm Email Update
+              </a>
+
+              <p>Or copy and paste this link into your browser:</p>
+              <p style="word-break: break-all; color: #667eea;">
+                ${confirmationUrl}
+              </p>
+
+              <p><strong>This link will expire in 24 hours.</strong></p>
+
+              <p>
+                If you did not request this change, please ignore this email.
+                Your account will remain secure.
+              </p>
+            </div>
+            <div class="footer">
+              <p>&copy; 2026 Hyperflix. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  };
+
+  try {
+    await this.transporter.sendMail(mailOptions);
+    this.logger.log(`Email update confirmation sent successfully to ${email}`);
+  } catch (error) {
+    this.logger.error(
+      `Failed to send email update confirmation to ${email}:`,
+      error.message,
+    );
+    this.logger.warn(`Manual confirmation URL: ${confirmationUrl}`);
+    throw new Error(
+      'Failed to send email update confirmation. Please contact support.',
+    );
+  }
+}
+
+
 }
