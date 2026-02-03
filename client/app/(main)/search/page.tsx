@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSearchMovies } from "@/lib/hooks/useSearchMovies";
 import { MovieCard } from "@/components/movie-card";
-import { FilterBar } from "@/components/filter-bar";
 
 function SearchContent() {
   const searchParams = useSearchParams();
@@ -21,13 +20,6 @@ function SearchContent() {
         </p>
       </div>
 
-      {/* <FilterBar
-                onSortChange={() => { }}
-                onGenreChange={() => { }}
-                onRatingChange={() => { }}
-                onYearChange={() => { }}
-                onHideWatchedChange={() => { }}
-            /> */}
 
       {isLoading ? (
         <div className="flex justify-center items-center py-20">
