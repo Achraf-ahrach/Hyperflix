@@ -9,6 +9,7 @@ import { DRIZZLE } from 'src/database/database.module';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq } from 'drizzle-orm';
 import { movies, watchedMovies, watchLaterMovies } from 'src/database/schema';
+import { MovieFilterDto } from './dto/movie-filter.dto';
 
 // ===== TYPES =====
 export interface NormalizedMovie {
@@ -211,7 +212,9 @@ export class MoviesService {
 
   async getMovie(id: string): Promise<NormalizedMovie | null> {
     // Try cache first
-    const cachedMovies = await this.getAndCacheAllMovies();
+    // const cachedMovies = await this.getAndCacheAllMovies();
+    const cachedMovies = await this.cacheManager.get<NormalizedMovie[]>(CACHE_KEYS.ALL_MOVIES) || [];
+
     const cachedMovie = cachedMovies.find((m) => m?.imdb_code === id);
 
     if (cachedMovie) {
@@ -735,5 +738,67 @@ export class MoviesService {
     }
 
     return { message: `Movie ${movieId} added to user ${userId}'s watched list` };
+  }
+  /**
+   * Get movies from YTS API with sorting and filtering
+   * Uses YTS endpoint parameters for server-side filtering
+   */
+  async getLibraryMovies(filters: MovieFilterDto): Promise<{ movies: NormalizedMovie[]; movie_count: number; page_number: number }> {
+    // Build cache key based on filter params
+    // const filterKey = JSON.stringify(filters);
+    // const cacheKey = `library_${filterKey}`;
+    
+    // const cached = await this.cacheManager.get<{ movies: NormalizedMovie[]; movie_count: number; page_number: number }>(cacheKey);
+    // if (cached) {
+    //   this.logger.debug(`Returning cached library results for filters: ${filterKey}`);
+    //   return cached;
+    // }
+
+    // Build YTS API URL with filter parameters
+    const params = new URLSearchParams();
+    
+    if (filters.page) params.append('page', filters.page.toString());
+    if (filters.limit) params.append('limit', filters.limit.toString());
+    // if (filters.quality && filters.quality !== 'all') params.append('quality', filters.quality);
+    if (filters.minimum_rating) params.append('minimum_rating', filters.minimum_rating.toString());
+    if (filters.query_term) params.append('query_term', filters.query_term);
+    if (filters.genre) params.append('genre', filters.genre);
+    if (filters.sort_by) params.append('sort_by', filters.sort_by);
+    if (filters.order_by) params.append('order_by', filters.order_by);
+
+    const url = `${API_URLS.YTS_SEARCH}?${params.toString()}`;
+    this.logger.log(`Fetching YTS library with filters: ${url}`);
+
+    try {
+      const response = await this.fetchData<any>(url);
+
+      if (!response?.data?.movies) {
+        return { movies: [], movie_count: 0, page_number: filters.page || 1 };
+      }
+
+      const enrichedMovies = await Promise.allSettled(
+        response.data.movies.map((movie: any) => this.enrichYTSMovie(movie))
+      );
+
+      const movies = enrichedMovies
+        .filter((result): result is PromiseFulfilledResult<NormalizedMovie> =>
+          result.status === 'fulfilled'
+        )
+        .map((result) => result.value);
+
+      const result = {
+        movies,
+        movie_count: response.data.movie_count || movies.length,
+        page_number: response.data.page_number || filters.page || 1,
+      };
+
+      // // Cache for 5 minutes (shorter TTL for filtered results)
+      // await this.cacheManager.set(cacheKey, result, 300);
+
+      return result;
+    } catch (error) {
+      this.logger.error(`YTS library fetch failed with filters:`, error.stack);
+      return { movies: [], movie_count: 0, page_number: filters.page || 1 };
+    }
   }
 }

@@ -1,11 +1,18 @@
 "use client";
 
-import { FilterBar } from "@/components/filter-bar";
+// import { FilterBar } from "@/components/filter-bar";
 import { MovieCard } from "@/components/movie-card";
-import { useMoviesLibrary } from "@/lib/hooks/useMovies";
+import { useMoviesLibrary, MovieFilters } from "@/lib/hooks/useMovies";
 import InfiniteScrollContainer from "@/components/infinite-scroll-container";
+import { useState, useCallback } from "react";
+import { FilterBar } from "@/components/filter-bar";
 
 export default function HomePage() {
+  const [filters, setFilters] = useState<MovieFilters>({
+    sort_by: "date_added",
+    order_by: "desc",
+  });
+
   const {
     data: movies,
     isLoading: moviesLoading,
@@ -14,16 +21,17 @@ export default function HomePage() {
     isFetching,
     isFetchingNextPage,
     refetch,
-  } = useMoviesLibrary();
+  } = useMoviesLibrary(filters);
+
+  const handleFiltersChange = useCallback((newFilters: MovieFilters) => {
+    setFilters(newFilters);
+  }, []);
 
   return (
     <main className="container mx-auto py-8 px-4 md:px-6 lg:px-8">
       <FilterBar
-        onSortChange={() => {}}
-        onGenreChange={() => {}}
-        onRatingChange={() => {}}
-        onYearChange={() => {}}
-        onHideWatchedChange={() => {}}
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
       />
 
       {moviesLoading ? (

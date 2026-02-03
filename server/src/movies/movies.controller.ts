@@ -1,17 +1,36 @@
 import { BadRequestException, Controller, Delete, Get, NotFoundException, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { MoviesService } from './movies.service';
 import { AuthGuard } from '@nestjs/passport';
+import { MovieFilterDto } from './dto/movie-filter.dto';
 
 @Controller('movies')
 export class MoviesController {
   constructor(private readonly moviesService: MoviesService) { }
 
   @Get('library')
-  async getTrending(@Query('page') page: string, @Query('limit') limit?: string) {
-    const pageNum = parseInt(page) || 1;
-    const limitNum = parseInt(limit || '10');
-    const allMovies = await this.moviesService.getTrendingMovies(pageNum, limitNum);
-    return allMovies;
+  async getLibrary(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    // @Query('quality') quality?: string,
+    @Query('minimum_rating') minimum_rating?: string,
+    @Query('query_term') query_term?: string,
+    @Query('genre') genre?: string,
+    @Query('sort_by') sort_by?: string,
+    @Query('order_by') order_by?: string,
+  ) {
+    const filters: MovieFilterDto = {
+      page: page ? parseInt(page) : 1,
+      limit: limit ? parseInt(limit) : 20,
+      // quality: quality || undefined,
+      minimum_rating: minimum_rating ? parseInt(minimum_rating) : undefined,
+      query_term: query_term || undefined,
+      genre: genre || undefined,
+      sort_by: sort_by || 'date_added',
+      order_by: order_by || 'desc',
+    };
+
+    const result = await this.moviesService.getLibraryMovies(filters);
+    return result.movies;
   }
 
   @Get('search')
