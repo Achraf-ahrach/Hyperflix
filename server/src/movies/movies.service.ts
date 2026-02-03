@@ -116,7 +116,7 @@ const CACHE_KEYS = {
 const YTS_DOMAIN = 'https://yts.lt';
 
 const API_URLS = {
-  YTS_SEARCH:  YTS_DOMAIN + '/api/v2/list_movies.json',
+  YTS_SEARCH: YTS_DOMAIN + '/api/v2/list_movies.json',
   YTS_TRENDING: YTS_DOMAIN + '/api/v2/list_movies.json?sort_by=download_count&limit=50',
   APIBAY_SEARCH: 'https://apibay.org/q.php',
   APIBAY_TRENDING: 'https://apibay.org/precompiled/data_top100_207.json',
@@ -134,7 +134,7 @@ const TMDB_IMAGE_SIZES = {
 
 const LIMITS = {
   APIBAY_SEARCH_RESULTS: 20,
-  CACHE_TTL: 3600, // 1 hour in seconds
+  CACHE_TTL: 604800, // 7 days in seconds
 } as const;
 
 @Injectable()
@@ -237,9 +237,12 @@ export class MoviesService {
     if (!omdbData) {
       return null;
     }
-    this.logger.log(`Successfully fetched movie ${id} from TMDb`);
+    this.logger.log(`Successfully fetched movie ${id} from OMDb`);
 
-    return this.normalizeOMDbMovie(omdbData);
+    const normalized = this.normalizeOMDbMovie(omdbData);
+    await this.cacheManager.set(specificCacheKey, normalized, LIMITS.CACHE_TTL);
+
+    return normalized;
   }
 
   // ===== SEARCH METHODS =====
@@ -747,7 +750,7 @@ export class MoviesService {
     // Build cache key based on filter params
     // const filterKey = JSON.stringify(filters);
     // const cacheKey = `library_${filterKey}`;
-    
+
     // const cached = await this.cacheManager.get<{ movies: NormalizedMovie[]; movie_count: number; page_number: number }>(cacheKey);
     // if (cached) {
     //   this.logger.debug(`Returning cached library results for filters: ${filterKey}`);
@@ -756,7 +759,7 @@ export class MoviesService {
 
     // Build YTS API URL with filter parameters
     const params = new URLSearchParams();
-    
+
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.limit) params.append('limit', filters.limit.toString());
     // if (filters.quality && filters.quality !== 'all') params.append('quality', filters.quality);

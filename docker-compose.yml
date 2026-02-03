@@ -20,6 +20,17 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:alpine
+    container_name: hypertube_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - hypertube_network
+    restart: always
+
   backend:
     build: ./server
     container_name: hypertube_backend
@@ -114,6 +125,7 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
   media_volume:
   static_volume:
   react_build:

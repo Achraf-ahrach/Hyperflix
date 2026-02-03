@@ -1,6 +1,6 @@
 // server/src/app.module.ts
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { DatabaseModule } from './database/database.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -16,6 +16,7 @@ import { UserProfileModule } from './userprofile/UserProfileModule';
 import { CommentsModule } from './comments/commentsModule';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import KeyvRedis from '@keyv/redis';
 
 @Module({
   imports: [
@@ -30,10 +31,18 @@ import { join } from 'path';
       envFilePath: '../.env.local',
     }),
     HttpModule,
-    CacheModule.register({
-      ttl: 60 * 60 * 1000 * 24, // 24 hours
-      max: 300,
+    CacheModule.registerAsync({
       isGlobal: true,
+      useFactory: async (configService: ConfigService) => {
+        const store = new KeyvRedis(
+          `redis://${configService.get('REDIS_HOST')}:${configService.get('REDIS_PORT')}`,
+        );
+        return {
+          store: () => store,
+          ttl: 604800000, // 7 days in milliseconds
+        };
+      },
+      inject: [ConfigService],
     }),
     AuthModule,
     JwtModule.register({

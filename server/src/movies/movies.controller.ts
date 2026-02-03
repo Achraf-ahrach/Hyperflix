@@ -4,6 +4,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { MovieFilterDto } from './dto/movie-filter.dto';
 
 @Controller('movies')
+@UseGuards(AuthGuard('jwt'))
 export class MoviesController {
   constructor(private readonly moviesService: MoviesService) { }
 

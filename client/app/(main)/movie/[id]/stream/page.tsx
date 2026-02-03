@@ -79,6 +79,7 @@ export default function StreamingPage() {
             <p>{movie.title}</p>
             <p>{movie.imdb_code}</p>
             <p>{movie.torrents?.length}</p>
+            <p>{movie.source}</p>
             {
                 movie.torrents?.map((torrent: any) => (
                     <div key={torrent.url}>
@@ -88,6 +89,8 @@ export default function StreamingPage() {
                     </div>
                 ))
             }
+            <hr />
+
             {
                 loading ? <p>Loading...</p  > :
                     (
