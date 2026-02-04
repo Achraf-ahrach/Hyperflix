@@ -41,13 +41,13 @@ export default function LoginPage() {
 
   const handleGoogleLogin = () => {
     window.location.href = `${
-      process.env.BACKEND_URL || "http://localhost:3001"
+      process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
     }/auth/google`;
   };
 
   const handleFortyTwoLogin = () => {
     window.location.href = `${
-      process.env.BACKEND_URL || "http://localhost:3001"
+      process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
     }/auth/42`;
   };
 
