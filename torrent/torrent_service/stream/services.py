@@ -138,100 +138,99 @@ class SubtitleService:
 
     def fetch_all_subtitles(self, movie: MovieFile) -> list:
         """
-        Downloads the best available subtitle for EVERY language for a specific movie.
-        Returns a list of dicts suitable for frontend dropdowns.
+        1. Get ALL metadata.
+        2. Filter duplicates (keep only the highest rated per language).
+        3. Download only the unique files.
         """
         subtitles_dir = os.path.join(settings.MEDIA_ROOT, 'downloads', 'subtitles', str(movie.id))
         os.makedirs(subtitles_dir, exist_ok=True)
 
-        # 1. Movie-Level Lock (prevents parallel 'download all' triggers)
-        lock_file = os.path.join(subtitles_dir, "download_process.lock")
-        
-        # Simple lock check (in a real app, consider using a proper Redis lock or DB lock)
+        # Lock to prevent parallel fetch triggers
+        lock_file = os.path.join(subtitles_dir, "download.lock")
         if os.path.exists(lock_file):
-            logging.info(f"Subtitle download already in progress for Movie ID {movie.id}. Returning existing.")
             return self._scan_local_subtitles(subtitles_dir, movie.id)
 
-        with open(lock_file, 'w') as f:
-            f.write("locked")
-
-        available_subtitles = []
-        processed_langs = set()
+        with open(lock_file, 'w') as f: f.write("locked")
 
         try:
-            logging.info(f"Fetching metadata for ALL subtitles: {movie.imdb_id}")
-            
-            # 2. Query API without 'languages' param to get EVERYTHING
+            # 1. Fetch Metadata (Metadata is small/fast, so we get everything)
+            logging.info(f"Fetching subtitle list for {movie.imdb_id}...")
             response = requests.get(
                 f"{self.BASE_URL}/subtitles",
                 headers=self.headers,
                 params={
                     "imdb_id": movie.imdb_id,
-                    "order_by": "ratings" # Ensures the first result per language is the best one
-                }
+                    "order_by": "ratings" # IMPORTANT: Best subtitles come first
+                },
+                timeout=10
             )
             response.raise_for_status()
-            data = response.json()
+            api_data = response.json()
 
-            # 3. Iterate and Filter Best-in-Class
-            download_tasks = []
-            
-            for item in data.get('data', []):
+            # 2. DEDUPLICATION LOGIC
+            # We use a dictionary to keep track of languages we have already selected.
+            tasks_to_download = {} 
+            available_subtitles = []
+
+            for item in api_data.get('data', []):
                 attributes = item.get('attributes', {})
-                lang_code = attributes.get('language') # e.g., 'en', 'fr'
+                lang_code = attributes.get('language')
                 
-                # If we already have a subtitle for this language (local or planned), skip duplicates
-                if not lang_code or lang_code in processed_langs:
+                # If we have already selected a file for this language, SKIP IT.
+                # Because we sorted by 'ratings', the first one we see is the best one.
+                if lang_code in tasks_to_download:
                     continue
-                
-                processed_langs.add(lang_code)
 
-                # Check if file already exists locally to skip download
-                local_vtt_name = f"{lang_code}.vtt"
-                local_vtt_path = os.path.join(subtitles_dir, local_vtt_name)
-                
-                if os.path.exists(local_vtt_path):
-                    # Append existing file to results
+                # Check if file exists locally
+                local_filename = f"{lang_code}.vtt"
+                local_path = os.path.join(subtitles_dir, local_filename)
+
+                if os.path.exists(local_path):
+                    # It exists locally, so we mark it as 'done' and add to results
+                    tasks_to_download[lang_code] = "EXISTS" 
                     available_subtitles.append({
                         'language': lang_code,
-                        'label': attributes.get('language_name') or lang_code.upper(),
-                        'src': os.path.join(settings.MEDIA_URL, 'downloads', 'subtitles', str(movie.id), local_vtt_name)
+                        'label': attributes.get('language_name'),
+                        'src': os.path.join(settings.MEDIA_URL, 'downloads', 'subtitles', str(movie.id), local_filename)
                     })
                     continue
 
-                # Prepare download info if not exists
+                # If not local and not in tasks, Queue it for download
                 files = attributes.get('files', [])
                 if files:
-                    file_id = files[0].get('file_id')
-                    # Add to task list for processing
-                    download_tasks.append({
-                        'file_id': file_id,
+                    tasks_to_download[lang_code] = {
+                        'file_id': files[0]['file_id'],
                         'lang_code': lang_code,
-                        'lang_name': attributes.get('language_name') or lang_code.upper(),
+                        'lang_name': attributes.get('language_name'),
                         'subtitles_dir': subtitles_dir,
                         'movie_id': movie.id
-                    })
+                    }
 
-            # 4. Sequential Download (Safe) or Parallel (Fast)
-            # processing sequentially here to be safe with rate limits
-            for task in download_tasks:
-                result = self._download_single_subtitle(task)
-                if result:
-                    available_subtitles.append(result)
+            # 3. Execute Downloads (Only for the unique missing items)
+            # This list is now much smaller (e.g., 5 items instead of 50)
+            clean_tasks = [t for t in tasks_to_download.values() if t != "EXISTS"]
+            
+            logging.info(f"Downloading {len(clean_tasks)} unique subtitles...")
+
+            # Use ThreadPool to download the unique files in parallel
+            with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                futures = [executor.submit(self._download_single_subtitle, task) for task in clean_tasks]
+                
+                for future in concurrent.futures.as_completed(futures):
+                    result = future.result()
+                    if result:
+                        available_subtitles.append(result)
+
+            return available_subtitles
 
         except Exception as e:
-            logging.error(f"Error fetching subtitles for {movie.imdb_id}: {e}")
-            # Fallback: return whatever is on disk
+            logging.error(f"Error in fetch_all_subtitles: {e}")
             return self._scan_local_subtitles(subtitles_dir, movie.id)
         
         finally:
             if os.path.exists(lock_file):
                 os.remove(lock_file)
         
-        # Sort by language name for the frontend
-        available_subtitles.sort(key=lambda x: x['label'])
-        return available_subtitles
-
     def _download_single_subtitle(self, task):
         """Helper to handle the actual file I/O and conversion for a single file."""
         MAX_RETRIES = 3
