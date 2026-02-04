@@ -414,52 +414,45 @@ class VideoViewSet(viewsets.ViewSet):
 
 class SubtitleViewSet(viewsets.ReadOnlyModelViewSet):
     """
-    GET /api/subtitles/?movie_id=1&language=fr
+    GET /api/subtitles/?movie_id=1
+    
+    Returns a list of all available subtitles for the movie.
+    If none exist locally, it triggers a download for all available languages
+    and returns the results.
     """
     subtitle_service = SubtitleService() 
 
     def list(self, request):
         movie_id = request.query_params.get("movie_id")
-        user_lang = request.query_params.get("language")
 
+        # 1. Validation
         if not movie_id:
-            return Response({"error": "movie_id parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
-        base_sub_dir = os.path.join(settings.MEDIA_ROOT, 'downloads', 'subtitles', str(movie_id))
+            return Response(
+                {"error": "movie_id parameter is required"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        subtitle_data = []
-        
-        if user_lang:
-            target_languages = [user_lang]
-        else:
-            target_languages = ['en', 'fr']
-
-        for lang in target_languages:
-            vtt_filename = f"{lang}.vtt"
-            local_path = os.path.join(base_sub_dir, vtt_filename)
+        try:
+            movie = MovieFile.objects.get(id=movie_id)
             
-            if os.path.exists(local_path):
-                url = os.path.join(settings.MEDIA_URL, 'downloads', 'subtitles', str(movie_id), vtt_filename)
-                
-                subtitle_data.append({
-                    'language': lang,
-                    'language_name': lang.upper(),
-                    'file_path': url
-                })
+            # 2. Delegate to Service
+            # This method now handles:
+            # - Checking if files exist locally (Cache)
+            # - Downloading missing files from API (Fetch)
+            # - Returning a standardized list of dicts
+            subtitles = self.subtitle_service.fetch_all_subtitles(movie)
+            
+            # 3. Return Data (Empty list is valid if none found)
+            return Response(subtitles, status=status.HTTP_200_OK)
 
-        if subtitle_data:
-            return Response(subtitle_data, status=status.HTTP_200_OK)
-
-        if not subtitle_data:
-            try:
-                movie = MovieFile.objects.get(id=movie_id)
-                self.subtitle_service.fetch_subtitles(movie, lang=user_lang or 'en')
-                
-                return Response(
-                    {"status": "download_triggered", "detail": f"Fetching subtitles for {user_lang or 'en'}"}, 
-                    status=status.HTTP_404_NOT_FOUND
-                )
-                
-            except MovieFile.DoesNotExist:
-                return Response({"error": "Movie not found"}, status=status.HTTP_404_NOT_FOUND)
-            except Exception as e:
-                return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except MovieFile.DoesNotExist:
+            return Response(
+                {"error": "Movie not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            # Log the full error in your actual logging setup
+            return Response(
+                {"error": "Internal server error processing subtitles."}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

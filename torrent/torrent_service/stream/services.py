@@ -9,6 +9,7 @@ from .models import MovieFile
 from srt_to_vtt import srt_to_vtt
 from django.conf import settings
 import requests
+from concurrent.futures import ThreadPoolExecutor
 
 
 range_re = re.compile(r"bytes\s*=\s*(\d+)\s*-\s*(\d*)", re.I)
@@ -135,101 +136,186 @@ class SubtitleService:
             logging.error(f"Error converting SRT to VTT: {str(e)}")
             return None
 
-    def fetch_subtitles(self, movie: MovieFile, lang: str) -> list:
+    def fetch_all_subtitles(self, movie: MovieFile) -> list:
         """
-        Fetch subtitles with a Lock Mechanism to prevent parallel API spam.
+        Downloads the best available subtitle for EVERY language for a specific movie.
+        Returns a list of dicts suitable for frontend dropdowns.
         """
         subtitles_dir = os.path.join(settings.MEDIA_ROOT, 'downloads', 'subtitles', str(movie.id))
         os.makedirs(subtitles_dir, exist_ok=True)
 
-        lock_file = os.path.join(subtitles_dir, f"{lang}.lock")
-        not_found_marker = os.path.join(subtitles_dir, f"{lang}.notfound")
-
-        if os.path.exists(not_found_marker):
-            logging.info(f"Skipping fetch: Subtitles for {lang} previously not found.")
-            return []
-
+        # 1. Movie-Level Lock (prevents parallel 'download all' triggers)
+        lock_file = os.path.join(subtitles_dir, "download_process.lock")
+        
+        # Simple lock check (in a real app, consider using a proper Redis lock or DB lock)
         if os.path.exists(lock_file):
-            logging.info(f"Download already in progress for {movie.id} [{lang}]. Skipping.")
-            return []
+            logging.info(f"Subtitle download already in progress for Movie ID {movie.id}. Returning existing.")
+            return self._scan_local_subtitles(subtitles_dir, movie.id)
 
         with open(lock_file, 'w') as f:
             f.write("locked")
 
+        available_subtitles = []
+        processed_langs = set()
+
         try:
-            logging.info(f"Fetching subtitles for {movie.imdb_id} in {lang}...")
+            logging.info(f"Fetching metadata for ALL subtitles: {movie.imdb_id}")
+            
+            # 2. Query API without 'languages' param to get EVERYTHING
             response = requests.get(
                 f"{self.BASE_URL}/subtitles",
                 headers=self.headers,
                 params={
                     "imdb_id": movie.imdb_id,
-                    "languages": lang,
-                    "order_by": "ratings"
+                    "order_by": "ratings" # Ensures the first result per language is the best one
                 }
             )
             response.raise_for_status()
             data = response.json()
 
-            if not data.get('data'):
-                logging.warning(f"No subtitles found for {lang}. Creating marker.")
-                with open(not_found_marker, 'w') as f: f.write("404")
-                return []
-
-            subtitles = []
-            download_successful = False
-
+            # 3. Iterate and Filter Best-in-Class
+            download_tasks = []
+            
             for item in data.get('data', []):
                 attributes = item.get('attributes', {})
-                files = attributes.get('files', [])
+                lang_code = attributes.get('language') # e.g., 'en', 'fr'
                 
+                # If we already have a subtitle for this language (local or planned), skip duplicates
+                if not lang_code or lang_code in processed_langs:
+                    continue
+                
+                processed_langs.add(lang_code)
+
+                # Check if file already exists locally to skip download
+                local_vtt_name = f"{lang_code}.vtt"
+                local_vtt_path = os.path.join(subtitles_dir, local_vtt_name)
+                
+                if os.path.exists(local_vtt_path):
+                    # Append existing file to results
+                    available_subtitles.append({
+                        'language': lang_code,
+                        'label': attributes.get('language_name') or lang_code.upper(),
+                        'src': os.path.join(settings.MEDIA_URL, 'downloads', 'subtitles', str(movie.id), local_vtt_name)
+                    })
+                    continue
+
+                # Prepare download info if not exists
+                files = attributes.get('files', [])
                 if files:
                     file_id = files[0].get('file_id')
-                    if file_id:
-                        try:
-                            download_response = requests.post(
-                                f"{self.BASE_URL}/download",
-                                headers=self.headers,
-                                json={"file_id": file_id}
-                            )
-                            download_response.raise_for_status()
-                            download_url = download_response.json().get('link')
+                    # Add to task list for processing
+                    download_tasks.append({
+                        'file_id': file_id,
+                        'lang_code': lang_code,
+                        'lang_name': attributes.get('language_name') or lang_code.upper(),
+                        'subtitles_dir': subtitles_dir,
+                        'movie_id': movie.id
+                    })
 
-                            if download_url:
-                                srt_path = os.path.join(subtitles_dir, f"{lang}.srt")
-                                
-                                file_response = requests.get(download_url)
-                                file_response.raise_for_status()
-
-                                with open(srt_path, 'wb') as f:
-                                    f.write(file_response.content)
-
-                                vtt_path = self.convert_srt_to_vtt(srt_path)
-                                
-                                if vtt_path:
-                                    vtt_relative_path = os.path.join(settings.MEDIA_URL, 'downloads', 'subtitles', str(movie.id), f"{lang}.vtt")
-                                    
-                                    subtitles.append({
-                                        'language': lang,
-                                        'language_name': lang.upper(),
-                                        'file_path': vtt_relative_path
-                                    })
-                                    logging.info(f"Successfully downloaded: {vtt_path}")
-                                    download_successful = True
-                                    break
-
-                        except Exception as e:
-                            logging.error(f"Failed to download specific file {file_id}: {e}")
-                            continue
-            
-            if not download_successful and not subtitles:
-                with open(not_found_marker, 'w') as f: f.write("failed")
-            
-            return subtitles
+            # 4. Sequential Download (Safe) or Parallel (Fast)
+            # processing sequentially here to be safe with rate limits
+            for task in download_tasks:
+                result = self._download_single_subtitle(task)
+                if result:
+                    available_subtitles.append(result)
 
         except Exception as e:
-            logging.error(f"Unexpected error in fetch_subtitles: {str(e)}")
-            return []
+            logging.error(f"Error fetching subtitles for {movie.imdb_id}: {e}")
+            # Fallback: return whatever is on disk
+            return self._scan_local_subtitles(subtitles_dir, movie.id)
         
         finally:
             if os.path.exists(lock_file):
                 os.remove(lock_file)
+        
+        # Sort by language name for the frontend
+        available_subtitles.sort(key=lambda x: x['label'])
+        return available_subtitles
+
+    def _download_single_subtitle(self, task):
+        """Helper to handle the actual file I/O and conversion for a single file."""
+        MAX_RETRIES = 3
+        
+        try:
+            # 1. Get the Download Link
+            download_response = requests.post(
+                f"{self.BASE_URL}/download",
+                headers=self.headers,
+                json={"file_id": task['file_id']}
+            )
+            download_response.raise_for_status()
+            link = download_response.json().get('link')
+            
+            if not link: return None
+
+            # 2. Download the File with Retries
+            srt_path = os.path.join(task['subtitles_dir'], f"{task['lang_code']}.srt")
+            
+            for attempt in range(MAX_RETRIES):
+                try:
+                    file_response = requests.get(link, stream=True)
+                    
+                    # Check for HTTP errors (like 503 Service Unavailable)
+                    if file_response.status_code in [500, 502, 503, 504]:
+                        logging.warning(f"API Error {file_response.status_code}. Retrying {attempt+1}/{MAX_RETRIES}...")
+                        time.sleep(2 * (attempt + 1)) # Exponential backoff
+                        continue
+                    
+                    file_response.raise_for_status()
+                    
+                    # --- CRITICAL CHECK: VALIDATE CONTENT ---
+                    # Read the first 1KB to check if it's HTML garbage
+                    first_chunk = next(file_response.iter_content(1024), b"")
+                    content_start = first_chunk.decode('utf-8', errors='ignore').strip()
+
+                    if "<!DOCTYPE html>" in content_start or "<html" in content_start:
+                        logging.error(f"Invalid file received (HTML Error Page) for {task['lang_code']}. Skipping.")
+                        return None
+                    
+                    # If valid, write the first chunk and the rest
+                    with open(srt_path, 'wb') as f:
+                        f.write(first_chunk)
+                        for chunk in file_response.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                    
+                    break # Success, exit retry loop
+
+                except Exception as download_error:
+                    logging.error(f"Download attempt failed: {download_error}")
+                    if attempt == MAX_RETRIES - 1: return None
+
+            # 3. Convert (Only if SRT exists and is valid)
+            if os.path.exists(srt_path):
+                # Double check file size (Empty files are also bad)
+                if os.path.getsize(srt_path) < 100: 
+                    os.remove(srt_path)
+                    return None
+
+                vtt_path = self.convert_srt_to_vtt(srt_path)
+                
+                if vtt_path:
+                    return {
+                        'language': task['lang_code'],
+                        'label': task['lang_name'],
+                        'src': os.path.join(settings.MEDIA_URL, 'downloads', 'subtitles', str(task['movie_id']), f"{task['lang_code']}.vtt")
+                    }
+
+        except Exception as e:
+            logging.error(f"Failed download task for {task['lang_code']}: {e}")
+            
+        return None    
+
+    def _scan_local_subtitles(self, directory, movie_id):
+        """Fallback: Scan directory and return what currently exists."""
+        results = []
+        if not os.path.exists(directory): return []
+        
+        for filename in os.listdir(directory):
+            if filename.endswith(".vtt"):
+                lang_code = filename.replace(".vtt", "")
+                results.append({
+                    'language': lang_code,
+                    'label': lang_code.upper(), # Simple fallback label
+                    'src': os.path.join(settings.MEDIA_URL, 'downloads', 'subtitles', str(movie_id), filename)
+                })
+        return results

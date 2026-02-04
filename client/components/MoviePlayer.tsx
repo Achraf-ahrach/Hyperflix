@@ -13,8 +13,10 @@ interface VideoPlayerProps {
 
 interface Subtitle {
     language: string;
-    language_name: string;
+    language_name: string; // The backend now sends 'label' or 'language_name'. Adjust based on exact backend response.
+    label?: string;        // Handle both keys just in case
     file_path: string;
+    src?: string;          // Handle both keys
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
@@ -25,62 +27,76 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
     // Status indicators
     const [isPlaylistReady, setIsPlaylistReady] = useState(false);
     const [statusMessage, setStatusMessage] = useState("Initializing...");
-    const [userLanguage, setUserLanguage] = useState('en'); // Example default
+    
+    // Preference state (doesn't trigger API calls, just UI selection)
+    const [userLanguage, setUserLanguage] = useState('en'); 
 
-    // 1. Unified "Wait for Everything" Logic
+    // 1. Unified Fetch Logic
     useEffect(() => {
         let isMounted = true;
         
-        // --- A. Poll for Subtitles ---
-        const waitForSubtitles = async (attempt = 1) => {
+        // --- A. Fetch Subtitles (Once) ---
+        // Backend now handles downloading ALL languages in one go.
+        // We don't need to poll aggressively unless the backend is async (non-blocking).
+        // Assuming your backend "fetch_all_subtitles" blocks until done:
+        const fetchSubtitles = async () => {
             if (!isMounted) return;
             try {
-                const subtitleUrl = `${API_URL}/subtitles/?movie_id=${movieId}&language=${userLanguage}`;
+                // CHANGED: Removed language param. We want everything.
+                const subtitleUrl = `${API_URL}/subtitles/?movie_id=${movieId}`;
                 const res = await axios.get(subtitleUrl);
-                if (isMounted) setSubtitles(res.data);
-            } catch (err: any) {
-                if (isMounted && (err.response?.status === 404 || err.response?.status === 503)) {
-                    if (attempt < 200) setTimeout(() => waitForSubtitles(attempt + 1), 3000);
+                
+                if (isMounted && Array.isArray(res.data)) {
+                    console.log("Subtitles loaded:", res.data);
+                    setSubtitles(res.data);
                 }
+            } catch (err: any) {
+                console.warn("Could not fetch subtitles (might be empty or failed):", err);
+                // We don't set a critical error here because the video can still play without subs.
             }
         };
 
-        // --- B. Poll for Playlist (THE FIX) ---
+        // --- B. Poll for Playlist (Video File) ---
         const waitForPlaylist = async (attempt = 1) => {
             if (!isMounted) return;
             try {
                 setStatusMessage(`Checking for video file (Attempt ${attempt})...`);
                 
-                // We use HEAD to be lightweight, just checking if it exists
+                // HEAD request to check availability
                 await axios.head(`${API_URL}/video/${movieId}/playlist/`);
                 
-                // If we get here, it means 200 OK. The file is ready!
                 if (isMounted) {
                     setIsPlaylistReady(true); 
                     setStatusMessage("Video found! Starting player...");
                 }
             } catch (err: any) {
-                // If 404 (Not Found) or 503 (Not Ready)
+                // If 404/503, retry.
                 if (isMounted && (err.response?.status === 404 || err.response?.status === 503)) {
-                    console.log(`Playlist 404. Retrying in 2s... (Attempt ${attempt})`);
-                    setTimeout(() => waitForPlaylist(attempt + 1), 2000);
+                    // Stop retrying after ~60 seconds to avoid infinite loops
+                    if (attempt < 30) {
+                        setTimeout(() => waitForPlaylist(attempt + 1), 2000);
+                    } else {
+                        setError("Timeout: Video generation took too long.");
+                    }
                 } else if (isMounted) {
-                    // Actual server error (500) or network down
-                    setError("Network Error: Could not reach server.");
+                    setError("Network Error: Could not reach video server.");
                 }
             }
         };
 
-        // Start both loops in parallel
+        // Reset state on movie change
         setSubtitles([]);
         setIsPlaylistReady(false);
-        waitForSubtitles();
+        setError(null);
+        
+        // Trigger
+        fetchSubtitles();
         waitForPlaylist();
 
         return () => { isMounted = false; };
-    }, [movieId, userLanguage]);
+    }, [movieId]); // CHANGED: Removed userLanguage dependency
 
-    // 2. Initialize HLS (Only runs AFTER playlist is confirmed ready)
+    // 2. Initialize HLS
     useEffect(() => {
         if (!isPlaylistReady || !videoRef.current) return;
 
@@ -91,8 +107,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
         if (Hls.isSupported()) {
             hls = new Hls({
                 debug: false,
-                // We don't need aggressive retry logic here anymore 
-                // because we already confirmed the file exists above!
                 manifestLoadingTimeOut: 20000, 
             });
             
@@ -100,12 +114,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
             hls.attachMedia(video);
             
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                video.play().catch(e => console.log("Autoplay blocked:", e));
+                const playPromise = video.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(e => console.log("Autoplay blocked by browser:", e));
+                }
             });
 
             hls.on(Hls.Events.ERROR, (_event, data) => {
                 if (data.fatal) {
-                   // Standard error recovery
                     switch (data.type) {
                         case Hls.ErrorTypes.NETWORK_ERROR:
                             hls?.startLoad(); 
@@ -122,14 +138,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
             });
         } 
         else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            // Safari support
             video.src = hlsUrl;
         }
 
         return () => {
             if (hls) hls.destroy();
         };
-    }, [isPlaylistReady, movieId]); // Dependencies ensure this runs only when ready
+    }, [isPlaylistReady, movieId]);
 
     if (error) return (
         <Box sx={{ p: 2, bgcolor: '#330000', color: 'white', borderRadius: 2 }}>
@@ -141,7 +156,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
     return (
         <Box sx={{ width: '100%', position: 'relative', bgcolor: 'black', borderRadius: 2, overflow: 'hidden' }}>
             
-            {/* Show Overlay if Playlist is NOT ready yet */}
+            {/* Loading Overlay */}
             {!isPlaylistReady && (
                 <Box sx={{ 
                     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
@@ -161,16 +176,29 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
                 style={{ width: '100%', aspectRatio: '16/9', display: 'block' }}
                 crossOrigin="anonymous"
             >
-                {subtitles.map((sub) => (
-                    <track
-                        key={sub.language}
-                        kind="subtitles"
-                        label={sub.language_name}
-                        srcLang={sub.language}
-                        src={sub.file_path.startsWith('http') ? sub.file_path : `${API_HOST}${sub.file_path}`}
-                        default={sub.language === userLanguage}
-                    />
-                ))}
+                {/* Dynamic Subtitle Rendering 
+                   The browser's native player will pick up these tracks.
+                   Because we return ALL languages, the user will see a menu 
+                   (CC button) with "English", "French", etc.
+                */}
+                {subtitles.map((sub) => {
+                    // Handle inconsistencies in backend naming if necessary
+                    const label = sub.label || sub.language_name || sub.language.toUpperCase();
+                    const src = sub.src || sub.file_path;
+                    const finalSrc = src.startsWith('http') ? src : `${API_HOST}${src}`;
+
+                    return (
+                        <track
+                            key={sub.language}
+                            kind="subtitles"
+                            label={label}
+                            srcLang={sub.language}
+                            src={finalSrc}
+                            // Only set default if it matches user preference
+                            default={sub.language === userLanguage} 
+                        />
+                    );
+                })}
             </video>
         </Box>
     );

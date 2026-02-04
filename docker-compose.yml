@@ -24,7 +24,7 @@ services:
     image: redis:alpine
     container_name: hypertube_redis
     ports:
-      - "6379:6379"
+      - "6370:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -97,28 +97,28 @@ services:
       - media_volume:/app/media
     restart: always
 
-  frontend_torrent:
-    build: ./torrent/frontend_torrent/
-    container_name: hypertube-frontend-builder
-    volumes:
-      - ./torrent/frontend_torrent/:/app
-      - react_build:/app/dist
-      - /app/node_modules
-    command: npm run build
+  # frontend_torrent:
+  #   build: ./torrent/frontend_torrent/
+  #   container_name: hypertube-frontend-builder
+  #   volumes:
+  #     - ./torrent/frontend_torrent/:/app
+  #     - react_build:/app/dist
+  #     - /app/node_modules
+  #   command: npm run build
   
   nginx_torrent:
     image: nginx:alpine
     container_name: nginx_torrent_container
     volumes:
       - ./torrent/nginx.conf:/etc/nginx/nginx.conf:ro
-      - react_build:/var/www/frontend
+      # - react_build:/var/www/frontend
       - static_volume:/var/www/static
       - media_volume:/var/www/media
     ports:
       - "8001:80"
     depends_on:
       - torrent
-      - frontend_torrent
+      # - frontend_torrent
     restart: always
     networks:
       - hypertube_network
@@ -128,7 +128,7 @@ volumes:
   redis_data:
   media_volume:
   static_volume:
-  react_build:
+  # react_build:
 
 
 networks:
