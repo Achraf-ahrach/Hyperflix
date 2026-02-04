@@ -1,36 +1,34 @@
-FROM python:3.10
+# 1. Base Image: Slim is much smaller (~120MB)
+FROM python:3.10-slim
 
-# 1. Install system dependencies + Cron
-RUN apt-get update && apt-get install -y \
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# 2. System Deps: Cleanup ensures the layer remains small
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     cron \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
-
-# 2. Install Python Dependencies
+# 3. Python Deps: Install before code to cache this heavy layer
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-# 3. Copy Project Files
+# 4. Copy Project Files
+# This puts EVERYTHING (including crontab and entrypoint.sh) into /app
 COPY . .
 
-# 4. Setup Cron
-# Copy the crontab file to the cron.d directory
-COPY crontab /etc/cron.d/django-cron
-# Give execution rights on the cron job
-RUN chmod 0644 /etc/cron.d/django-cron
-# Apply cron job
-RUN crontab /etc/cron.d/django-cron
-# Create the log file to be able to run tail
-RUN touch /var/log/cron.log
+# 5. Setup Cron & Directories & Permissions (Combined for Speed)
+# We move files that are already in /app instead of COPYing them again.
+RUN mv crontab /etc/cron.d/django-cron && \
+    chmod 0644 /etc/cron.d/django-cron && \
+    crontab /etc/cron.d/django-cron && \
+    touch /var/log/cron.log && \
+    mkdir -p /app/downloads /app/static /app/media && \
+    chmod +x /app/entrypoint.sh
 
-# 5. Create directories
-RUN mkdir -p /app/downloads /app/static /app/media
-
-# 6. Copy and permission the Entrypoint
-COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
-
-# 7. Start via the Entrypoint script
-ENTRYPOINT ["sh", "/app/entrypoint.sh"]
+# 6. Start
+# Running directly allows the script to use its own shebang (#!/bin/bash)
+ENTRYPOINT ["sh","/app/entrypoint.sh"]

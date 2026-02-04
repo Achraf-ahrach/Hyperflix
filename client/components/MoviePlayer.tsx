@@ -73,7 +73,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
                 // If 404/503, retry.
                 if (isMounted && (err.response?.status === 404 || err.response?.status === 503)) {
                     // Stop retrying after ~60 seconds to avoid infinite loops
-                    if (attempt < 30) {
+                    if (attempt < 50) {
                         setTimeout(() => waitForPlaylist(attempt + 1), 2000);
                     } else {
                         setError("Timeout: Video generation took too long.");

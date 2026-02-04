@@ -248,7 +248,10 @@ class VideoViewSet(viewsets.ViewSet):
         movie = get_object_or_404(MovieFile, pk=pk)
         
         if not movie.file_path:
-            raise Http404("File path not set yet.")
+            return Response(
+                {"status": "pending", "detail": "File path not set."}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
             
         absolute_file_path = os.path.join(settings.MEDIA_ROOT, movie.file_path)
         output_dir = os.path.dirname(absolute_file_path)
@@ -257,38 +260,40 @@ class VideoViewSet(viewsets.ViewSet):
         if base_name.endswith("_segment_000"):
             base_name = base_name.replace("_segment_000", "")
 
-        timeout = 90 
-        start_time = time.time()
-        found_segments = []
         
+        if not os.path.exists(output_dir):
+            return Response(
+                {"status": "pending", "detail": "Transcoding directory not created yet."}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # 2. SCAN FILES (Once, no looping)
+        found_segments = []
         pattern = re.compile(rf"^{re.escape(base_name)}_segment_(\d+)\.ts$")
+        
+        try:
+            all_files = os.listdir(output_dir)
+            for f in all_files:
+                match = pattern.match(f)
+                if match:
+                    found_segments.append((int(match.group(1)), f))
+        except Exception as e:
+            # If scanning fails, tell frontend to retry
+            return Response(status=status.HTTP_404_NOT_FOUND)
 
-        while time.time() - start_time < timeout:
-            try:
-                if os.path.exists(output_dir):
-                    all_files = os.listdir(output_dir)
-                    
-                    current_batch = []
-                    for f in all_files:
-                        match = pattern.match(f)
-                        if match:
-                            current_batch.append((int(match.group(1)), f))
-                    
-                    if current_batch:
-                        found_segments = current_batch
-                        break
-            except Exception as e:
-                pass
-            
-            time.sleep(1)
-
+        # 3. CHECK IF SEGMENTS FOUND (Fail Fast)
         if not found_segments:
-            raise Http404("Transcoding starting... please retry in 5 seconds.")
+            return Response(
+                {"status": "pending", "detail": "No segments generated yet."}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
 
+        # 4. BUILD PLAYLIST (Success)
         found_segments.sort(key=lambda x: x[0])
         segments = [x[1] for x in found_segments]
 
         is_finished = movie.download_status == 'READY'
+        # 'EVENT' allows the player to reload the playlist for new segments
         playlist_type = "VOD" if is_finished else "EVENT"
 
         m3u8_content = [
@@ -301,13 +306,14 @@ class VideoViewSet(viewsets.ViewSet):
         
         for seg in segments:
             m3u8_content.append(f"#EXTINF:10.0,")
+            # Ensure this path matches your urls.py configuration
             m3u8_content.append(f"/api/video/{pk}/stream_ts/?file={seg}")
 
         if is_finished:
             m3u8_content.append("#EXT-X-ENDLIST")
             
         return HttpResponse("\n".join(m3u8_content), content_type="application/vnd.apple.mpegurl")
-
+    
     @action(detail=True, methods=['get'])
     def stream_ts(self, request, pk=None):
         """

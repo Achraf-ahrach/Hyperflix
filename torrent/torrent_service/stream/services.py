@@ -10,7 +10,7 @@ from srt_to_vtt import srt_to_vtt
 from django.conf import settings
 import requests
 from concurrent.futures import ThreadPoolExecutor
-
+import concurrent.futures
 
 range_re = re.compile(r"bytes\s*=\s*(\d+)\s*-\s*(\d*)", re.I)
 
@@ -124,16 +124,43 @@ class SubtitleService:
             "User-Agent": "torrent",
         }
 
-    def convert_srt_to_vtt(self, srt_path: str) -> str:
+    def convert_srt_to_vtt(self, srt_path):
         """
-        Convert an SRT file to VTT format and return the path to the VTT file.
+        Converts SRT to VTT, but validates the file first.
         """
+        if not os.path.exists(srt_path):
+            logging.error(f"SRT file not found: {srt_path}")
+            return None
+
+        # 1. CHECK FILE SIZE (The Fix)
+        # If file is empty or too small (< 10 bytes), it's garbage.
+        if os.path.getsize(srt_path) < 10:
+            logging.warning(f"SRT file is empty or corrupted: {srt_path}. Deleting.")
+            os.remove(srt_path) # Delete it so we can try downloading again later
+            return None
+
         vtt_path = srt_path.replace('.srt', '.vtt')
+
         try:
-            srt_to_vtt(srt_path, vtt_path)
+            try:
+                with open(srt_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+            except UnicodeDecodeError:
+                with open(srt_path, 'r', encoding='latin-1') as f:
+                    content = f.read()
+            import re
+            content = "WEBVTT\n\n" + re.sub(r'(\d{2}:\d{2}:\d{2}),(\d{3})', r'\1.\2', content)
+
+            with open(vtt_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+                
             return vtt_path
+
         except Exception as e:
-            logging.error(f"Error converting SRT to VTT: {str(e)}")
+            logging.error(f"Error converting SRT to VTT: {e}")
+            # Optional: Delete bad file so it doesn't crash next time
+            if os.path.exists(srt_path):
+                os.remove(srt_path)
             return None
 
     def fetch_all_subtitles(self, movie: MovieFile) -> list:
