@@ -239,6 +239,33 @@ export class AuthController {
     return response.redirect('http://localhost:3000/');
   }
 
+  // ============== GitHub OAuth ==============
+  @Get('github')
+  @UseGuards(AuthGuard('github'))
+  async githubAuth() {
+    // Initiates GitHub OAuth flow
+  }
+
+  @Get('github/callback')
+  @UseGuards(AuthGuard('github'))
+  async githubAuthCallback(
+    @Request() req,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    console.log('\nGitHub OAuth callback user:', req.user);
+    const { access_token } = await this.authService.login(req.user);
+
+    response.cookie('Authentication', access_token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    });
+
+    // Redirect to frontend after successful login
+    return response.redirect('http://localhost:3000/');
+  }
+
   // ============== Protected Routes ==============
   @UseGuards(AuthGuard('jwt'))
   @Get('profile')

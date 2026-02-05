@@ -8,8 +8,8 @@ while ! nc -z db 5432; do
 done
 echo "Database is ready!"
 
-echo "Running database migrations..."
-npm run db:migrate
+# Skip migrations in production - they should be run manually or via CI/CD
+echo "Skipping automatic migrations. Run 'npm run db:migrate' manually if needed."
 
 echo "Starting application..."
 exec "$@"

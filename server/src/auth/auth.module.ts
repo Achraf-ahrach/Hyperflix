@@ -8,6 +8,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { FortyTwoStrategy } from './strategies/fortytwo.strategy';
+import { GitHubStrategy } from './strategies/github.strategy';
 import { UsersModule } from '../users/users.module';
 import { EmailService } from './email.service';
 
@@ -38,6 +39,7 @@ import { EmailService } from './email.service';
     LocalStrategy,
     GoogleStrategy,
     FortyTwoStrategy,
+    GitHubStrategy,
   ],
   exports: [AuthService, EmailService],
 })
