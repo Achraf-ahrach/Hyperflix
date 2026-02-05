@@ -5,7 +5,6 @@ import axios from 'axios';
 
 const API_HOST = process.env.REACT_APP_STREAMING_API_URL || 'http://localhost:8001';
 const API_BASE_URL = `${API_HOST}/api`;
-const API_URL = API_BASE_URL;
 
 interface VideoPlayerProps {
     movieId: number;
@@ -13,67 +12,50 @@ interface VideoPlayerProps {
 
 interface Subtitle {
     language: string;
-    language_name: string; // The backend now sends 'label' or 'language_name'. Adjust based on exact backend response.
-    label?: string;        // Handle both keys just in case
+    language_name: string;
+    label?: string;
     file_path: string;
-    src?: string;          // Handle both keys
+    src?: string;
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [subtitles, setSubtitles] = useState<Subtitle[]>([]);
     const [error, setError] = useState<string | null>(null);
-    
-    // Status indicators
     const [isPlaylistReady, setIsPlaylistReady] = useState(false);
     const [statusMessage, setStatusMessage] = useState("Initializing...");
-    
-    // Preference state (doesn't trigger API calls, just UI selection)
-    const [userLanguage, setUserLanguage] = useState('en'); 
+    const [userLanguage, setUserLanguage] = useState('en');
 
-    // 1. Unified Fetch Logic
     useEffect(() => {
         let isMounted = true;
         
-        // --- A. Fetch Subtitles (Once) ---
-        // Backend now handles downloading ALL languages in one go.
-        // We don't need to poll aggressively unless the backend is async (non-blocking).
-        // Assuming your backend "fetch_all_subtitles" blocks until done:
         const fetchSubtitles = async () => {
             if (!isMounted) return;
             try {
-                // CHANGED: Removed language param. We want everything.
-                const subtitleUrl = `${API_URL}/subtitles/?movie_id=${movieId}`;
+                const subtitleUrl = `${API_BASE_URL}/subtitles/?movie_id=${movieId}`;
                 const res = await axios.get(subtitleUrl);
                 
                 if (isMounted && Array.isArray(res.data)) {
-                    console.log("Subtitles loaded:", res.data);
                     setSubtitles(res.data);
                 }
-            } catch (err: any) {
-                console.warn("Could not fetch subtitles (might be empty or failed):", err);
-                // We don't set a critical error here because the video can still play without subs.
+            } catch (err) {
+                // Silent fail for subtitles
             }
         };
 
-        // --- B. Poll for Playlist (Video File) ---
         const waitForPlaylist = async (attempt = 1) => {
             if (!isMounted) return;
             try {
                 setStatusMessage(`Checking for video file (Attempt ${attempt})...`);
-                
-                // HEAD request to check availability
-                await axios.head(`${API_URL}/video/${movieId}/playlist/`);
+                await axios.head(`${API_BASE_URL}/video/${movieId}/playlist/`);
                 
                 if (isMounted) {
                     setIsPlaylistReady(true); 
                     setStatusMessage("Video found! Starting player...");
                 }
             } catch (err: any) {
-                // If 404/503, retry.
                 if (isMounted && (err.response?.status === 404 || err.response?.status === 503)) {
-                    // Stop retrying after ~60 seconds to avoid infinite loops
-                    if (attempt < 50) {
+                    if (attempt < 120) {
                         setTimeout(() => waitForPlaylist(attempt + 1), 2000);
                     } else {
                         setError("Timeout: Video generation took too long.");
@@ -84,24 +66,21 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
             }
         };
 
-        // Reset state on movie change
         setSubtitles([]);
         setIsPlaylistReady(false);
         setError(null);
         
-        // Trigger
         fetchSubtitles();
         waitForPlaylist();
 
         return () => { isMounted = false; };
-    }, [movieId]); // CHANGED: Removed userLanguage dependency
+    }, [movieId]);
 
-    // 2. Initialize HLS
     useEffect(() => {
         if (!isPlaylistReady || !videoRef.current) return;
 
         const video = videoRef.current;
-        const hlsUrl = `${API_URL}/video/${movieId}/playlist/`;
+        const hlsUrl = `${API_BASE_URL}/video/${movieId}/playlist/`;
         let hls: Hls | null = null;
 
         if (Hls.isSupported()) {
@@ -114,10 +93,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
             hls.attachMedia(video);
             
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                const playPromise = video.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(e => console.log("Autoplay blocked by browser:", e));
-                }
+                video.play().catch(() => {});
             });
 
             hls.on(Hls.Events.ERROR, (_event, data) => {
@@ -155,8 +131,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
 
     return (
         <Box sx={{ width: '100%', position: 'relative', bgcolor: 'black', borderRadius: 2, overflow: 'hidden' }}>
-            
-            {/* Loading Overlay */}
             {!isPlaylistReady && (
                 <Box sx={{ 
                     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
@@ -164,9 +138,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
                     bgcolor: 'rgba(0,0,0,0.8)', zIndex: 10 
                 }}>
                     <CircularProgress color="secondary" />
-                    <Typography sx={{ mt: 2, color: 'white' }}>
-                        {statusMessage}
-                    </Typography>
+                    <Typography sx={{ mt: 2, color: 'white' }}>{statusMessage}</Typography>
                 </Box>
             )}
 
@@ -176,25 +148,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
                 style={{ width: '100%', aspectRatio: '16/9', display: 'block' }}
                 crossOrigin="anonymous"
             >
-                {/* Dynamic Subtitle Rendering 
-                   The browser's native player will pick up these tracks.
-                   Because we return ALL languages, the user will see a menu 
-                   (CC button) with "English", "French", etc.
-                */}
-                {subtitles.map((sub) => {
-                    // Handle inconsistencies in backend naming if necessary
+                {subtitles.map((sub, index) => {
                     const label = sub.label || sub.language_name || sub.language.toUpperCase();
-                    const src = sub.src || sub.file_path;
-                    const finalSrc = src.startsWith('http') ? src : `${API_HOST}${src}`;
+                    const rawSrc = sub.src || sub.file_path;
+                    const finalSrc = rawSrc.startsWith('http') ? rawSrc : `${API_HOST}${rawSrc}`;
 
                     return (
                         <track
-                            key={sub.language}
+                            key={sub.file_path || index}
                             kind="subtitles"
                             label={label}
                             srcLang={sub.language}
                             src={finalSrc}
-                            // Only set default if it matches user preference
                             default={sub.language === userLanguage} 
                         />
                     );
