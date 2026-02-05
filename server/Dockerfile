@@ -28,14 +28,11 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY package*.json ./
 COPY drizzle ./drizzle
 COPY drizzle.config.ts ./
-COPY docker-entrypoint.sh ./
 COPY tsconfig.json ./
-RUN chmod +x docker-entrypoint.sh
 
 # Install drizzle-kit locally for migrations
 RUN npm install drizzle-kit drizzle-orm dotenv pg
 
 EXPOSE 3001
 
-# ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["node", "dist/main.js"]
