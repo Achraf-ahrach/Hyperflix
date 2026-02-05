@@ -34,7 +34,7 @@ services:
   backend:
     build: ./server
     container_name: hypertube_backend
-    command: sh -c "npm run db:generate && npm run db:migrate && npm run db:seed && npm run start:dev"
+    command: sh -c "npm install --include=dev && npm run start:dev"
     depends_on:
       db:
         condition: service_healthy
@@ -43,6 +43,7 @@ services:
     environment:
       PORT: ${BACKEND_PORT}
       DATABASE_URL: ${DATABASE_URL}
+      NODE_ENV: development
     ports:
       - "${BACKEND_PORT}:${BACKEND_PORT}"
     working_dir: /app
@@ -50,7 +51,7 @@ services:
       - hypertube_network
     volumes:
       - ./server:/app
-      - /app/node_modules
+      - backend_node_modules:/app/node_modules
 
   frontend:
     build: ./client
@@ -71,7 +72,6 @@ services:
       - ./client:/app
       - /app/node_modules
 
-# test torrent integration
 
   torrent:
     build: ./torrent/torrent_service/
@@ -96,29 +96,18 @@ services:
       - static_volume:/app/static
       - media_volume:/app/media
     restart: always
-
-  # frontend_torrent:
-  #   build: ./torrent/frontend_torrent/
-  #   container_name: hypertube-frontend-builder
-  #   volumes:
-  #     - ./torrent/frontend_torrent/:/app
-  #     - react_build:/app/dist
-  #     - /app/node_modules
-  #   command: npm run build
   
   nginx_torrent:
     image: nginx:alpine
     container_name: nginx_torrent_container
     volumes:
       - ./torrent/nginx.conf:/etc/nginx/nginx.conf:ro
-      # - react_build:/var/www/frontend
       - static_volume:/var/www/static
       - media_volume:/var/www/media
     ports:
       - "8001:80"
     depends_on:
       - torrent
-      # - frontend_torrent
     restart: always
     networks:
       - hypertube_network
@@ -128,8 +117,8 @@ volumes:
   redis_data:
   media_volume:
   static_volume:
-  # react_build:
 
+  backend_node_modules:
 
 networks:
   hypertube_network:
