@@ -2,7 +2,7 @@
 
 # Complete setup for new developers
 setup:
-	docker compose up --build -d
+	docker compose up --build 
 	@echo "Waiting for database to be ready..."
 	sleep 15
 	docker compose exec backend npx drizzle-kit migrate
