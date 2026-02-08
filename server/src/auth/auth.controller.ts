@@ -15,6 +15,8 @@ import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
@@ -56,19 +58,25 @@ export class AuthController {
     try {
       const user = await this.authService.register(registerDto);
 
-      return { 
-        message: 'Registration successful. Please check your email to verify your account.',
-        user 
+      return {
+        message:
+          'Registration successful. Please check your email to verify your account.',
+        user,
       };
     } catch (error) {
-      throw new BadRequestException(error.message);
+      throw new BadRequestException({
+        statusCode: 400,
+        message: error.message,
+        error: 'Bad Request',
+      });
     }
   }
 
   // ============== Email Verification ==============
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Verify email address',
-    description: 'Verifies user email address using the token sent via email. The token is valid for 24 hours.'
+    description:
+      'Verifies user email address using the token sent via email. The token is valid for 24 hours.',
   })
   @ApiResponse({
     status: 200,
@@ -99,9 +107,10 @@ export class AuthController {
     }
   }
 
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Resend verification email',
-    description: 'Sends a new verification email to the user if the previous token expired or was not received.'
+    description:
+      'Sends a new verification email to the user if the previous token expired or was not received.',
   })
   @ApiBody({
     schema: {
@@ -111,7 +120,8 @@ export class AuthController {
           type: 'string',
           format: 'email',
           example: 'user@example.com',
-          description: 'Email address of the user who needs a new verification link',
+          description:
+            'Email address of the user who needs a new verification link',
         },
       },
       required: ['email'],
@@ -122,7 +132,10 @@ export class AuthController {
     description: 'Verification email sent successfully',
     schema: {
       properties: {
-        message: { type: 'string', example: 'Verification email sent successfully' },
+        message: {
+          type: 'string',
+          example: 'Verification email sent successfully',
+        },
       },
     },
   })
@@ -132,10 +145,11 @@ export class AuthController {
     schema: {
       properties: {
         statusCode: { type: 'number', example: 400 },
-        message: { 
-          type: 'string', 
+        message: {
+          type: 'string',
           example: 'Email already verified',
-          description: 'Could be: "User not found", "Email already verified", or "Failed to send verification email"'
+          description:
+            'Could be: "User not found", "Email already verified", or "Failed to send verification email"',
         },
         error: { type: 'string', example: 'Bad Request' },
       },
@@ -277,5 +291,61 @@ export class AuthController {
   async logout(@Res({ passthrough: true }) response: Response) {
     response.clearCookie('Authentication');
     return { message: 'Logged out' };
+  }
+
+  // Add these methods before the closing brace of the controller
+
+  @ApiOperation({
+    summary: 'Request password reset',
+    description:
+      "Sends a password reset link to the user's email if the account exists.",
+  })
+  @ApiBody({ type: ForgotPasswordDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Reset link sent (always returns success for security)',
+    schema: {
+      properties: {
+        message: {
+          type: 'string',
+          example: 'If that email exists, a password reset link has been sent',
+        },
+      },
+    },
+  })
+  @Post('forgot-password')
+  async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+    return await this.authService.forgotPassword(forgotPasswordDto.email);
+  }
+
+  @ApiOperation({
+    summary: 'Reset password with token',
+    description:
+      'Resets the user password using the token from the email link.',
+  })
+  @ApiBody({ type: ResetPasswordDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Password reset successfully',
+    schema: {
+      properties: {
+        message: { type: 'string', example: 'Password reset successfully' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid or expired token',
+  })
+  @Post('reset-password')
+  async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+    try {
+      return await this.authService.resetPassword(
+        resetPasswordDto.token,
+        resetPasswordDto.newPassword,
+      );
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
   }
 }

@@ -11,9 +11,9 @@ export default function Home() {
 
   useEffect(() => {
     if (!isLoading && user) {
-      router.replace("/home");
+      window.location.href = "/home";
     }
-  }, [user, isLoading, router]);
+  }, [user, isLoading]);
 
   if (isLoading || user) {
     return (
