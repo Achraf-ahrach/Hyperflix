@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Play, Plus, ThumbsUp, Share2, CheckCircle2, Circle } from "lucide-react";
+import { Play, Plus, ThumbsUp, Share2, CheckCircle2, Circle, Minus } from "lucide-react";
 
 import api from "@/lib/axios";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,10 @@ import { Movie } from "@/lib/types/Movie";
 import { useSelector, useDispatch } from "react-redux";
 import { setSelectedMovie } from "@/lib/store/uiSlice";
 import { CommentsSection } from "@/features/comment/comment";
+import { userService } from "@/services/user.service";
+import { toast } from "sonner";
+import { is } from "zod/v4/locales";
+import { Spinner } from "@/components/ui/spinner";
 
 export default function MovieDetailsPage() {
   const [showNoMagnetPopup, setShowNoMagnetPopup] = useState(false);
@@ -20,6 +24,9 @@ export default function MovieDetailsPage() {
   const { id }: { id: string } = useParams();
   const queryClient = useQueryClient();
   const dispatch = useDispatch();
+  const [isInWatchlist, setIsInWatchlist] = useState(false);
+
+
 
   const { data: movieQ, isLoading } = useQuery<Movie>({
     queryKey: ["movie", id],
@@ -100,6 +107,41 @@ export default function MovieDetailsPage() {
     },
   });
 
+  const { data: watchListData, isLoading: isWatchListLoading } = useQuery({
+    queryKey: ["watchList",],
+    queryFn: async () => {
+      // console.log("Checking if movie is in watchlist...");
+      const { data } = await api.get(`/movies/${id}/watch-later`);
+      // console.log("Watchlist response:", data);
+      setIsInWatchlist(data);
+      return data;
+    },
+  })
+
+  const { mutate: mutateWatchList, isPending: isWatchListPending } = useMutation({
+    mutationFn: async (movieId: string) => {
+      if (isInWatchlist) {
+        return await userService.deleteMovieFromWatchlist(movieId);
+      } else {
+        return await userService.addMovieToWatchlist(movieId);
+      }
+    },
+    onSuccess: (result) => {
+      if (isInWatchlist) {
+        toast.message
+        ("Movie removed from watchlist");
+      } else {
+        toast.message("Movie added to watchlist");
+      }
+      setIsInWatchlist(!isInWatchlist);
+    },
+    onError: (err: any) => {
+      toast.error(err.message);
+    }
+  });
+
+  // const movie = useSelector((state: any) => state.ui.selectedMovie) || movieQ;
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
@@ -135,6 +177,11 @@ export default function MovieDetailsPage() {
   const handleSearch = () => {
     router.push(`/search?q=${encodeURIComponent(movie.title)}`);
   };
+
+
+  const handleAddToWatchlist = async () => {
+    mutateWatchList(id); 
+  }
 
   return (
     <div className="min-h-screen bg-[#141414] font-sans">
@@ -225,11 +272,21 @@ export default function MovieDetailsPage() {
               <Button
                 variant="secondary"
                 className="gap-2 bg-white/10 hover:bg-white/20 text-white border-none backdrop-blur-md"
+                onClick={handleAddToWatchlist}
               >
-                <Plus className="w-4 h-4" />
-                My List
+                {
+                  isWatchListLoading ? (
+                    <Spinner/>
+                  )
+                  :
+                  isInWatchlist ? (
+                    <Minus className="w-4 h-4" />
+                  ) : (
+                    <Plus className="w-4 h-4" />
+                  )}
+                Watch List
               </Button>
-              <Button
+              {/* <Button
                 variant="secondary"
                 className="gap-2 bg-white/10 hover:bg-white/20 text-white border-none backdrop-blur-md"
               >
@@ -242,7 +299,7 @@ export default function MovieDetailsPage() {
               >
                 <Share2 className="w-4 h-4" />
                 Share
-              </Button>
+              </Button> */}
             </div>
           </div>
         </div>

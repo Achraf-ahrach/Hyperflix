@@ -91,4 +91,10 @@ export class MoviesController {
     const userId = req.user.id;
     return this.moviesService.removeMovieFromWatched(userId, movieId);
   }
+ 
+  @Get(':id/watch-later')
+  async isMovieInWatchLater(@Param('id') movieId: string, @Req() req: any) {
+    const userId = req.user.id;
+    return this.moviesService.isMovieInWatchLater(userId, movieId);
+  }
 }

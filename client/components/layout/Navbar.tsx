@@ -68,6 +68,7 @@ export default function Navbar() {
           height={40}
           priority
           className="w-32 md:w-44 lg:w-48 object-contain"
+          onClick={()=> router.push('/home')}
         />
 
         {/* Search Bar - Wide center area */}

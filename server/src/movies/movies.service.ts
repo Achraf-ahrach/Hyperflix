@@ -810,13 +810,15 @@ export class MoviesService {
       if (!new_movie) {
         throw new NotFoundException('Movie not found');
       }
-
-      await this.db.insert(movies).values({
-        id: new_movie.imdb_code,
-        title: new_movie.title,
-        productionYear: new_movie.year,
-        coverImageUrl: new_movie.thumbnail,
-      });
+      else {
+        await this.db.insert(movies).values({
+          id: new_movie.imdb_code,
+          title: new_movie.title,
+          productionYear: new_movie.year,
+          // imdbRating: new_movie.rating,
+          coverImageUrl: new_movie.thumbnail,
+        });
+      }
     }
     try {
       await this.db.insert(watchLaterMovies).values({
@@ -824,7 +826,7 @@ export class MoviesService {
         movieId,
       });
     }
-    catch (error) {
+    catch (error : any) {
       this.logger.error(`Failed to add movie ${movieId} to user ${userId}'s watch-later list: ${error.message}`);
       throw new HttpException('Failed to add movie to watch-later list', HttpStatus.FORBIDDEN);
     }
@@ -843,7 +845,7 @@ export class MoviesService {
       );
 
     }
-    catch (error) {
+    catch (error : any) {
       this.logger.error(`Failed to remove movie ${movieId} from user ${userId}'s watch-later list: ${error.message}`);
       throw new HttpException('Failed to remove movie from watch-later list', HttpStatus.FORBIDDEN);
     }
@@ -874,7 +876,7 @@ export class MoviesService {
         movieId,
       });
     }
-    catch (error) {
+    catch (error : any) {
       this.logger.error(`Failed to add movie ${movieId} to user ${userId}'s watched list: ${error.message}`);
       throw new HttpException('Failed to add movie to watched list', HttpStatus.FORBIDDEN);
     }
@@ -898,6 +900,21 @@ export class MoviesService {
 
     return { message: `Movie ${movieId} removed from user ${userId}'s watched list` };
   }
+  async isMovieInWatchLater(userId: number, movieId: string): Promise<boolean> {
+    const result = await this.db.select().from(watchLaterMovies).where(
+      and(
+        eq(watchLaterMovies.userId, userId),
+        eq(watchLaterMovies.movieId, movieId)
+      )
+    ).limit(1);
+
+    return result.length > 0;
+  }
+
+
+
+
+
   /**
    * Get movies from YTS API with sorting and filtering
    * Uses YTS endpoint parameters for server-side filtering
