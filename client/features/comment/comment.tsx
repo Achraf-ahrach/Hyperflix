@@ -10,15 +10,8 @@ import { CommentInput } from './components/CommentInput';
 import { CommentItem } from './components/CommentItem';
 import { Comment } from './types/types';
 
-interface CommentInputProps {
-  onSubmit: (content: string, media?: File) => Promise<void>;
-  placeholder?: string;
-  autoFocus?: boolean;
-  compact?: boolean;
-}
 
 
-// --- Main Comments Section Component ---
 export const CommentsSection = ({ movieId }: { movieId: string }) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [page, setPage] = useState<number>(0);
