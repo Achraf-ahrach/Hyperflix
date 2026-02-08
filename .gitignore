@@ -71,7 +71,7 @@ server/downloads/
 server/torrents/
 
 
-uploads/
+uploads/*
 
 /torrent/torrent_service/downloads/*
 /torrent/torrent_service/media/*

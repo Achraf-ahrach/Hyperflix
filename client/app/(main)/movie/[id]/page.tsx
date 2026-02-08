@@ -11,7 +11,7 @@ import api from "@/lib/axios";
 import { Button } from "@/components/ui/button";
 import { Movie } from "@/lib/types/Movie";
 import { useSelector } from "react-redux";
-import { CommentsSection } from "../../comment/page";
+import { CommentsSection } from "@/features/comment/comment";
 
 export default function MovieDetailsPage() {
   const [showNoMagnetPopup, setShowNoMagnetPopup] = useState(false);

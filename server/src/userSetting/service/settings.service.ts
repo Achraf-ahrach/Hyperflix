@@ -4,7 +4,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { SettingsRepository } from '../repository/settings.repository';
-import { AccountSettingsDto } from '../dto/account-settings.dto';
 import { ProfileSettingsDto } from '../dto/profile-settings.dto';
 
 
@@ -15,23 +14,28 @@ export class SettingsService {
 
 
   async updateProfileSettings(id: number, dto: ProfileSettingsDto) {
+    console.log(dto);
     if (dto.username) {
       const user = await this.settingRepository.findByUsername(dto.username);
-      if (user && user.id !== id) { // Also check it's not the same user
+      if (user && user.id !== id) {
         throw new BadRequestException('This username already exists');
       }
     }
 
-      const updateData: Partial<ProfileSettingsDto> = {};
-      if (dto.first_name !== undefined) updateData.first_name = dto.first_name;
-      if (dto.last_name !== undefined) updateData.last_name = dto.last_name;
-      if (dto.username !== undefined) updateData.username = dto.username;
+    const updateData: Partial<ProfileSettingsDto> = {};
+    if (dto.firstName !== undefined) updateData.firstName = dto.firstName  ;
+    if (dto.lastName !== undefined) updateData.lastName = dto.lastName;
+    if (dto.username !== undefined) updateData.username = dto.username;
+    if (dto.avatarUrl !== undefined) updateData.avatarUrl = dto.avatarUrl;
 
-      if (Object.keys(updateData).length > 0) {
-        await this.settingRepository.updateProfile(id, updateData);
+    if (Object.keys(updateData).length > 0) {
+      const result = await this.settingRepository.updateProfile(id, updateData);
+      if (result) {
+        return updateData;
       }
+    }
 
-    return true;
+    return { message: 'Profile updated successfully' };
   }
 
   async updateProfileAvatar(id: number, url: string)
@@ -43,7 +47,6 @@ export class SettingsService {
   async updateLanguage(id: number, dto: any) {
     if (dto.language_code !== undefined)
     {
-
       console.log(dto);
       try
       {

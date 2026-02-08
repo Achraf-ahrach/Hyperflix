@@ -12,11 +12,15 @@ export class ProfileSettingsDto {
 
     @IsOptional()
     @IsString()
-    first_name?: string;
+    firstName?: string;
 
 
     @IsOptional()
     @IsString()
-    last_name?: string;
+    lastName?: string;
 
+    
+    @IsOptional()
+    @IsString()
+    avatarUrl?: string;
 }
