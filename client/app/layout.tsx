@@ -1,3 +1,4 @@
+// "use client";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -5,6 +6,9 @@ import { ThemeProvider } from "@/components/shared/theme-provider";
 import QueryProvider from "@/components/providers/QueryProvider";
 import ReduxProviders from "@/lib/store/ReduxProviders";
 import { UserProvider } from "@/lib/contexts/UserContext";
+// import { Toaster } from "@/components/ui/sonner";
+// import { Toaster } from "sonner";
+// import { Toaster } from "@/components/ui/sonner"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,7 +44,7 @@ export default function RootLayout({
               enableSystem={false}
               storageKey="theme"
               disableTransitionOnChange
-            >
+              >
               <ReduxProviders>{children}</ReduxProviders>
             </ThemeProvider>
           </UserProvider>
