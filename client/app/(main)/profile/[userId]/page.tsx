@@ -13,6 +13,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { MovieCard } from '@/components/profile/MovieCard';
 import { CommentCard } from '@/components/profile/CommentCard';
 import { Pagination } from '@/components/profile/Pagination';
+import { watch } from 'fs';
 
 
 
@@ -74,7 +75,7 @@ const ProfilePage = () => {
     error: watchListError
   } = useQuery({
     queryKey: ['watchlist', currentPage.watchlist],
-    queryFn: () => profileService.getMovies({
+    queryFn: () => profileService.getWatchLater({
       userId: userId,
       pageNum: currentPage.watchlist
     }),
@@ -93,11 +94,16 @@ const ProfilePage = () => {
   const ActivityItem = ({ label, userValue, avgValue, colorClass }:
     { label: string; userValue: number; avgValue: number; colorClass: string }) => {
 
-    const diff = ((userValue - avgValue) / avgValue) * 100;
+    let diff = ((Number(userValue) - avgValue) / avgValue) * 100;
     const isHigher = diff > 0;
-    const barWidth = Math.min((userValue / (avgValue * 2)) * 100, 100);
+    const barWidth = Number(Math.min((Number(userValue) / (avgValue * 2)) * 100, 100));
     const barColor = colorClass.replace('text', 'bg');
     const textColor = colorClass;
+
+    if (isNaN(diff)) {
+      diff = 0;
+    }
+
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm">
@@ -226,11 +232,18 @@ const ProfilePage = () => {
                     )))
                 }
               </div>
-              <Pagination
-                current={currentPage.watched}
-                total={moviesData?.meta.lastPage}
-                onPageChange={(page) => setCurrentPage({ ...currentPage, watched: page })}
-              />
+              {
+                  moviesData?.meta.lastPage > 1 ?
+                  (
+                    <Pagination
+                    current={currentPage.watched}
+                    total={moviesData?.meta.lastPage}
+                    onPageChange={(page) => setCurrentPage({ ...currentPage, watched: page })}
+                    />
+                  )
+                  :
+                  <p className='text-center'>No movies available</p>
+              }
             </TabsContent>
 
             {/* Comments Tab */}
@@ -245,13 +258,19 @@ const ProfilePage = () => {
                 )}
               </div>
 
-              <Pagination
-                current={currentPage.comments}
-                total={commentData?.meta.lastPage || 0}
-                onPageChange={(page) =>
-                  setCurrentPage({ ...currentPage, comments: page })
-                }
-              />
+              {
+              commentData?.meta.lastPage > 1 ? (
+                <Pagination
+                  current={currentPage.comments}
+                  total={commentData?.meta.lastPage || 0}
+                  onPageChange={(page) =>
+                    setCurrentPage({ ...currentPage, comments: page })
+                  }
+                />
+              ) 
+              :
+               <p className='text-center'>No comments available</p>
+              }
             </TabsContent>
 
             {/* Watch Later Tab */}
@@ -266,11 +285,19 @@ const ProfilePage = () => {
                     )))
                 }
               </div>
-              <Pagination
-                current={currentPage.watchlist}
-                total={watchListData?.meta.lastPage}
-                onPageChange={(page) => setCurrentPage({ ...currentPage, watchlist: page })}
-              />
+              {
+                watchListData?.meta.lastPage > 1 ?
+                (
+
+                  <Pagination
+                  current={currentPage.watchlist}
+                  total={watchListData?.meta.lastPage}
+                  onPageChange={(page) => setCurrentPage({ ...currentPage, watchlist: page })}
+                  />
+                )
+                :
+                <p className='text-center'>No movies in watch later list</p>
+              }
             </TabsContent>
 
 
