@@ -2,7 +2,7 @@
 import { Calendar, Star } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 
-import { Comment } from '@/types/profile';
+import { Comment } from '@/types/profile/profile';
 
 
 

@@ -96,18 +96,19 @@ const ProfilePage = () => {
     const diff = ((userValue - avgValue) / avgValue) * 100;
     const isHigher = diff > 0;
     const barWidth = Math.min((userValue / (avgValue * 2)) * 100, 100);
-
+    const barColor = colorClass.replace('text', 'bg');
+    const textColor = colorClass;
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">{label}</span>
-          <span className={`font-semibold ${colorClass}`}>
+          <span className="text">{label}</span>
+          <span className={`font-semibold ${textColor}`}>
             {isHigher ? '+' : ''}{diff.toFixed(0)}%
           </span>
         </div>
         <div className="h-2 bg-muted rounded-full overflow-hidden">
           <div
-            className={`h-full ${colorClass.replace('text', 'bg')}`}
+            className={`h-full ${barColor}`}
             style={{ width: `${barWidth}%` }}
           />
         </div>
@@ -182,7 +183,6 @@ const ProfilePage = () => {
                 <CardDescription>Compared to platform average</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Movies Watched */}
                 {
                   isUserDataLoading ? (
                     <Spinner />
