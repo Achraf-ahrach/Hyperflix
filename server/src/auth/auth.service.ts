@@ -93,13 +93,15 @@ export class AuthService {
     if (existingUser) {
       throw new Error('User already exists');
     }
-    
+
     const hashedPassword = await bcrypt.hash(userData.password, 10);
-    
+
     // Generate verification token
     const verificationToken = crypto.randomBytes(32).toString('hex');
-    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
-    
+    const verificationExpires = new Date(
+      Date.now() + 24 * 60 * 60 * 1000,
+    ).toISOString(); // 24 hours
+
     const newUser = await this.usersService.createUser({
       email: userData.email,
       username: userData.username,
@@ -110,51 +112,117 @@ export class AuthService {
       emailVerificationToken: verificationToken,
       emailVerificationExpires: verificationExpires,
     });
-    
+
     // Send verification email
-    await this.emailService.sendVerificationEmail(userData.email, verificationToken);
-    
+    await this.emailService.sendVerificationEmail(
+      userData.email,
+      verificationToken,
+    );
+
     const { passwordHash, emailVerificationToken: token, ...result } = newUser;
     return result;
   }
 
   async verifyEmail(token: string) {
     const user = await this.usersService.findByVerificationToken(token);
-    
+
     if (!user) {
       throw new Error('Invalid verification token');
     }
-    
-    if (user.emailVerificationExpires && new Date(user.emailVerificationExpires) < new Date()) {
+
+    if (
+      user.emailVerificationExpires &&
+      new Date(user.emailVerificationExpires) < new Date()
+    ) {
       throw new Error('expired');
     }
-    
+
     await this.usersService.verifyUserEmail(user.id);
-    
+
     return { message: 'Email verified successfully' };
   }
 
   async resendVerificationEmail(email: string) {
     const user = await this.usersService.findByEmail(email);
-    
+
     if (!user) {
       throw new Error('User not found');
     }
-    
+
     if (user.isEmailVerified) {
       throw new Error('Email already verified');
     }
-    
+
     // Generate new verification token
     const verificationToken = crypto.randomBytes(32).toString('hex');
-    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-    
+    const verificationExpires = new Date(
+      Date.now() + 24 * 60 * 60 * 1000,
+    ).toISOString();
+
     // Update user with new token
-    await this.usersService.updateVerificationToken(user.id, verificationToken, verificationExpires);
-    
+    await this.usersService.updateVerificationToken(
+      user.id,
+      verificationToken,
+      verificationExpires,
+    );
+
     // Send new verification email
     await this.emailService.sendVerificationEmail(email, verificationToken);
-    
+
     return { message: 'Verification email sent successfully' };
+  }
+
+  // Add these methods at the end of the AuthService class, before the closing brace
+
+  async forgotPassword(email: string) {
+    const user = await this.usersService.findByEmail(email);
+
+    if (!user) {
+      // Return success even if user not found (security best practice)
+      return {
+        message: 'If that email exists, a password reset link has been sent',
+      };
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetExpires = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+
+    // Save token to user
+    await this.usersService.updatePasswordResetToken(
+      user.id,
+      resetToken,
+      resetExpires,
+    );
+
+    // Send reset email
+    await this.emailService.sendPasswordResetEmail(email, resetToken);
+
+    return {
+      message: 'If that email exists, a password reset link has been sent',
+    };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    const user = await this.usersService.findByPasswordResetToken(token);
+
+    if (!user) {
+      throw new Error('Invalid or expired reset token');
+    }
+
+    if (
+      user.passwordResetExpires &&
+      new Date(user.passwordResetExpires) < new Date()
+    ) {
+      throw new Error('expired');
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password and clear reset token
+    await this.usersService.resetPassword(user.id, hashedPassword);
+
+    return { message: 'Password reset successfully' };
   }
 }
