@@ -1,5 +1,3 @@
-
-
 import axios from "axios";
 
 const api = axios.create({
@@ -7,20 +5,23 @@ const api = axios.create({
   withCredentials: true,
 });
 
-
-
-// api.interceptors.response.use(
-//   (response) => response,
-//   (error) => {
-//     if (error.response?.status === 401) {
-//       if (typeof window !== "undefined" && window.location.pathname !== '/login'
-//         && window.location.pathname !== '/signup'
-//       ) {
-//         window.location.href = '/login';
-//       }
-//     }
-//     return Promise.reject(error);
-//   }
-// );
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      if (
+        typeof window !== "undefined" &&
+        window.location.pathname !== "/login" &&
+        window.location.pathname !== "/signup" &&
+        window.location.pathname !== "/" &&
+        window.location.pathname !== "/forgot-password" &&
+        !window.location.pathname.startsWith("/reset-password")
+      ) {
+        window.location.href = "/login";
+      }
+    }
+    return Promise.reject(error);
+  },
+);
 
 export default api;

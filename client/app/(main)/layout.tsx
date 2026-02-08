@@ -1,6 +1,7 @@
 "use client";
 
 import Navbar from "@/components/layout/Navbar";
+import { Toaster } from "sonner";
 import { useUser } from "@/lib/contexts/UserContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -33,7 +34,12 @@ export default function MainLayout({
 
   return (
     <div className="antialiased bg-background min-h-screen text-foreground">
+      <Toaster
+          position="top-center"
+          richColors
+        />
       <Navbar />
+      
       {children}
     </div>
   );

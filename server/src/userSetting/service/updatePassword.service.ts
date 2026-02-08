@@ -2,11 +2,10 @@
 
 
 
-import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException, ForbiddenException } from '@nestjs/common';
 
 import * as bcrypt from 'bcrypt';
 import { SettingsRepository } from '../repository/settings.repository';
-import { AccountSettingsDto } from '../dto/account-settings.dto';
 import { PasswordSettingsDto } from '../dto/passwordSetting.dto';
 
 
@@ -49,7 +48,7 @@ export class UpdatePasswordService {
     }
 
     if (confirm_password !== new_password)
-      throw new UnauthorizedException('Confirm password must equal to new password');
+      throw new BadRequestException('Confirm password must equal to new password');
 
     if (!validateMinLength(new_password)) {
       throw new BadRequestException('Password must be at least 8 characters long');
@@ -70,17 +69,16 @@ export class UpdatePasswordService {
 
     const user = await this.settingsRepository.findById(userId);
     if (!user)
-      throw new UnauthorizedException('User not found');
+      throw new NotFoundException('User not found');
     if (!user.passwordHash)
-      throw new UnauthorizedException('You are not allowed to modify password here');
+      throw new ForbiddenException('You are not allowed to modify password');
 
     const isCurrentPasswordCorrect = await bcrypt.compare(current_password, user.passwordHash);
     if (!isCurrentPasswordCorrect)
-      throw new UnauthorizedException('Wrong current password');
+      throw new BadRequestException('Wrong current password');
 
     const passwordHash = await bcrypt.hash(new_password, 10);
     await this.settingsRepository.updatePassword(userId, passwordHash);
-
 
     return true;
   }

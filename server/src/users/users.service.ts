@@ -19,6 +19,15 @@ export class UsersService {
     return result[0] || null;
   }
 
+  async findByUsername(username: string) {
+    const result = await this.db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.username, username))
+      .limit(1);
+    return result[0] || null;
+  }
+
   async findById(id: number) {
     const result = await this.db
       .select()
@@ -109,7 +118,6 @@ export class UsersService {
     userId: number,
     providerData: { provider: string; providerId: string },
   ) {
-
     const result = await this.db
       .update(schema.users)
       .set({
@@ -133,7 +141,6 @@ export class UsersService {
   }
 
   async verifyUserEmail(userId: number) {
-
     const result = await this.db
       .update(schema.users)
       .set({
@@ -148,13 +155,61 @@ export class UsersService {
     return result[0];
   }
 
-  async updateVerificationToken(userId: number, token: string, expires: string) {
-
+  async updateVerificationToken(
+    userId: number,
+    token: string,
+    expires: string,
+  ) {
     const result = await this.db
       .update(schema.users)
       .set({
         emailVerificationToken: token,
         emailVerificationExpires: expires,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.users.id, userId))
+      .returning();
+
+    return result[0];
+  }
+
+  // Add this method at the end of the class, before the closing brace
+
+  async updatePasswordResetToken(
+    userId: number,
+    token: string,
+    expires: string,
+  ) {
+    const result = await this.db
+      .update(schema.users)
+      .set({
+        passwordResetToken: token,
+        passwordResetExpires: expires,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.users.id, userId))
+      .returning();
+
+    return result[0];
+  }
+
+  async findByPasswordResetToken(token: string) {
+    const result = await this.db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.passwordResetToken, token))
+      .limit(1);
+
+    return result[0] || null;
+  }
+
+  async resetPassword(userId: number, hashedPassword: string) {
+    const result = await this.db
+      .update(schema.users)
+      .set({
+        passwordHash: hashedPassword,
+        passwordResetToken: null,
+        passwordResetExpires: null,
         updatedAt: new Date(),
       })
       .where(eq(schema.users.id, userId))

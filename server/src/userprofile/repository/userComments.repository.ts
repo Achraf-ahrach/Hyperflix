@@ -32,7 +32,8 @@ export class UserCommentsRepository {
         limit: number
     ) {
         const offset = (page - 1) * limit;
-
+        const cleanLimit = Math.max(1, Number(limit));
+        console.log(`Fetching comments for userId: ${userId}, page: ${page}, limit: ${cleanLimit} offset: ${offset}`);
         const data = await this.db
             .select({
                 id: comments.id,
@@ -48,7 +49,7 @@ export class UserCommentsRepository {
             .where(
                 eq(comments.userId, userId))
             .orderBy(desc(comments.createdAt), desc(comments.id) )
-            .limit(limit)
+            .limit(cleanLimit)
             .offset(offset);
 
         const [{ count }] = await this.db
@@ -61,7 +62,7 @@ export class UserCommentsRepository {
             meta: {
                 total: Number(count),
                 page,
-                limit,
+                limit: cleanLimit,
                 lastPage: Math.ceil(count / limit),
             },
         };
@@ -79,4 +80,24 @@ export class UserCommentsRepository {
         return count;
     }
 
+async getGlobalAverage(): Promise<number> {
+    // 1. Define the subquery with an explicit .as() on the SQL field
+    const sq = this.db
+        .select({ 
+            // The .as('value') here is what Drizzle was complaining about
+            value: sql<number>`count(*)`.as('value') 
+        })
+        .from(comments)
+        .groupBy(comments.userId)
+        .as('sq');
+
+    // 2. Reference it in the outer query
+    const [result] = await this.db
+        .select({
+            average: sql<number>`CAST(AVG(${sq.value}) AS FLOAT)`
+        })
+        .from(sq);
+
+    return result?.average || 0;
+}
 }

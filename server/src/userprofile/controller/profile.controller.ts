@@ -12,58 +12,54 @@ export class UsersProfileController {
         private userProfileService: UserProfileService
     ) { }
 
- // @UseGuards(AuthGuard('jwt'))
+    @UseGuards(AuthGuard('jwt'))
     @Get(':userId')
     async getProfileData(
         @Param('userId') userId: number,
-        @Req() request: Request,
-    )
-    {
+    ) {
         return this.userProfileService.getProfilePublicInfo(userId);
     }
-    // @UseGuards(AuthGuard('jwt'))
+    @UseGuards(AuthGuard('jwt'))
     @Get(':userId/movies')
     async getProfileWatchedMovies(
         @Param('userId') userId: number,
         @Query('page') page = 1,
         @Query('limit') limit = 20,
         @Req() request: Request,
-    )
-    {
+    ) {
         if (limit > 20) limit = 20;
         return this.userProfileService.getUserWatchedMovies
-        (
-            userId,
-            page,
-            limit
-        )
+            (
+                userId,
+                page,
+                limit
+            )
     }
 
 
+    @UseGuards(AuthGuard('jwt'))
     @Get(':userId/movies/watch-later')
     async getProfileWatchLaterMovies(
         @Param('userId') userId: number,
         @Query('page') page = 1,
         @Query('limit') limit = 20,
-    )
-    {
+    ) {
         if (limit > 20) limit = 20;
         return this.userProfileService.getUserWatchLaterMovies
-        (
-            userId,
-            page,
-            limit
-        )
+            (
+                userId,
+                page,
+                limit
+            )
     }
 
-    // @UseGuards(AuthGuard('jwt'))
+    @UseGuards(AuthGuard('jwt'))
     @Get(':userId/comments')
     async updateSettings(
         @Param('userId') userId: number,
         @Query('page') page = 1,
         @Query('limit') limit = 20,
-    )
-    {
+    ) {
         if (limit > 20) limit = 20;
         return this.userProfileService.getUserComments(
             userId,

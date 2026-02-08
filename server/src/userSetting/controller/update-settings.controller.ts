@@ -1,9 +1,7 @@
 // src/users/users.controller.ts
 import { Controller, Patch, Body, Param, ParseIntPipe, Req, Post, UseInterceptors, UploadedFile, UseGuards, Get, Query, Redirect, Res, BadRequestException } from '@nestjs/common';
-import express from 'express'; 
+import express from 'express';
 import { SettingsService } from '../service/settings.service';
-import { AccountSettingsDto } from '../dto/account-settings.dto';
-import type { Request } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { extname } from 'path';
 import { diskStorage } from 'multer';
@@ -14,6 +12,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { ProfileSettingsDto } from '../dto/profile-settings.dto';
 import { UpdateMailService } from '../service/updateMail.service';
 import { LanguageSettingsDto } from '../dto/language-settings.dto';
+import { AccountSettingsDto } from '../dto/account-settings.dto';
 
 @Controller('settings')
 export class UsersSettingsController {
@@ -25,47 +24,37 @@ export class UsersSettingsController {
 
 
     @UseGuards(AuthGuard('jwt'))
-    @Patch('profile')
-    async updateProfileSettings(
-        @Body() dto: ProfileSettingsDto,
-        @Req() request,
-    ) {
-        return this.usersService.updateProfileSettings(request.user.id, dto);
-    }
-
-
-    @UseGuards(AuthGuard('jwt'))
-    @Patch('account')
+    @Patch('email')
     async updateEmailSettings(
         @Body() dto: AccountSettingsDto,
         @Req() request,
     ) {
         if (dto.email)
-            return this.updateMailService.updateEmailSettings(request.user.id, dto);
+            return this.updateMailService.updateEmailSettings(request.user.id, dto.email);
     }
 
 
-@UseGuards(AuthGuard('jwt'))
-@Get('confirm-email-update')
-async verifyUpdateMail(
-  @Query('token') token: string,
-  @Res() res: express.Response
-) {
-  try {
-    if (!token) throw new BadRequestException('Token is missing');
+    @UseGuards(AuthGuard('jwt'))
+    @Get('confirm-email-update')
+    async verifyUpdateMail(
+        @Query('token') token: string,
+        @Res() res: express.Response
+    ) {
+        try {
+            if (!token) throw new BadRequestException('Token is missing');
 
-    await this.updateMailService.verifyUpdateMail(token);
+            await this.updateMailService.verifyUpdateMail(token);
 
-    return res.redirect(302, 'http://localhost:3000/update-email?status=success');
-  } catch (err) {
-    return res.redirect(302, 'http://localhost:3000/update-email?status=error');
-  }
-}
+            return res.redirect(302, `${process.env.BACKEND_URL}/update-email?status=success`);
+        } catch (err) {
+            return res.redirect(302, `${process.env.BACKEND_URL}/update-email?status=error`);
+        }
+    }
 
     @UseGuards(AuthGuard('jwt'))
-    @Patch('image')
+    @Patch('profile')
     @UseInterceptors(
-        FileInterceptor('image', {
+        FileInterceptor('avatar', {
             storage: diskStorage({
                 destination: './uploads/profile_public',
                 filename: (req, file, callback) => {
@@ -82,12 +71,20 @@ async verifyUpdateMail(
             limits: { fileSize: 5 * 1024 * 1024 },
         }),
     )
-    async uploadFile(@UploadedFile() image: Express.Multer.File, @Req() request) {
-        await this.usersService.updateProfileAvatar(request.user.id, `/profile_public/${image.filename}`);
-        console.log(image);
-        return {
-            url: `/profile_public/${image.filename}`,
-        };
+    async uploadFile(@UploadedFile() file: Express.Multer.File, 
+        @Body() dto: ProfileSettingsDto,
+        @Req() request) {
+
+            const updateData = { ...dto };
+            
+            if (file) {
+                updateData.avatarUrl = `/profile_public/${file.filename}`;
+            }
+            
+            console.log(updateData);
+            return this.usersService.updateProfileSettings(request.user.id, updateData);
+        
+
     }
 
     @UseGuards(AuthGuard('jwt'))

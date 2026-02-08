@@ -6,7 +6,6 @@ import { BadRequestException, Injectable, NotFoundException, UnauthorizedExcepti
 import { JwtService } from '@nestjs/jwt';
 
 import { SettingsRepository } from '../repository/settings.repository';
-import { AccountSettingsDto } from '../dto/account-settings.dto';
 import { TokenRepository } from '../repository/token.repository';
 import { EmailService } from 'src/auth/email.service';
 @Injectable()
@@ -18,19 +17,19 @@ export class UpdateMailService {
     private readonly emailService: EmailService,
   ) { }
 
-  async updateEmailSettings(userId: number, dto: AccountSettingsDto) {
+  async updateEmailSettings(userId: number, email: string) {
 
-    if (dto.email) {
-      const user : any = await this.usersRepository.findByEmail(dto.email);
+    if (email) {
+      const user : any = await this.usersRepository.findByEmail(email);
       if (user)
         throw new BadRequestException('Email already in use');
 
-      const payload = { id: userId, email: dto.email };
+      const payload = { id: userId, email: email };
       const token = this.jwtService.sign(payload);
 
       try
       {
-        await this.emailService.sendEmailUpdateVerification(dto.email, token);
+        await this.emailService.sendEmailUpdateVerification(email, token);
         await this.tokenRepository.createEmailToken(userId, token);
       }
       catch (error) {
@@ -38,7 +37,7 @@ export class UpdateMailService {
       }
 
     }
-    return { email: dto.email };
+    return { email };
   }
 
 

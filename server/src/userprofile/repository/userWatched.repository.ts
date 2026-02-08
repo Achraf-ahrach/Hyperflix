@@ -2,7 +2,7 @@
 
 // src/users/users.repository.ts
 import { Inject, Injectable } from '@nestjs/common';
-import { mailTokens } from '../../database/schema';
+import { mailTokens, watchLaterMovies } from '../../database/schema';
 import { DRIZZLE } from '../../database/database.module';
 import { drizzle } from 'drizzle-orm/node-postgres'
 
@@ -70,5 +70,36 @@ export class UserWatchedMoviesRepository {
                     .where(eq(watchedMovies.userId, userId));
         return count;
     }
+
+
+    async getUserTotalWatchLaterMovies(
+        userId: number,
+    )
+    {
+        const [{ count }] = await this.db
+                    .select({ count: sql<number>`count(*)` })
+                    .from(watchLaterMovies)
+                    .where(eq(watchLaterMovies.userId, userId));
+        return count;
+    }
+
+async getGlobalAverage(): Promise<number> {
+    const sq = this.db
+        .select({ 
+            // value: sql<number>`count(*)` 
+            value: sql<number>`count(*)`.as('value') 
+        })
+        .from(watchedMovies)
+        .groupBy(watchedMovies.userId)
+        .as('sq');
+
+    const [result] = await this.db
+        .select({
+            average: sql<number>`CAST(AVG(${sq.value}) AS FLOAT)`
+        })
+        .from(sq);
+
+    return result?.average || 0;
+}
 
 }

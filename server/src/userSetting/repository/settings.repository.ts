@@ -50,11 +50,13 @@ export class SettingsRepository {
       
       async updateProfile(id: number, data: Partial<ProfileSettingsDto>) {
         const updateData: any = {};
-        if (data.first_name !== undefined) updateData.firstName = data.first_name;
-        if (data.last_name !== undefined) updateData.lastName = data.last_name;
+        if (data.firstName !== undefined) updateData.firstName = data.firstName;
+        if (data.lastName !== undefined) updateData.lastName = data.lastName;
         if (data.username !== undefined) updateData.username = data.username;
-
+        if (data.avatarUrl !== undefined) updateData.avatarUrl = data.avatarUrl;
+        
         await this.db.update(users).set(updateData).where(eq(users.id, id));
+
         return true;
       }
 
