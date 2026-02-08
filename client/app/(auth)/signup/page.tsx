@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/card";
 import bgImage from "@/public/hero-bg.jpg";
 import Image from "next/image";
+import { useUser } from "@/lib/contexts/UserContext";
 
 function SignUpForm() {
   const searchParams = useSearchParams();
@@ -40,6 +41,7 @@ function SignUpForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const router = useRouter();
+  const { refetch } = useUser();
 
   useEffect(() => {
     const emailParam = searchParams.get("email");
@@ -74,12 +76,12 @@ function SignUpForm() {
       });
       setRegistrationSuccess(true);
     } catch (err: any) {
-      console.error("Registration error:", err.response?.data);
+      // Extract error message from response
       const errorMessage =
         err.response?.data?.message ||
         (Array.isArray(err.response?.data?.message)
           ? err.response?.data?.message.join(", ")
-          : "Registration failed. Please try again.");
+          : err.message || "Registration failed. Please try again.");
       setError(errorMessage);
     } finally {
       setIsLoading(false);
