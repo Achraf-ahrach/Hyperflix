@@ -15,10 +15,10 @@ export class MovieFilterDto {
   @Max(50)
   limit?: number = 20;
 
-//   @IsOptional()
-//   @IsString()
-//   @IsIn(['480p', '720p', '1080p', '1080p.x265', '2160p', '3D', 'all'])
-//   quality?: string;
+  //   @IsOptional()
+  //   @IsString()
+  //   @IsIn(['480p', '720p', '1080p', '1080p.x265', '2160p', '3D', 'all'])
+  //   quality?: string;
 
   @IsOptional()
   @Type(() => Number)

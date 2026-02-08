@@ -10,6 +10,7 @@ export interface MovieFilters {
     genre?: string;
     sort_by?: 'title' | 'year' | 'rating' | 'peers' | 'seeds' | 'download_count' | 'like_count' | 'date_added';
     order_by?: 'desc' | 'asc';
+    hideWatched?: boolean;
 }
 
 export function useMoviesLibrary(filters: MovieFilters = {}) {

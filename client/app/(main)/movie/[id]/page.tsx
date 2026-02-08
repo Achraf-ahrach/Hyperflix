@@ -10,7 +10,8 @@ import { Play, Plus, ThumbsUp, Share2, CheckCircle2, Circle } from "lucide-react
 import api from "@/lib/axios";
 import { Button } from "@/components/ui/button";
 import { Movie } from "@/lib/types/Movie";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { setSelectedMovie } from "@/lib/store/uiSlice";
 import { CommentsSection } from "@/features/comment/comment";
 
 export default function MovieDetailsPage() {
@@ -18,6 +19,7 @@ export default function MovieDetailsPage() {
   const router = useRouter();
   const { id }: { id: string } = useParams();
   const queryClient = useQueryClient();
+  const dispatch = useDispatch();
 
   const { data: movieQ, isLoading } = useQuery<Movie>({
     queryKey: ["movie", id],
@@ -28,7 +30,12 @@ export default function MovieDetailsPage() {
     enabled: !!id,
   });
 
-  const movie = useSelector((state: any) => state.ui.selectedMovie) || movieQ;
+  const reduxMovie = useSelector((state: any) => state.ui.selectedMovie);
+
+  // Use Redux movie for data (torrents, etc.) but ALWAYS use API for watched status
+  const movie = reduxMovie
+    ? { ...reduxMovie, watched: movieQ?.watched ?? false }
+    : movieQ;
 
   // Toggle watched status mutation
   const toggleWatchedMutation = useMutation({
@@ -57,12 +64,39 @@ export default function MovieDetailsPage() {
       return { previousMovie };
     },
     onError: (err, variables, context: any) => {
-      // Rollback on error
+      // Rollback query cache
       queryClient.setQueryData(["movie", id], context.previousMovie);
     },
     onSuccess: () => {
-      // Invalidate to ensure we have fresh data
+      // Invalidate individual movie query
       queryClient.invalidateQueries({ queryKey: ["movie", id] });
+
+      // Update library query cache to reflect watched status change
+      queryClient.setQueriesData(
+        { queryKey: ["movies", "library"] },
+        (oldData: any) => {
+          if (!oldData?.pages) return oldData;
+
+          return {
+            ...oldData,
+            pages: oldData.pages.map((page: any) =>
+              page?.map((movie: any) =>
+                movie.imdb_code === id
+                  ? { ...movie, watched: !movie.watched }
+                  : movie
+              )
+            ),
+          };
+        }
+      );
+
+      // Update Redux selectedMovie cache
+      if (reduxMovie && reduxMovie.imdb_code === id) {
+        dispatch(setSelectedMovie({
+          ...reduxMovie,
+          watched: !reduxMovie.watched
+        }));
+      }
     },
   });
 

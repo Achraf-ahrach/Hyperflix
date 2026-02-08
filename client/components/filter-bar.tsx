@@ -7,7 +7,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Search, X, Check } from "lucide-react";
+import { ChevronDown, Search, X, Check, EyeOff } from "lucide-react";
 import { useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { MovieFilters } from "@/lib/hooks/useMovies";
@@ -97,6 +97,10 @@ export function FilterBar({
         onFiltersChange({ ...filters, quality: quality === 'all' ? undefined : quality });
     }, [filters, onFiltersChange]);
 
+    const handleHideWatchedToggle = useCallback(() => {
+        onFiltersChange({ ...filters, hideWatched: !filters.hideWatched });
+    }, [filters, onFiltersChange]);
+
     const handleSearchSubmit = useCallback(() => {
         if (searchQuery.trim()) {
             onFiltersChange({ ...filters, query_term: searchQuery.trim() });
@@ -126,7 +130,7 @@ export function FilterBar({
     const currentGenre = filters.genre || "All Genres";
 
     // Get current rating label
-    const currentRating = filters.minimum_rating 
+    const currentRating = filters.minimum_rating
         ? RATINGS.find(r => r.value === filters.minimum_rating)?.label || "Any Rating"
         : "Any Rating";
 
@@ -139,7 +143,7 @@ export function FilterBar({
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div className="flex flex-wrap items-center gap-3">
                 <span className="text-muted-foreground mr-2 font-medium">Sort by:</span>
-                
+
                 {/* Sort Dropdown */}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -149,8 +153,8 @@ export function FilterBar({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="max-h-80 overflow-y-auto">
                         {SORT_OPTIONS.map((opt) => (
-                            <DropdownMenuItem 
-                                key={`${opt.sort_by}-${opt.order_by}`} 
+                            <DropdownMenuItem
+                                key={`${opt.sort_by}-${opt.order_by}`}
                                 onClick={() => handleSortChange(opt.sort_by, opt.order_by)}
                                 className="flex items-center justify-between"
                             >
@@ -171,7 +175,7 @@ export function FilterBar({
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="max-h-80 overflow-y-auto">
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                             onClick={() => handleGenreChange(undefined)}
                             className="flex items-center justify-between"
                         >
@@ -179,8 +183,8 @@ export function FilterBar({
                             {!filters.genre && <Check className="h-4 w-4 ml-2" />}
                         </DropdownMenuItem>
                         {GENRES.map((genre) => (
-                            <DropdownMenuItem 
-                                key={genre} 
+                            <DropdownMenuItem
+                                key={genre}
                                 onClick={() => handleGenreChange(genre)}
                                 className="flex items-center justify-between"
                             >
@@ -199,7 +203,7 @@ export function FilterBar({
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                             onClick={() => handleRatingChange(undefined)}
                             className="flex items-center justify-between"
                         >
@@ -207,8 +211,8 @@ export function FilterBar({
                             {!filters.minimum_rating && <Check className="h-4 w-4 ml-2" />}
                         </DropdownMenuItem>
                         {RATINGS.map((rating) => (
-                            <DropdownMenuItem 
-                                key={rating.value} 
+                            <DropdownMenuItem
+                                key={rating.value}
                                 onClick={() => handleRatingChange(rating.value)}
                                 className="flex items-center justify-between"
                             >
@@ -241,6 +245,19 @@ export function FilterBar({
                         ))}
                     </DropdownMenuContent>
                 </DropdownMenu> */}
+
+                {/* Hide Watched Toggle */}
+                <Button
+                    variant={filters.hideWatched ? "default" : "secondary"}
+                    className={cn(
+                        "border border-border/50",
+                        filters.hideWatched && "bg-primary hover:bg-primary/90"
+                    )}
+                    onClick={handleHideWatchedToggle}
+                >
+                    <EyeOff className="mr-2 h-4 w-4" />
+                    {filters.hideWatched ? "Watched Hidden" : "Hide Watched"}
+                </Button>
             </div>
 
             <div className="flex items-center gap-4">
@@ -277,7 +294,7 @@ export function FilterBar({
                 </div>
 
                 {/* Active Filters Indicator */}
-                {(filters.genre || filters.minimum_rating || filters.quality || filters.query_term) && (
+                {(filters.genre || filters.minimum_rating || filters.quality || filters.query_term || filters.hideWatched) && (
                     <Button
                         variant="ghost"
                         size="sm"

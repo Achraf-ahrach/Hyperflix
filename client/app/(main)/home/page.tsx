@@ -53,15 +53,17 @@ export default function HomePage() {
             className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"
           >
             {movies?.pages.map((page, i) =>
-              page?.map(
-                (movie, j) =>
-                  movie && (
-                    <MovieCard
-                      key={`${i}-${j}-${movie.imdb_code}`}
-                      movie={movie}
-                    />
-                  ),
-              ),
+              page
+                ?.filter(movie => !filters.hideWatched || !movie.watched)
+                .map(
+                  (movie, j) =>
+                    movie && (
+                      <MovieCard
+                        key={`${i}-${j}-${movie.imdb_code}`}
+                        movie={movie}
+                      />
+                    ),
+                ),
             )}
             {isFetchingNextPage && (
               <div className="flex justify-center items-center">

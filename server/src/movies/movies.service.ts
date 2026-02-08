@@ -806,19 +806,15 @@ export class MoviesService {
       eq(movies.id, movieId)).limit(1);
 
     if (result.length === 0) {
-      const movie = await this.getMovie(movieId);
-    }
+      const new_movie: NormalizedMovie | null = await this.getMovie(movieId);
+      if (!new_movie) {
+        throw new NotFoundException('Movie not found');
+      }
 
-    const new_movie: NormalizedMovie | null = await this.getMovie(movieId);
-    if (!new_movie) {
-      throw new NotFoundException('Movie not found');
-    }
-    else {
       await this.db.insert(movies).values({
         id: new_movie.imdb_code,
         title: new_movie.title,
         productionYear: new_movie.year,
-        // imdbRating: new_movie.rating,
         coverImageUrl: new_movie.thumbnail,
       });
     }
@@ -860,19 +856,15 @@ export class MoviesService {
       eq(movies.id, movieId)).limit(1);
 
     if (result.length === 0) {
-      const movie = await this.getMovie(movieId);
-    }
+      const new_movie: NormalizedMovie | null = await this.getMovie(movieId);
+      if (!new_movie) {
+        throw new NotFoundException('Movie not found');
+      }
 
-    const new_movie: NormalizedMovie | null = await this.getMovie(movieId);
-    if (!new_movie) {
-      throw new NotFoundException('Movie not found');
-    }
-    else {
       await this.db.insert(movies).values({
         id: new_movie.imdb_code,
         title: new_movie.title,
         productionYear: new_movie.year,
-        // imdbRating: new_movie.rating,
         coverImageUrl: new_movie.thumbnail,
       });
     }
