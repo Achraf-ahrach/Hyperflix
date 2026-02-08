@@ -55,8 +55,22 @@ export class AuthService {
           providerId: oauthData.providerId,
         });
       } else {
-        // Create new user
-        user = await this.usersService.createOAuthUser(oauthData);
+        // Check if username already exists and make it unique if needed
+        let username = oauthData.username;
+        let usernameExists = await this.usersService.findByUsername(username);
+        let counter = 1;
+        
+        while (usernameExists) {
+          username = `${oauthData.username}${counter}`;
+          usernameExists = await this.usersService.findByUsername(username);
+          counter++;
+        }
+
+        // Create new user with unique username
+        user = await this.usersService.createOAuthUser({
+          ...oauthData,
+          username,
+        });
       }
     }
 
