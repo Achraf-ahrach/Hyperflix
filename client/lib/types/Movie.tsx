@@ -21,4 +21,5 @@ export interface Movie {
         peers: number;
         size: number;
     }[];
+    watched?: boolean;
 }

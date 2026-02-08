@@ -1,11 +1,11 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Play, Plus, ThumbsUp, Share2 } from "lucide-react";
+import { Play, Plus, ThumbsUp, Share2, CheckCircle2, Circle } from "lucide-react";
 
 import api from "@/lib/axios";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ export default function MovieDetailsPage() {
   const [showNoMagnetPopup, setShowNoMagnetPopup] = useState(false);
   const router = useRouter();
   const { id }: { id: string } = useParams();
+  const queryClient = useQueryClient();
 
   const { data: movieQ, isLoading } = useQuery<Movie>({
     queryKey: ["movie", id],
@@ -28,6 +29,42 @@ export default function MovieDetailsPage() {
   });
 
   const movie = useSelector((state: any) => state.ui.selectedMovie) || movieQ;
+
+  // Toggle watched status mutation
+  const toggleWatchedMutation = useMutation({
+    mutationFn: async (watched: boolean) => {
+      if (watched) {
+        // Remove from watched
+        await api.delete(`/movies/${id}/watched`);
+      } else {
+        // Add to watched
+        await api.post(`/movies/${id}/watched`);
+      }
+    },
+    onMutate: async (watched: boolean) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["movie", id] });
+
+      // Snapshot previous value
+      const previousMovie = queryClient.getQueryData(["movie", id]);
+
+      // Optimistically update to the new value
+      queryClient.setQueryData(["movie", id], (old: any) => ({
+        ...old,
+        watched: !watched,
+      }));
+
+      return { previousMovie };
+    },
+    onError: (err, variables, context: any) => {
+      // Rollback on error
+      queryClient.setQueryData(["movie", id], context.previousMovie);
+    },
+    onSuccess: () => {
+      // Invalidate to ensure we have fresh data
+      queryClient.invalidateQueries({ queryKey: ["movie", id] });
+    },
+  });
 
   if (isLoading) {
     return (
@@ -133,6 +170,24 @@ export default function MovieDetailsPage() {
             </div>
 
             <div className="flex flex-wrap gap-3 pt-2">
+              <Button
+                onClick={() => toggleWatchedMutation.mutate(movie.watched || false)}
+                variant="secondary"
+                className="gap-2 bg-white/10 hover:bg-white/20 text-white border-none backdrop-blur-md"
+                disabled={toggleWatchedMutation.isPending}
+              >
+                {movie.watched ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    Watched
+                  </>
+                ) : (
+                  <>
+                    <Circle className="w-4 h-4" />
+                    Mark as Watched
+                  </>
+                )}
+              </Button>
               <Button
                 variant="secondary"
                 className="gap-2 bg-white/10 hover:bg-white/20 text-white border-none backdrop-blur-md"

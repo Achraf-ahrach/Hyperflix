@@ -27,6 +27,7 @@ export interface NormalizedMovie {
   background_image: string | null;
   backdrop_image?: string | null;
   torrents?: Torrent[];
+  watched?: boolean; // User-specific watched status
 }
 
 
@@ -170,13 +171,13 @@ export class MoviesService {
 
   // ===== PUBLIC API =====
 
-  async searchMovies(query: string): Promise<NormalizedMovie[]> {
+  async searchMovies(query: string, userId?: number): Promise<NormalizedMovie[]> {
     const cacheKey = CACHE_KEYS.SEARCH_MOVIES(query);
     const cached = await this.cacheManager.get<NormalizedMovie[]>(cacheKey);
 
     if (cached) {
       this.logger.debug(`Returning cached search results for: ${query}`);
-      return cached;
+      return await this.attachWatchedStatusToList(cached, userId);
     }
 
     const [ytsResults, apiBayResults] = await Promise.allSettled([
@@ -201,16 +202,17 @@ export class MoviesService {
       );
     }
 
-    return results;
+    return await this.attachWatchedStatusToList(results, userId);
   }
 
-  async getTrendingMovies(page: number, limit: number): Promise<NormalizedMovie[]> {
+  async getTrendingMovies(page: number, limit: number, userId?: number): Promise<NormalizedMovie[]> {
     const start = (page - 1) * limit;
     const allMovies = await this.getAndCacheAllMovies();
-    return allMovies.slice(start, start + limit);
+    const sliced = allMovies.slice(start, start + limit);
+    return await this.attachWatchedStatusToList(sliced, userId);
   }
 
-  async getMovie(id: string): Promise<NormalizedMovie | null> {
+  async getMovie(id: string, userId?: number): Promise<NormalizedMovie | null> {
     // Try cache first
     // const cachedMovies = await this.getAndCacheAllMovies();
     const cachedMovies = await this.cacheManager.get<NormalizedMovie[]>(CACHE_KEYS.ALL_MOVIES) || [];
@@ -218,7 +220,7 @@ export class MoviesService {
     const cachedMovie = cachedMovies.find((m) => m?.imdb_code === id);
 
     if (cachedMovie) {
-      return cachedMovie;
+      return await this.attachWatchedStatus(cachedMovie, userId);
     }
 
     // Try individual movie cache (populated by search)
@@ -227,22 +229,33 @@ export class MoviesService {
 
     if (specificCachedMovie) {
       this.logger.debug(`Returning cached movie data for ${id}`);
-      return specificCachedMovie;
+      return await this.attachWatchedStatus(specificCachedMovie, userId);
     }
 
-    // Fallback to OMDb
+    // Try OMDb first
     this.logger.log(`Movie ${id} not found in cache, fetching from OMDb`);
     const omdbData = await this.fetchFromOMDb(id);
 
-    if (!omdbData) {
-      return null;
+    if (omdbData) {
+      this.logger.log(`Successfully fetched movie ${id} from OMDb`);
+      const normalized = this.normalizeOMDbMovie(omdbData);
+      await this.cacheManager.set(specificCacheKey, normalized, LIMITS.CACHE_TTL);
+      return await this.attachWatchedStatus(normalized, userId);
     }
-    this.logger.log(`Successfully fetched movie ${id} from OMDb`);
 
-    const normalized = this.normalizeOMDbMovie(omdbData);
-    await this.cacheManager.set(specificCacheKey, normalized, LIMITS.CACHE_TTL);
+    // Fallback to TMDb if OMDb fails
+    this.logger.log(`OMDb failed for ${id}, trying TMDb as fallback`);
+    const tmdbData = await this.fetchFromTMDb(id);
 
-    return normalized;
+    if (tmdbData) {
+      this.logger.log(`Successfully fetched movie ${id} from TMDb`);
+      const normalized = this.normalizeTMDbMovie(tmdbData);
+      await this.cacheManager.set(specificCacheKey, normalized, LIMITS.CACHE_TTL);
+      return await this.attachWatchedStatus(normalized, userId);
+    }
+
+    this.logger.warn(`Both OMDb and TMDb failed for movie ${id}`);
+    return null;
   }
 
   // ===== SEARCH METHODS =====
@@ -296,7 +309,30 @@ export class MoviesService {
       };
     }
 
-    // Fallback if OMDb fails
+    // Fallback to TMDb if OMDb fails
+    this.logger.log(`OMDb failed for ${normalizedYTS.imdb_code}, trying TMDb as fallback`);
+    const tmdbMetadata = await this.fetchFromTMDb(normalizedYTS.imdb_code);
+
+    if (tmdbMetadata) {
+      return {
+        ...normalizedYTS,
+        title: tmdbMetadata.movieTitle,
+        year: tmdbMetadata.movieYear,
+        rating: tmdbMetadata.voteAverage,
+        thumbnail: tmdbMetadata.posterUrl || normalizedYTS.thumbnail,
+        synopsis: tmdbMetadata.plot || normalizedYTS.synopsis,
+        runtime: tmdbMetadata.runtime || normalizedYTS.runtime,
+        mpa_rating: tmdbMetadata.rated || normalizedYTS.mpa_rating,
+        genres: tmdbMetadata.genres.length > 0 ? tmdbMetadata.genres : normalizedYTS.genres,
+        background_image: tmdbMetadata.backdropUrl || tmdbMetadata.posterUrl || normalizedYTS.background_image,
+        backdrop_image: tmdbMetadata.backdropUrl,
+        // Ensure torrents are preserved
+        torrents: normalizedYTS.torrents,
+      };
+    }
+
+    // Fallback if both OMDb and TMDb fail - use original YTS data
+    this.logger.warn(`Both OMDb and TMDb failed for ${normalizedYTS.imdb_code}, using YTS data`);
     return normalizedYTS;
   }
 
@@ -443,6 +479,24 @@ export class MoviesService {
       mpa_rating: metadata.rated,
       genres: metadata.genres,
       background_image: metadata.posterUrl,
+      torrents: [],
+    };
+  }
+
+  private normalizeTMDbMovie(metadata: TMDbMetadata): NormalizedMovie {
+    return {
+      source: 'TMDb',
+      imdb_code: metadata.imdbId,
+      title: metadata.movieTitle,
+      year: metadata.movieYear,
+      rating: metadata.voteAverage,
+      thumbnail: metadata.posterUrl,
+      synopsis: metadata.plot,
+      runtime: metadata.runtime,
+      mpa_rating: metadata.rated,
+      genres: metadata.genres,
+      background_image: metadata.backdropUrl || metadata.posterUrl,
+      backdrop_image: metadata.backdropUrl,
       torrents: [],
     };
   }
@@ -609,37 +663,69 @@ export class MoviesService {
 
   private async enrichAPIBayMovie(res: any): Promise<NormalizedMovie | null> {
     // this.logger.log(`Enriching APIBay movie: ${res} (${res.imdb})`);
-    const metadata = await this.fetchFromOMDb(res.imdb);
 
-    if (!metadata) {
-      return null;
+    // Try OMDb first
+    const omdbMetadata = await this.fetchFromOMDb(res.imdb);
+
+    if (omdbMetadata) {
+      return {
+        source: 'APIBay',
+        imdb_code: res.imdb,
+        title: omdbMetadata.movieTitle,
+        year: omdbMetadata.movieYear,
+        rating: omdbMetadata.imdbRating,
+        thumbnail: omdbMetadata.posterUrl,
+        synopsis: omdbMetadata.plot,
+        runtime: omdbMetadata.runtime,
+        mpa_rating: omdbMetadata.rated,
+        genres: omdbMetadata.genres,
+        background_image: omdbMetadata.posterUrl,
+        torrents: [
+          {
+            url: `magnet:?xt=urn:btih:${res.info_hash}&dn=${encodeURIComponent(res.name)}`,
+            hash: res.info_hash,
+            quality: '1080p',
+            seeds: parseInt(res.seeders) || 0,
+            peers: parseInt(res.leechers) || 0,
+            size: parseInt(res.size) || 0,
+          },
+        ],
+      };
     }
 
-    // this.logger.log(`APIBay movie enriched with OMDb data: ${metadata.movieTitle} (${metadata.movieYear})`);
+    // Fallback to TMDb if OMDb fails
+    this.logger.log(`OMDb failed for ${res.imdb}, trying TMDb as fallback`);
+    const tmdbMetadata = await this.fetchFromTMDb(res.imdb);
 
-    return {
-      source: 'APIBay',
-      imdb_code: res.imdb,
-      title: metadata.movieTitle,
-      year: metadata.movieYear,
-      rating: metadata.imdbRating,
-      thumbnail: metadata.posterUrl,
-      synopsis: metadata.plot,
-      runtime: metadata.runtime,
-      mpa_rating: metadata.rated,
-      genres: metadata.genres,
-      background_image: metadata.posterUrl,
-      torrents: [
-        {
-          url: `magnet:?xt=urn:btih:${res.info_hash}&dn=${encodeURIComponent(res.name)}`,
-          hash: res.info_hash,
-          quality: '1080p',
-          seeds: parseInt(res.seeders) || 0,
-          peers: parseInt(res.leechers) || 0,
-          size: parseInt(res.size) || 0,
-        },
-      ],
-    };
+    if (tmdbMetadata) {
+      return {
+        source: 'APIBay',
+        imdb_code: res.imdb,
+        title: tmdbMetadata.movieTitle,
+        year: tmdbMetadata.movieYear,
+        rating: tmdbMetadata.voteAverage,
+        thumbnail: tmdbMetadata.posterUrl,
+        synopsis: tmdbMetadata.plot,
+        runtime: tmdbMetadata.runtime,
+        mpa_rating: tmdbMetadata.rated,
+        genres: tmdbMetadata.genres,
+        background_image: tmdbMetadata.backdropUrl || tmdbMetadata.posterUrl,
+        backdrop_image: tmdbMetadata.backdropUrl,
+        torrents: [
+          {
+            url: `magnet:?xt=urn:btih:${res.info_hash}&dn=${encodeURIComponent(res.name)}`,
+            hash: res.info_hash,
+            quality: '1080p',
+            seeds: parseInt(res.seeders) || 0,
+            peers: parseInt(res.leechers) || 0,
+            size: parseInt(res.size) || 0,
+          },
+        ],
+      };
+    }
+
+    this.logger.warn(`Both OMDb and TMDb failed for ${res.imdb}`);
+    return null;
   }
 
   // ===== UTILITY METHODS =====
@@ -648,6 +734,67 @@ export class MoviesService {
     return lastValueFrom(
       this.httpService.get<T>(url).pipe(map((res) => res.data))
     );
+  }
+
+  /**
+   * Attaches watched status to a movie for a specific user
+   */
+  private async attachWatchedStatus(movie: NormalizedMovie, userId?: number): Promise<NormalizedMovie> {
+    if (!userId) {
+      return movie;
+    }
+
+    try {
+      const watchedRecord = await this.db
+        .select()
+        .from(watchedMovies)
+        .where(
+          and(
+            eq(watchedMovies.userId, userId),
+            eq(watchedMovies.movieId, movie.imdb_code)
+          )
+        )
+        .limit(1);
+
+      return {
+        ...movie,
+        watched: watchedRecord.length > 0,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to check watched status for movie ${movie.imdb_code}`, error.stack);
+      return movie; // Return movie without watched status on error
+    }
+  }
+
+  /**
+   * Attaches watched status to a list of movies for a specific user
+   */
+  private async attachWatchedStatusToList(movies: NormalizedMovie[], userId?: number): Promise<NormalizedMovie[]> {
+    if (!userId || movies.length === 0) {
+      return movies;
+    }
+
+    try {
+      const movieIds = movies.map(m => m.imdb_code);
+      const watchedRecords = await this.db
+        .select()
+        .from(watchedMovies)
+        .where(
+          and(
+            eq(watchedMovies.userId, userId),
+          )
+        );
+
+      const watchedSet = new Set(watchedRecords.map(r => r.movieId));
+
+      return movies.map(movie => ({
+        ...movie,
+        watched: watchedSet.has(movie.imdb_code),
+      }));
+    } catch (error) {
+      this.logger.error(`Failed to check watched status for movie list`, error.stack);
+      return movies; // Return movies without watched status on error
+    }
   }
 
 
@@ -742,11 +889,28 @@ export class MoviesService {
 
     return { message: `Movie ${movieId} added to user ${userId}'s watched list` };
   }
+
+  async removeMovieFromWatched(userId: number, movieId: string): Promise<{ message: string }> {
+    try {
+      await this.db.delete(watchedMovies).where(
+        and(
+          eq(watchedMovies.userId, userId),
+          eq(watchedMovies.movieId, movieId)
+        )
+      );
+    }
+    catch (error) {
+      this.logger.error(`Failed to remove movie ${movieId} from user ${userId}'s watched list: ${error.message}`);
+      throw new HttpException('Failed to remove movie from watched list', HttpStatus.FORBIDDEN);
+    }
+
+    return { message: `Movie ${movieId} removed from user ${userId}'s watched list` };
+  }
   /**
    * Get movies from YTS API with sorting and filtering
    * Uses YTS endpoint parameters for server-side filtering
    */
-  async getLibraryMovies(filters: MovieFilterDto): Promise<{ movies: NormalizedMovie[]; movie_count: number; page_number: number }> {
+  async getLibraryMovies(filters: MovieFilterDto, userId?: number): Promise<{ movies: NormalizedMovie[]; movie_count: number; page_number: number }> {
     // Build cache key based on filter params
     // const filterKey = JSON.stringify(filters);
     // const cacheKey = `library_${filterKey}`;
@@ -789,8 +953,10 @@ export class MoviesService {
         )
         .map((result) => result.value);
 
+      const moviesWithWatchedStatus = await this.attachWatchedStatusToList(movies, userId);
+
       const result = {
-        movies,
+        movies: moviesWithWatchedStatus,
         movie_count: response.data.movie_count || movies.length,
         page_number: response.data.page_number || filters.page || 1,
       };

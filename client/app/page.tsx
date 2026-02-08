@@ -9,11 +9,11 @@ export default function Home() {
   const { user, isLoading } = useUser();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!isLoading && user) {
-      router.replace("/home");
-    }
-  }, [user, isLoading, router]);
+  // useEffect(() => {
+  //   if (!isLoading && user) {
+  //     router.replace("/home");
+  //   }
+  // }, [user, isLoading, router]);
 
   if (isLoading || user) {
     return (

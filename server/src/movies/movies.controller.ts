@@ -18,6 +18,7 @@ export class MoviesController {
     @Query('genre') genre?: string,
     @Query('sort_by') sort_by?: string,
     @Query('order_by') order_by?: string,
+    @Req() req?: any,
   ) {
     const filters: MovieFilterDto = {
       page: page ? parseInt(page) : 1,
@@ -30,17 +31,19 @@ export class MoviesController {
       order_by: order_by || 'desc',
     };
 
-    const result = await this.moviesService.getLibraryMovies(filters);
+    const userId = req?.user?.id; // Extract userId if authenticated
+    const result = await this.moviesService.getLibraryMovies(filters, userId);
     return result.movies;
   }
 
   @Get('search')
-  async searchMovies(@Query('q') query: string) {
+  async searchMovies(@Query('q') query: string, @Req() req?: any) {
     if (!query || query.trim() === '') {
       throw new BadRequestException('Query parameter "q" is required');
     }
 
-    const results = await this.moviesService.searchMovies(query.trim());
+    const userId = req?.user?.id; // Extract userId if authenticated
+    const results = await this.moviesService.searchMovies(query.trim(), userId);
     return {
       query,
       count: results.length,
@@ -49,8 +52,9 @@ export class MoviesController {
   }
 
   @Get(':id')
-  async getMovie(@Param('id') id: string) {
-    const movie = await this.moviesService.getMovie(id);
+  async getMovie(@Param('id') id: string, @Req() req?: any) {
+    const userId = req?.user?.id; // Extract userId if authenticated
+    const movie = await this.moviesService.getMovie(id, userId);
 
     if (!movie) {
       throw new NotFoundException('Movie not found');
@@ -79,5 +83,12 @@ export class MoviesController {
   async removeMovieFromWatchLater(@Param('id') movieId: string, @Req() req: any) {
     const userId = req.user.id;
     return this.moviesService.removeMovieFromWatchLater(userId, movieId);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Delete(':id/watched')
+  async removeMovieFromWatched(@Param('id') movieId: string, @Req() req: any) {
+    const userId = req.user.id;
+    return this.moviesService.removeMovieFromWatched(userId, movieId);
   }
 }
