@@ -80,4 +80,11 @@ export class MoviesController {
     const userId = req.user.id;
     return this.moviesService.removeMovieFromWatchLater(userId, movieId);
   }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get(':id/watch-later')
+  async isMovieInWatchLater(@Param('id') movieId: string, @Req() req: any) {
+    const userId = req.user.id;
+    return this.moviesService.isMovieInWatchLater(userId, movieId);
+  }
 }
