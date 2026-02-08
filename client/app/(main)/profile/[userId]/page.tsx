@@ -233,7 +233,7 @@ const ProfilePage = () => {
                 }
               </div>
               {
-                  moviesData?.meta.lastPage > 1 ?
+                  moviesData?.data.length > 0 ?
                   (
                     <Pagination
                     current={currentPage.watched}
@@ -259,7 +259,7 @@ const ProfilePage = () => {
               </div>
 
               {
-              commentData?.meta.lastPage > 1 ? (
+              commentData?.data.length > 0 ? (
                 <Pagination
                   current={currentPage.comments}
                   total={commentData?.meta.lastPage || 0}
@@ -286,7 +286,7 @@ const ProfilePage = () => {
                 }
               </div>
               {
-                watchListData?.meta.lastPage > 1 ?
+                watchListData?.data.length > 0 ?
                 (
 
                   <Pagination

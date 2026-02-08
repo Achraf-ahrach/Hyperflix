@@ -55,6 +55,12 @@ export default function MovieDetailsPage() {
       }
     },
     onSuccess: (result) => {
+      if (isInWatchlist) {
+        toast.message
+        ("Movie removed from watchlist");
+      } else {
+        toast.message("Movie added to watchlist");
+      }
       setIsInWatchlist(!isInWatchlist);
     },
     onError: (err: any) => {
