@@ -2,10 +2,10 @@
 
 # Complete setup for new developers
 setup:
-	docker compose up --build 
-	@echo "Waiting for database to be ready..."
-	sleep 15
-	docker compose exec backend npx drizzle-kit migrate
+	docker compose up --build -d
+	@echo "Waiting for services to be ready (npm install + database)..."
+	sleep 30
+	docker compose exec backend npm run db:migrate
 	docker compose exec backend npm run db:seed
 	@echo "✅ Setup complete! Visit http://localhost:3000"
 
@@ -23,7 +23,7 @@ clean:
 
 # Run migrations
 migrate:
-	docker compose exec backend npx drizzle-kit migrate
+	docker compose exec backend npm run db:migrate
 
 # Seed database
 seed:
