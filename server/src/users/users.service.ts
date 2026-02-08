@@ -19,6 +19,15 @@ export class UsersService {
     return result[0] || null;
   }
 
+  async findByUsername(username: string) {
+    const result = await this.db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.username, username))
+      .limit(1);
+    return result[0] || null;
+  }
+
   async findById(id: number) {
     const result = await this.db
       .select()

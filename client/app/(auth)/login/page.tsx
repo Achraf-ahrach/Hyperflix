@@ -17,6 +17,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import bgImage from "@/public/hero-bg.jpg";
+import { useUser } from "@/lib/contexts/UserContext";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -25,12 +26,15 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { refetch } = useUser();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
       await api.post("/auth/login", { email, password });
+      await refetch();
+      console.log("reoute to home");
       router.push("/home");
     } catch (err) {
       setError("Incorrect password. Please try again.");
@@ -152,7 +156,7 @@ export default function LoginPage() {
             {/* Forgot Password */}
             <div className="flex justify-end pt-2">
               <a
-                href="#"
+                href="forgot-password"
                 className="text-primary mb-2 text-sm font-medium hover:opacity-70 transition-opacity"
               >
                 Forgot password?

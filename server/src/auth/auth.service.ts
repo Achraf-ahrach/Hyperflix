@@ -89,9 +89,16 @@ export class AuthService {
     lastName: string;
     password: string;
   }) {
-    const existingUser = await this.usersService.findByEmail(userData.email);
-    if (existingUser) {
-      throw new Error('User already exists');
+    // Check if email already exists
+    const existingUserByEmail = await this.usersService.findByEmail(userData.email);
+    if (existingUserByEmail) {
+      throw new Error('Email already exists');
+    }
+
+    // Check if username already exists
+    const existingUserByUsername = await this.usersService.findByUsername(userData.username);
+    if (existingUserByUsername) {
+      throw new Error('Username already exists');
     }
 
     const hashedPassword = await bcrypt.hash(userData.password, 10);

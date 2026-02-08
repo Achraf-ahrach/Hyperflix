@@ -13,7 +13,9 @@ api.interceptors.response.use(
         typeof window !== "undefined" &&
         window.location.pathname !== "/login" &&
         window.location.pathname !== "/signup" &&
-        window.location.pathname !== "/"
+        window.location.pathname !== "/" &&
+        window.location.pathname !== "/forgot-password" &&
+        !window.location.pathname.startsWith("/reset-password")
       ) {
         window.location.href = "/login";
       }

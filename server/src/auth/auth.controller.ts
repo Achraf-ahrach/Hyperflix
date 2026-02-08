@@ -64,7 +64,11 @@ export class AuthController {
         user,
       };
     } catch (error) {
-      throw new BadRequestException(error.message);
+      throw new BadRequestException({
+        statusCode: 400,
+        message: error.message,
+        error: 'Bad Request',
+      });
     }
   }
 
