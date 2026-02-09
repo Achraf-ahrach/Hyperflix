@@ -13,6 +13,7 @@ import { ProfileSettingsDto } from '../dto/profile-settings.dto';
 import { UpdateMailService } from '../service/updateMail.service';
 import { LanguageSettingsDto } from '../dto/language-settings.dto';
 import { AccountSettingsDto } from '../dto/account-settings.dto';
+import { PreferencesSettingsDto } from '../dto/preferences-settings.dto';
 
 @Controller('settings')
 export class UsersSettingsController {
@@ -105,6 +106,15 @@ export class UsersSettingsController {
         @Req() request,
     ) {
         return this.usersService.updateLanguage(request.user.id, dto);
+    }
+
+    @UseGuards(AuthGuard('jwt'))
+    @Patch('preferences')
+    async updatePreferences(
+        @Body() dto: PreferencesSettingsDto,
+        @Req() request,
+    ) {
+        return this.usersService.updatePreferences(request.user.id, dto);
     }
 }
 

@@ -5,6 +5,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 
 import { SettingsRepository } from '../repository/settings.repository';
 import { ProfileSettingsDto } from '../dto/profile-settings.dto';
+import { PreferencesSettingsDto } from '../dto/preferences-settings.dto';
 
 
 @Injectable()
@@ -59,5 +60,22 @@ export class SettingsService {
       }
       return {message: 'Language updated successfully'};
     }
+  }
+
+  async updatePreferences(id: number, dto: PreferencesSettingsDto) {
+    const updateData: any = {};
+    if (dto.showWatchedPublic !== undefined) {
+      updateData.showWatchedPublic = dto.showWatchedPublic;
+    }
+    if (dto.showWatchlistPublic !== undefined) {
+      updateData.showWatchlistPublic = dto.showWatchlistPublic;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return { message: 'No preference changes detected' };
+    }
+
+    await this.settingRepository.updatePreferences(id, updateData);
+    return updateData;
   }
 }

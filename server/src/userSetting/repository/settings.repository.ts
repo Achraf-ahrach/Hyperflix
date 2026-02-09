@@ -70,4 +70,15 @@ export class SettingsRepository {
         await this.db.update(users).set({langue_code: langue_code}).where(eq(users.id, id));
         return true;
       }
+
+      async updatePreferences(
+        id: number,
+        data: { showWatchedPublic?: boolean; showWatchlistPublic?: boolean },
+      ) {
+        await this.db
+          .update(users)
+          .set(data)
+          .where(eq(users.id, id));
+        return true;
+      }
 }

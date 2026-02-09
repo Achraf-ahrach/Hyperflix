@@ -31,4 +31,6 @@ export const users = pgTable('users', {
   updatedAt: timestamp('updated_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
+  showWatchedPublic: boolean('show_watched_public').notNull().default(true),
+  showWatchlistPublic: boolean('show_watchlist_public').notNull().default(true),
 });
