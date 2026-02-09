@@ -1,7 +1,7 @@
 "use client"
-import { Heart } from "lucide-react";
+import { Edit, Heart } from "lucide-react";
 import { Reply } from "../types/types";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useUser } from "@/lib/contexts/UserContext";
 
 
@@ -11,13 +11,24 @@ interface ReplyItemProps {
   reply: Reply;
   onLike: () => void;
   onDelete: () => void; // Added delete handler
+  onEdit: (content: string) => Promise<void> | void;
 }
 
-export const ReplyItem = ({ reply, onLike, onDelete }: ReplyItemProps) => {
+export const ReplyItem = ({ reply, onLike, onDelete, onEdit }: ReplyItemProps) => {
 
   const [showMenu, setShowMenu] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(reply.content);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const {user} = useUser();
   console.log(reply);
+
+  useEffect(() => {
+    if (!isEditing) {
+      setEditContent(reply.content);
+    }
+  }, [reply.content, isEditing]);
+
   return (
 
     <div className="flex gap-3">
@@ -48,10 +59,22 @@ export const ReplyItem = ({ reply, onLike, onDelete }: ReplyItemProps) => {
 
                 {
                   showMenu && (
-                    <div className="absolute right-0 top-full mt-1 w-24 bg-slate-800 border border-slate-700 rounded-md shadow-lg transition-all duration-200 z-10">
+                    <div className="absolute right-0 top-full mt-1 w-28 bg-slate-800 border border-slate-700 rounded-md shadow-lg transition-all duration-200 z-10">
                       <button
-                        onClick={onDelete}
-                        className="w-full text-left px-3 py-2 text-xs text-red-400 hover:bg-slate-700 rounded-md transition-colors"
+                        onClick={() => {
+                          setIsEditing(true);
+                          setShowMenu(false);
+                        }}
+                        className="w-full text-left px-3 py-2 text-xs text-emerald-400 hover:bg-slate-700 rounded-t-md transition-colors flex items-center gap-1"
+                      >
+                        <Edit size={10} /> Edit
+                      </button>
+                      <button
+                        onClick={() => {
+                          onDelete();
+                          setShowMenu(false);
+                        }}
+                        className="w-full text-left px-3 py-2 text-xs text-red-400 hover:bg-slate-700 rounded-b-md transition-colors"
                       >
                         Delete
                       </button>
@@ -63,7 +86,52 @@ export const ReplyItem = ({ reply, onLike, onDelete }: ReplyItemProps) => {
           }
         </div>
 
-        <p className="text-foreground text-sm mt-0.5">{reply.content}</p>
+        <div className="mt-0.5">
+          {isEditing ? (
+            <div className="space-y-2">
+              <textarea
+                className="w-full bg-transparent border border-slate-700 rounded-lg p-2 text-xs focus:outline-none focus:border-red-500/50"
+                rows={2}
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+              />
+              <div className="flex justify-end gap-2 text-[10px]">
+                <button
+                  className="px-2 py-1 rounded border border-slate-600"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditContent(reply.content);
+                  }}
+                  disabled={isSavingEdit}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="px-3 py-1 rounded bg-red-600 hover:bg-red-500 disabled:opacity-50"
+                  onClick={async () => {
+                    if (!editContent.trim()) {
+                      return;
+                    }
+                    try {
+                      setIsSavingEdit(true);
+                      await onEdit(editContent.trim());
+                      setIsEditing(false);
+                    } catch (error) {
+                      console.error('Failed to edit reply:', error);
+                    } finally {
+                      setIsSavingEdit(false);
+                    }
+                  }}
+                  disabled={isSavingEdit || !editContent.trim()}
+                >
+                  {isSavingEdit ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-foreground text-sm">{reply.content}</p>
+          )}
+        </div>
         <button
           onClick={onLike}
           className={`mt-2 flex items-center gap-1 text-[10px] transition-colors ${reply.isLiked ? 'text-red-500 font-bold' : 'text-slate-600 hover:text-red-400'

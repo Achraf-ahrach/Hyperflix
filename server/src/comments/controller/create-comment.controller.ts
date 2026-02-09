@@ -1,5 +1,3 @@
-
-
 // comments.controller.ts
 import {
   Controller,
@@ -61,8 +59,6 @@ export class CreateCommentController {
     @Req() req: any,
   ) {
     
-    console.log(req.user.id);
-
     if (!media && (!content || content.trim().length === 0)) {
       throw new BadRequestException('Content is required');
     }
@@ -72,9 +68,7 @@ export class CreateCommentController {
     }
 
     if (media && (!content || content.trim().length === 0))
-      content = '_';
-
-
+      content = '||||';
     // const userId = req.user.id;
     
     return this.createCommentsService.createComment({

@@ -15,4 +15,11 @@ export interface Comment {
   content: string;
   createdAt: string;
   likes: number;
+  media: Media[];
+}
+
+export interface Media {
+  id: number;
+  type: string;
+  url: string;
 }

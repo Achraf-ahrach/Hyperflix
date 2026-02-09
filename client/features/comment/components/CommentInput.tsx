@@ -2,6 +2,8 @@ import { API_URL } from "@/app/utils";
 import { useUser } from "@/lib/contexts/UserContext";
 import { ImageIcon, Loader2, Send, X } from "lucide-react";
 import { useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+
 
 // --- Comment Input Component ---
 interface CommentInputProps {
@@ -18,6 +20,8 @@ export const CommentInput = ({ onSubmit, placeholder = "Write a comment...", aut
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useUser();
 
+  const queryClient = useQueryClient();
+
   if (!user) return null;
 
   const handleSubmit = async () => {
@@ -28,6 +32,9 @@ export const CommentInput = ({ onSubmit, placeholder = "Write a comment...", aut
       await onSubmit(content, media || undefined);
       setContent('');
       setMedia(null);
+      queryClient.invalidateQueries({
+        queryKey: ['comments']
+      });
     } catch (error) {
       console.error('Failed to submit:', error);
     } finally {

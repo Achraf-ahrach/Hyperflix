@@ -71,10 +71,10 @@ const SettingsPage = () => {
 
   const { mutate, isPending } = useMutation({
     mutationFn: userService.updateProfile,
-    onSuccess: (result) => {
+    onSuccess: (result : any) => {
       queryClient.setQueryData<UserData | null>(
         ["auth", "profile"],
-        (oldUser) =>
+        (oldUser : any) =>
           oldUser
             ? {
               ...oldUser,
@@ -106,7 +106,7 @@ const SettingsPage = () => {
     onSuccess: () => {
       queryClient.setQueryData<UserData | null>(
         ["profile"],
-        (oldUser) =>
+        (oldUser : any) =>
           oldUser
             ? { ...oldUser, langue_code: language_code }
             : oldUser
@@ -163,16 +163,12 @@ const SettingsPage = () => {
   const handleProfileUpdate = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFormErrors({});
-    // const formData = new FormData(event.currentTarget);
-    // const rawData = Object.fromEntries(formData);
-    // console.log(rawData);
-    // const result = profileSchema.safeParse(rawData);
+
 
     console.log(previewUrl);
     const formElement = event.currentTarget;
     const formData = new FormData(formElement);
 
-    // To validate with Zod, we pull the values out
     const dataToValidate = {
       firstName: formData.get('firstName'),
       lastName: formData.get('lastName'),

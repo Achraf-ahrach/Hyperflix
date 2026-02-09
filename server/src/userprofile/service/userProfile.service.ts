@@ -11,6 +11,8 @@ export interface UserActivityStatsDto {
 
 export interface UserResponseDto {
     id: number;
+    username: string;
+    avatarUrl: string | null;
     watched: UserActivityStatsDto;
     comments: UserActivityStatsDto;
     watchlist: UserActivityStatsDto;
@@ -45,6 +47,7 @@ export class UserProfileService {
             return data;
         }
         catch (error) {
+            console.error('Error fetching user comments:', error);
             throw new NotFoundException('Error fetching comments');
         }
     }
@@ -98,7 +101,8 @@ export class UserProfileService {
 
     async getProfilePublicInfo(userId: number): Promise<UserResponseDto> {
         try {
-            const [totalComments, totalWatched, totalWatchLater] = await Promise.all([
+            const [user,totalComments, totalWatched, totalWatchLater] = await Promise.all([
+                this.userCommentsRepository.findById(userId),
                 this.userCommentsRepository.getUserTotalComments(userId),
                 this.userWatchedMoviesRepository.getUserTotalWatchedMovies(userId),
                 this.userWatchedMoviesRepository.getUserTotalWatchLaterMovies(userId),
@@ -111,6 +115,8 @@ export class UserProfileService {
 
             return {
                 id: userId,
+                avatarUrl: user?.avatarUrl || null,
+                username: user?.username || 'User',
                 watched: {
                     count: totalWatched,
                     platformAverage: avgWatched
