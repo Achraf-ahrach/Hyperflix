@@ -70,8 +70,9 @@ cypress/screenshots
 server/downloads/
 server/torrents/
 
-
-uploads/*
+# Ignore uploaded files
+server/uploads/comments_public/*
+server/uploads/profile_public/*
 
 /torrent/torrent_service/downloads/*
 /torrent/torrent_service/media/*

@@ -28,7 +28,7 @@ import KeyvRedis from '@keyv/redis';
     }),
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '../.env.local',
+      envFilePath: '../.env',
     }),
     HttpModule,
     CacheModule.registerAsync({
