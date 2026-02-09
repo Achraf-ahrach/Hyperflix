@@ -4,11 +4,25 @@ import { AuthGuard } from '@nestjs/passport';
 import { MovieFilterDto } from './dto/movie-filter.dto';
 
 @Controller('movies')
-@UseGuards(AuthGuard('jwt'))
 export class MoviesController {
   constructor(private readonly moviesService: MoviesService) { }
 
-  @Get('library')
+  // Public endpoint for landing page - no authentication required
+  @Get()
+  async getTrendingMovies() {
+    const movies = await this.moviesService.getTrendingMovies(1, 6);
+    // Return only basic info, no torrents or magnet links
+    return movies.map(movie => ({
+      imdb_code: movie.imdb_code,
+      title: movie.title,
+      thumbnail: movie.thumbnail,
+      year: movie.year,
+      rating: movie.rating,
+    }));
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get(['library'])
   async getLibrary(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -36,6 +50,7 @@ export class MoviesController {
     return result.movies;
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Get('search')
   async searchMovies(@Query('q') query: string, @Req() req?: any) {
     if (!query || query.trim() === '') {
@@ -51,6 +66,7 @@ export class MoviesController {
     };
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Get(':id')
   async getMovie(@Param('id') id: string, @Req() req?: any) {
     const userId = req?.user?.id; // Extract userId if authenticated
@@ -91,7 +107,8 @@ export class MoviesController {
     const userId = req.user.id;
     return this.moviesService.removeMovieFromWatched(userId, movieId);
   }
- 
+
+  @UseGuards(AuthGuard('jwt'))
   @Get(':id/watch-later')
   async isMovieInWatchLater(@Param('id') movieId: string, @Req() req: any) {
     const userId = req.user.id;
