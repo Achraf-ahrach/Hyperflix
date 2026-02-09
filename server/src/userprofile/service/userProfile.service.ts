@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { UserCommentsRepository } from '../repository/userComments.repository';
 import { UserWatchedMoviesRepository } from '../repository/userWatched.repository';
 import { UserWatchLaterRepository } from '../repository/userWatchLater.repository';
@@ -7,13 +7,21 @@ import { UserWatchLaterRepository } from '../repository/userWatchLater.repositor
 export interface UserActivityStatsDto {
     count: number;
     platformAverage: number;
+    isPublic?: boolean;
+    visibleToViewer?: boolean;
 }
 
 export interface UserResponseDto {
     id: number;
+    username: string;
+    avatarUrl: string | null;
     watched: UserActivityStatsDto;
     comments: UserActivityStatsDto;
     watchlist: UserActivityStatsDto;
+    preferences: {
+        showWatchedPublic: boolean;
+        showWatchlistPublic: boolean;
+    };
 }
 
 @Injectable()
@@ -45,6 +53,7 @@ export class UserProfileService {
             return data;
         }
         catch (error) {
+            console.error('Error fetching user comments:', error);
             throw new NotFoundException('Error fetching comments');
         }
     }
@@ -54,11 +63,22 @@ export class UserProfileService {
     async getUserWatchedMovies(
         userId: number,
         page: number,
-        limit: number
+        limit: number,
+        requesterId?: number,
     ) {
         try {
             if (page < 1) page = 1;
             if (limit < 1) limit = 1;
+            const user = await this.userCommentsRepository.findById(userId);
+            if (!user) {
+                throw new NotFoundException('User not found');
+            }
+
+            const isOwner = Number (requesterId) === Number(userId);
+            if (!isOwner && user.showWatchedPublic === false) {
+                throw new ForbiddenException('This user keeps watched movies private');
+            }
+
             const data = await this.userWatchedMoviesRepository.getUserWatchedMoviesByPage(
                 userId,
                 page,
@@ -78,11 +98,23 @@ export class UserProfileService {
     async getUserWatchLaterMovies(
         userId: number,
         page: number,
-        limit: number
+        limit: number,
+        requesterId?: number,
     ) {
         try {
             if (page < 1) page = 1;
             if (limit < 1) limit = 1;
+            const user = await this.userCommentsRepository.findById(userId);
+            if (!user) {
+                throw new NotFoundException('User not found');
+            }
+
+            const isOwner = Number (requesterId) === Number(userId);
+
+            if (!isOwner && user.showWatchlistPublic === false) {
+                throw new ForbiddenException('This user keeps the watchlist private');
+            }
+
             const data = await this.userWatchLaterRepository.getUserWatchLaterMoviesByPage(
                 userId,
                 page,
@@ -96,33 +128,55 @@ export class UserProfileService {
         }       
     }
 
-    async getProfilePublicInfo(userId: number): Promise<UserResponseDto> {
+    async getProfilePublicInfo(userId: number, requesterId?: number): Promise<UserResponseDto> {
         try {
-            const [totalComments, totalWatched, totalWatchLater] = await Promise.all([
+            const [user,totalComments, totalWatched, totalWatchLater] = await Promise.all([
+                this.userCommentsRepository.findById(userId),
                 this.userCommentsRepository.getUserTotalComments(userId),
                 this.userWatchedMoviesRepository.getUserTotalWatchedMovies(userId),
                 this.userWatchedMoviesRepository.getUserTotalWatchLaterMovies(userId),
             ]);
 
+            if (!user) {
+                throw new NotFoundException('User not found');
+            }
 
             const avgComments = await this.userCommentsRepository.getGlobalAverage();
             const avgWatched = await this.userWatchedMoviesRepository.getGlobalAverage();
 
+            const isOwner = Number(requesterId) === Number(userId);
+            const showWatchedPublic = user.showWatchedPublic ?? true;
+            const showWatchlistPublic = user.showWatchlistPublic ?? true;
+
+            const watchedVisibleToViewer = isOwner || showWatchedPublic;
+            const watchlistVisibleToViewer = isOwner || showWatchlistPublic;
 
             return {
                 id: userId,
+                avatarUrl: user.avatarUrl || null,
+                username: user.username || 'User',
                 watched: {
                     count: totalWatched,
-                    platformAverage: avgWatched
+                    platformAverage: avgWatched,
+                    isPublic: showWatchedPublic,
+                    visibleToViewer: watchedVisibleToViewer,
                 },
                 comments: {
                     count: totalComments,
-                    platformAverage: avgComments
+                    platformAverage: avgComments,
+                    isPublic: true,
+                    visibleToViewer: true,
                 },
                 watchlist: {
                     count: totalWatchLater,
-                    platformAverage: 0
-                }
+                    platformAverage: 0,
+                    isPublic: showWatchlistPublic,
+                    visibleToViewer: watchlistVisibleToViewer,
+                },
+                preferences: {
+                    showWatchedPublic,
+                    showWatchlistPublic,
+                },
             }
 
         }

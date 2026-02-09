@@ -7,6 +7,8 @@ import { API_URL } from "@/app/utils";
 import { Reply } from "./types/types";
 import { Comment } from "./types/types";
 
+type UpdateCommentResponse = Pick<Comment, "id" | "content">;
+
 // --- Constants ---
 export const INITIAL_BATCH = 10;
 export const LOAD_MORE_BATCH = 3;
@@ -106,6 +108,15 @@ export const comment_api = {
       return true;
     } catch {
       return false;
+    }
+  },
+
+  async updateComment(commentId: number, content: string): Promise<UpdateCommentResponse> {
+    try {
+      const response = await api.patch(`/comments/${commentId}`, { content });
+      return response.data;
+    } catch (error: any) {
+      throw error;
     }
   },
 };

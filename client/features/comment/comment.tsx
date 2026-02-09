@@ -19,8 +19,6 @@ export const CommentsSection = ({ movieId }: { movieId: string }) => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
-  console.log((process.env.BACKEND_URL))
-
   useEffect(() => {
     const loadComments = async () => {
       try
@@ -102,6 +100,36 @@ export const CommentsSection = ({ movieId }: { movieId: string }) => {
   }}
 };
 
+  const handleEditComment = async (commentId: number, content: string) => {
+    try {
+      const updated = await comment_api.updateComment(commentId, content);
+      setComments(prev => prev.map(c =>
+        c.id === commentId ? { ...c, content: updated.content } : c
+      ));
+    } catch (error) {
+      console.error('Failed to edit comment:', error);
+    }
+  };
+
+  const handleEditReply = async (commentId: number, replyId: number, content: string) => {
+    try {
+      const updated = await comment_api.updateComment(replyId, content);
+      setComments(prev => prev.map(c => {
+        if (c.id !== commentId) {
+          return c;
+        }
+        return {
+          ...c,
+          replies: c.replies.map(r =>
+            r.id === replyId ? { ...r, content: updated.content } : r
+          ),
+        };
+      }));
+    } catch (error) {
+      console.error('Failed to edit reply:', error);
+    }
+  };
+
   const handleLoadMore = async () => {
     setIsLoadingMore(true);
     try {
@@ -142,9 +170,6 @@ export const CommentsSection = ({ movieId }: { movieId: string }) => {
       <div className="max-w-3xl mx-auto">
         <h2 className="text-3xl font-bold mb-8 flex items-center gap-3">
           Comments
-          <span className="text-sm font-normal px-3 py-1 rounded-full">
-            {total}
-          </span>
         </h2>
 
         <div className="mb-10">
@@ -159,8 +184,10 @@ export const CommentsSection = ({ movieId }: { movieId: string }) => {
               onLike={() => handleToggleLike(comment.id)}
               onReply={(content) => handleAddReply(comment.id, content)}
               onDelete={() => handleDeleteComment(comment.id)}
+              onEdit={(newContent) => handleEditComment(comment.id, newContent)}
               onReplyLike={(replyId) => handleToggleLike(comment.id, replyId)}
               onReplyDelete={(replyId) => handleDeleteComment(comment.id, replyId)}
+              onReplyEdit={(replyId, newContent) => handleEditReply(comment.id, replyId, newContent)}
             />
           ))}
         </div>

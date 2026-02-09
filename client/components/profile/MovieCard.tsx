@@ -1,12 +1,16 @@
 import { Calendar, Star } from "lucide-react";
 import { Card, CardContent } from "../ui/card";
 import { Movie } from "@/types/profile/profile";
+import { useRouter } from "next/navigation";
 
-export const MovieCard = ({ movie }: { movie: Movie }) => (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer">
-      <div className="aspect-[2/3] bg-muted relative overflow-hidden">
-        {/* <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-background/40 group-hover:opacity-80 transition-opacity" /> */}
-        <img
+export const MovieCard = ({ movie }: { movie: Movie }) => {
+    const router = useRouter();
+
+    return (
+        <Card className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer" onClick={() => {router.push(`/movie/${movie.id}`)}}>
+            <div className="aspect-[2/3] bg-muted relative overflow-hidden">
+                {/* <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-background/40 group-hover:opacity-80 transition-opacity" /> */}
+                <img
           src={movie.posterUrl}
           alt={movie.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
@@ -28,5 +32,5 @@ export const MovieCard = ({ movie }: { movie: Movie }) => (
           </div>
         )}
       </CardContent>
-    </Card>
-  );
+    </Card>)
+}

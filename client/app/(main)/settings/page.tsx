@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Moon, Sun, User, Lock, Globe, Camera } from 'lucide-react';
 import { User as UserData, useUser } from '@/lib/contexts/UserContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -67,14 +68,29 @@ const SettingsPage = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(user?.avatarUrl || null);
   const [language_code, setLanguage_code] = useState(user?.langue_code || 'en');
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [showWatchedPublic, setShowWatchedPublic] = useState(user?.showWatchedPublic ?? true);
+  const [showWatchlistPublic, setShowWatchlistPublic] = useState(user?.showWatchlistPublic ?? true);
+
+
+  useEffect(() => {
+    if (user?.langue_code) {
+      setLanguage_code(user.langue_code);
+    }
+    if (user?.showWatchedPublic !== undefined) {
+      setShowWatchedPublic(user.showWatchedPublic);
+    }
+    if (user?.showWatchlistPublic !== undefined) {
+      setShowWatchlistPublic(user.showWatchlistPublic);
+    }
+  }, [user]);
 
 
   const { mutate, isPending } = useMutation({
     mutationFn: userService.updateProfile,
-    onSuccess: (result) => {
+    onSuccess: (result : any) => {
       queryClient.setQueryData<UserData | null>(
         ["auth", "profile"],
-        (oldUser) =>
+        (oldUser : any) =>
           oldUser
             ? {
               ...oldUser,
@@ -82,6 +98,8 @@ const SettingsPage = () => {
             }
             : oldUser
       );
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+
       toast.success("Profile updated!");
     },
     onError: (err: any) => {
@@ -106,7 +124,7 @@ const SettingsPage = () => {
     onSuccess: () => {
       queryClient.setQueryData<UserData | null>(
         ["profile"],
-        (oldUser) =>
+        (oldUser : any) =>
           oldUser
             ? { ...oldUser, langue_code: language_code }
             : oldUser
@@ -129,6 +147,27 @@ const SettingsPage = () => {
     },
     onError: (err: any) => {
       // console.log(err.message);
+      toast.error(err.message);
+    }
+  });
+
+
+  const { mutate: mutatePreferences, isPending: isPreferencesPending } = useMutation({
+    mutationFn: userService.updatePreferences,
+    onSuccess: (result: any) => {
+      queryClient.setQueryData<UserData | null>(
+        ["auth", "profile"],
+        (oldUser: any) =>
+          oldUser
+            ? {
+                ...oldUser,
+                ...result,
+              }
+            : oldUser
+      );
+      toast.success("Visibility preferences updated!");
+    },
+    onError: (err: any) => {
       toast.error(err.message);
     }
   });
@@ -163,16 +202,12 @@ const SettingsPage = () => {
   const handleProfileUpdate = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFormErrors({});
-    // const formData = new FormData(event.currentTarget);
-    // const rawData = Object.fromEntries(formData);
-    // console.log(rawData);
-    // const result = profileSchema.safeParse(rawData);
+
 
     console.log(previewUrl);
     const formElement = event.currentTarget;
     const formData = new FormData(formElement);
 
-    // To validate with Zod, we pull the values out
     const dataToValidate = {
       firstName: formData.get('firstName'),
       lastName: formData.get('lastName'),
@@ -186,7 +221,7 @@ const SettingsPage = () => {
     if (!result.success) {
       console.log(result.error);
       const errors: Record<string, string> = {};
-      result.error.issues.forEach((issue) => {
+      result.error.issues.forEach((issue : any) => {
         errors[issue.path[0] as string] = issue.message;
       });
       return setFormErrors(errors);
@@ -208,7 +243,7 @@ const SettingsPage = () => {
 
     if (!result.success) {
       const errors: Record<string, string> = {};
-      result.error.issues.forEach((issue) => {
+      result.error.issues.forEach((issue : any) => {
         errors[issue.path[0] as string] = issue.message;
       });
       return setFormErrors(errors);
@@ -229,7 +264,7 @@ const SettingsPage = () => {
     console.log(result);
     if (!result.success) {
       const errors: Record<string, string> = {};
-      result.error.issues.forEach((issue) => {
+      result.error.issues.forEach((issue: any) => {
         errors[issue.path[0] as string] = issue.message;
       });
       return setFormPasswordErrors(errors);
@@ -244,6 +279,14 @@ const SettingsPage = () => {
     const data = { language: language_code };
     console.log(data);
     mutateLanguage(language_code);
+  }
+
+  const handlePreferencesUpdate = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    mutatePreferences({
+      showWatchedPublic,
+      showWatchlistPublic,
+    });
   }
   const handleAvatarChange = () => {
     // Trigger file input
@@ -488,7 +531,53 @@ const SettingsPage = () => {
                     </div>
 
                     <div className="flex justify-end">
-                      <Button type="submit">Save Preferences</Button>
+                      <Button type="submit" disabled={isLanguagePending}>
+                        {isLanguagePending ? "Saving..." : "Save Language"}
+                      </Button>
+                    </div>
+                  </form>
+
+                  <form className="space-y-6 mt-8" onSubmit={handlePreferencesUpdate}>
+                    <div className="space-y-4 rounded-xl border border-border p-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <Label htmlFor="watched-visibility" className="text-sm font-medium">
+                            Share watched movies
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Allow other users to see your watched history on your profile.
+                          </p>
+                        </div>
+                        <Switch
+                          id="watched-visibility"
+                          checked={showWatchedPublic}
+                          onCheckedChange={(checked) => setShowWatchedPublic(!!checked)}
+                          disabled={isPreferencesPending}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <Label htmlFor="watchlist-visibility" className="text-sm font-medium">
+                            Share watchlist
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Control whether others can view your watch later list.
+                          </p>
+                        </div>
+                        <Switch
+                          id="watchlist-visibility"
+                          checked={showWatchlistPublic}
+                          onCheckedChange={(checked) => setShowWatchlistPublic(!!checked)}
+                          disabled={isPreferencesPending}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <Button type="submit" disabled={isPreferencesPending}>
+                        {isPreferencesPending ? "Saving..." : "Update Visibility"}
+                      </Button>
                     </div>
                   </form>
                 </CardContent>

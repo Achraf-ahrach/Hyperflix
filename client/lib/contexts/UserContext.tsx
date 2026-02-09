@@ -13,6 +13,8 @@ export interface User {
   avatarUrl: string | null;
   provider: string;
   langue_code: string;
+  showWatchedPublic: boolean;
+  showWatchlistPublic: boolean;
 }
 
 interface UserContextType {

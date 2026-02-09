@@ -1,5 +1,5 @@
 // comments.service.ts
-import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { eq, desc, isNull, inArray, sql, and } from 'drizzle-orm';
 import { DRIZZLE } from '../../database/database.module';
 import { comments, users, commentLikes, commentMedia } from '../../database/schema';
@@ -283,6 +283,41 @@ export class CommentsService {
         message: 'Comment deleted',
       };
     
+  }
+
+  async updateComment(commentId: number, userId: number, content: string) {
+    const normalizedContent = content?.trim();
+
+    if (!normalizedContent) {
+      throw new BadRequestException('Content is required');
+    }
+
+    const comment = await this.db
+      .select({
+        id: comments.id,
+        userId: comments.userId,
+      })
+      .from(comments)
+      .where(eq(comments.id, commentId))
+      .limit(1);
+
+    if (comment.length === 0) {
+      throw new NotFoundException('Comment not found');
+    }
+
+    if (comment[0].userId !== userId) {
+      throw new ForbiddenException('You can only edit your own comments');
+    }
+
+    await this.db
+      .update(comments)
+      .set({ content: normalizedContent })
+      .where(eq(comments.id, commentId));
+
+    return {
+      id: commentId,
+      content: normalizedContent,
+    };
   }
 }
 

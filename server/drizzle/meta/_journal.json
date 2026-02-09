@@ -15,6 +15,13 @@
       "when": 1770372352460,
       "tag": "0001_high_blazing_skull",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1770614400000,
+      "tag": "0002_watch_privacy_settings",
+      "breakpoints": true
     }
   ]
 }

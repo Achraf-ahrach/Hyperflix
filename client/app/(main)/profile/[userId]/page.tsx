@@ -6,22 +6,22 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Film, MessageSquare, Clock } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { profileService } from '@/services/profile.service';
-import { useUser } from '@/lib/contexts/UserContext';
 import { API_URL } from '@/app/utils';
 import { useParams } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
 import { MovieCard } from '@/components/profile/MovieCard';
 import { CommentCard } from '@/components/profile/CommentCard';
 import { Pagination } from '@/components/profile/Pagination';
-import { watch } from 'fs';
+
 
 
 
 const ProfilePage = () => {
   const [currentPage, setCurrentPage] = useState({ comments: 1, watched: 1, watchlist: 1 });
-  const { user } = useUser();
   const params = useParams();
   const userId = params.userId;
+
+  console.log('ProfilePage userId:', userId);
 
   const {
     data: userData,
@@ -29,7 +29,7 @@ const ProfilePage = () => {
     isError: isUserDataError,
     error: userDataError
   } = useQuery({
-    queryKey: ['profile'],
+    queryKey: ['profile', userId],
     queryFn: () => profileService.getUserData(Number(userId)),
 
   });
@@ -41,7 +41,7 @@ const ProfilePage = () => {
     isError,
     error
   } = useQuery({
-    queryKey: ['comments', currentPage.comments],
+    queryKey: ['comments', currentPage.comments, userId],
     queryFn: () => profileService.getComments({
       userId: Number(userId),
       pageNum: currentPage.comments
@@ -57,13 +57,13 @@ const ProfilePage = () => {
     isError: isMoviesError,
     error: moviesError
   } = useQuery({
-    queryKey: ['movies', currentPage.watched],
+    queryKey: ['movie', currentPage.watched, userId],
     queryFn: () => profileService.getMovies({
-      userId: userId,
+      userId: Number(userId),
       pageNum: currentPage.watched
     }),
 
-    placeholderData: (previousData) => previousData,
+    placeholderData: (previousData: any) => previousData,
   });
 
 
@@ -74,47 +74,49 @@ const ProfilePage = () => {
     isError: isWatchListError,
     error: watchListError
   } = useQuery({
-    queryKey: ['watchlist', currentPage.watchlist],
+    queryKey: ['watchlist', currentPage.watchlist, userId],
     queryFn: () => profileService.getWatchLater({
-      userId: userId,
+      userId: Number(userId),
       pageNum: currentPage.watchlist
     }),
 
-    placeholderData: (previousData) => previousData,
+    placeholderData: (previousData: any) => previousData,
   });
 
 
   let startUrl = '';
-  let avatarUrl = user?.avatarUrl || '';
+  let avatarUrl = userData?.avatarUrl || '';
   if (avatarUrl.startsWith('http')) {
     startUrl = '';
   }
   else startUrl = API_URL;
 
-  const ActivityItem = ({ label, userValue, avgValue, colorClass }:
-    { label: string; userValue: number; avgValue: number; colorClass: string }) => {
+  const ActivityItem = ({ label, userValue, avgValue }:
+    { label: string; userValue: number; avgValue: number; }) => {
 
     let diff = ((Number(userValue) - avgValue) / avgValue) * 100;
     const isHigher = diff > 0;
     const barWidth = Number(Math.min((Number(userValue) / (avgValue * 2)) * 100, 100));
-    const barColor = colorClass.replace('text', 'bg');
-    const textColor = colorClass;
-
+    console.log(`ActivityItem - ${label}: userValue=${userValue}, avgValue=${avgValue}, diff=${diff}, barWidth=${barWidth}`);
     if (isNaN(diff)) {
       diff = 0;
     }
+
+    // bg-green-600 dark:text-green-500
+    // bg-blue-600 dark:text-blue-500
+
 
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm">
           <span className="text">{label}</span>
-          <span className={`font-semibold ${textColor}`}>
+          <span className={`font-semibold text-blue-600 dark:text-blue-500`}>
             {isHigher ? '+' : ''}{diff.toFixed(0)}%
           </span>
         </div>
         <div className="h-2 bg-muted rounded-full overflow-hidden">
           <div
-            className={`h-full ${barColor}`}
+            className={`h-full bg-green-600 dark:bg-green-500`}
             style={{ width: `${barWidth}%` }}
           />
         </div>
@@ -126,7 +128,7 @@ const ProfilePage = () => {
       </div>
     );
   };
-
+  // console.log('User Data:', userData);
   return (
     <div >
       <div className="min-h-screen bg-background text-foreground">
@@ -137,12 +139,18 @@ const ProfilePage = () => {
             <Card className="w-full lg:flex-1 lg:max-w-md">
               <CardContent className="p-6">
                 <div className="flex items-center gap-4 mb-6">
-                  <Avatar className="w-35 h-35">
-                    <AvatarImage src={`${startUrl}${avatarUrl || ''}`} />
-                    <AvatarFallback>{user?.username?.charAt(0)}</AvatarFallback>
-                  </Avatar>
+                  {
+                    userData ?
+                      (
+                        <Avatar className="w-35 h-35">
+                          <AvatarImage src={`${startUrl}${avatarUrl || ''}`} />
+                          <AvatarFallback>{userData?.username?.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                      ) :
+                      <Spinner />
+                  }
                   <div>
-                    <h2 className="text-xl font-semibold">{user?.username}</h2>
+                    <h2 className="text-xl font-semibold">{userData?.username}</h2>
                   </div>
                 </div>
                 <div className="flex justify-between text-center">
@@ -194,8 +202,8 @@ const ProfilePage = () => {
                     <Spinner />
                   ) : (
                     <>
-                      <ActivityItem label="Movies Watched" userValue={userData?.watched.count} avgValue={userData?.watched.platformAverage} colorClass="text-green-600 dark:text-green-500" />
-                      <ActivityItem label="Comments Posted" userValue={userData?.comments.count} avgValue={userData?.comments.platformAverage} colorClass="text-blue-600 dark:text-blue-500" />
+                      <ActivityItem label="Movies Watched" userValue={userData?.watched.count} avgValue={userData?.watched.platformAverage} />
+                      <ActivityItem label="Comments Posted" userValue={userData?.comments.count} avgValue={userData?.comments.platformAverage} />
                     </>
                   )
                 }
@@ -224,79 +232,108 @@ const ProfilePage = () => {
             <TabsContent value="watched">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {
-                  isMoviesLoading ? (
-                    <p>Loading movies...</p>
-                  ) : (
+                  !isMoviesLoading && (
                     moviesData?.data.map((movie: any) => (
                       <MovieCard key={movie.id} movie={movie} />
                     )))
                 }
               </div>
               {
+                !isMoviesLoading &&
+                (
                   moviesData?.data.length > 0 ?
-                  (
-                    <Pagination
-                    current={currentPage.watched}
-                    total={moviesData?.meta.lastPage}
-                    onPageChange={(page) => setCurrentPage({ ...currentPage, watched: page })}
-                    />
-                  )
-                  :
-                  <p className='text-center'>No movies available</p>
+                    (
+                      <Pagination
+                        current={currentPage.watched}
+                        total={moviesData?.meta.lastPage}
+                        onPageChange={(page) => setCurrentPage({ ...currentPage, watched: page })}
+                      />
+                    )
+                    :
+                    <p className='text-center'>No movies available</p>
+                )
+              }
+
+              {
+                isMoviesLoading && (
+                  <div className="flex justify-center mt-6">
+                    <Spinner />
+                  </div>
+                )
               }
             </TabsContent>
 
             {/* Comments Tab */}
             <TabsContent value="comments">
               <div className="grid gap-4">
-                {isLoading ? (
-                  <p>Loading comments...</p>
-                ) : (
+
+                {
+                  isLoading && (
+                    <div className="flex justify-center mt-6">
+                      <Spinner />
+                    </div>
+                  )
+                }
+
+
+                {!isLoading && (
                   commentData?.data.map((comment: any) => (
                     <CommentCard key={comment.id} comment={comment} />
                   ))
                 )}
               </div>
 
+
               {
-              commentData?.data.length > 0 ? (
-                <Pagination
-                  current={currentPage.comments}
-                  total={commentData?.meta.lastPage || 0}
-                  onPageChange={(page) =>
-                    setCurrentPage({ ...currentPage, comments: page })
-                  }
-                />
-              ) 
-              :
-               <p className='text-center'>No comments available</p>
+                !isLoading &&
+                (
+                  commentData?.data.length > 0 ? (
+                    <Pagination
+                      current={currentPage.comments}
+                      total={commentData?.meta.lastPage || 0}
+                      onPageChange={(page) =>
+                        setCurrentPage({ ...currentPage, comments: page })
+                      }
+                    />
+                  )
+                    :
+                    <p className='text-center'>No comments available</p>
+                )
               }
+
             </TabsContent>
 
             {/* Watch Later Tab */}
             <TabsContent value="watchlist">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {
-                  isWatchListLoading ? (
-                    <p>Loading movies...</p>
-                  ) : (
-                    watchListData?.data.map((movie: any) => (
+                  isWatchListLoading && (
+                    <div className="flex justify-center mt-6">
+                      <Spinner />
+                    </div>
+                  )
+                }
+                {
+                  !isWatchListLoading && watchListData?.data.map((movie: any) => (
                       <MovieCard key={movie.id} movie={movie} />
-                    )))
+                    ))
                 }
               </div>
-              {
-                watchListData?.data.length > 0 ?
-                (
 
-                  <Pagination
-                  current={currentPage.watchlist}
-                  total={watchListData?.meta.lastPage}
-                  onPageChange={(page) => setCurrentPage({ ...currentPage, watchlist: page })}
-                  />
+              {
+                !isWatchListLoading &&
+                (
+                  watchListData?.data.length > 0 ?
+                    (
+                      <Pagination
+                        current={currentPage.watchlist}
+                        total={watchListData?.meta.lastPage}
+                        onPageChange={(page) => setCurrentPage({ ...currentPage, watchlist: page })}
+                      />
+                    )
+                    :
+                  <p className='text-center'>No movies in watch later list</p>
                 )
-                :
-                <p className='text-center'>No movies in watch later list</p>
               }
             </TabsContent>
 

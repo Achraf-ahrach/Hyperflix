@@ -1,20 +1,21 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
-  Param,
-  Query,
-  ParseIntPipe,
-  Post,
   HttpCode,
   HttpStatus,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
   Req,
-  Delete,
   UseGuards,
-  Body,
 } from '@nestjs/common';
-import { CommentDto } from '../dto/comment.dto';
 import { CommentsService } from '../service/comments.service';
 import { AuthGuard } from '@nestjs/passport';
+import { UpdateCommentDto } from '../dto/update-comment.dto';
 
 
 @Controller('comments')
@@ -63,7 +64,7 @@ export class CommentsController {
     return this.commentService.toggleLike(commentId, userId);
   }
 
-    @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'))
   @Delete(':commentId')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteComment(
@@ -72,6 +73,17 @@ export class CommentsController {
   ) {
     const userId = req.user.id;
     await this.commentService.deleteComment(commentId, userId);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Patch(':commentId')
+  async updateComment(
+    @Param('commentId', ParseIntPipe) commentId: number,
+    @Body() updateCommentDto: UpdateCommentDto,
+    @Req() req: any,
+  ) {
+    const userId = req.user.id;
+    return this.commentService.updateComment(commentId, userId, updateCommentDto.content);
   }
 
 }

@@ -1,11 +1,13 @@
-import { Heart, MessageCircle, MoreVertical, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Edit, Heart, MessageCircle, MoreVertical, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { SpoilerText } from "./SpoilerText";
 import { CommentInput } from "./CommentInput";
 import { ReplyItem } from "./ReplyItem";
 import { Comment } from "../types/types"
 import { API_URL } from "@/app/utils";
 import { useUser } from "@/lib/contexts/UserContext";
+import { useRouter } from "next/navigation";
+import { timeAgo } from "@/lib/utils";
 
 // --- Comment Item Component ---
 interface CommentItemProps {
@@ -13,14 +15,26 @@ interface CommentItemProps {
   onLike: () => void;
   onReply: (content: string) => Promise<void>;
   onDelete: () => void;
+  onEdit: (content: string) => Promise<void> | void;
   onReplyLike: (replyId: number) => void;
   onReplyDelete: (replyId: number) => void;
+  onReplyEdit: (replyId: number, content: string) => Promise<void> | void;
 }
 
-export const CommentItem = ({ comment, onLike, onReply, onDelete, onReplyLike, onReplyDelete }: CommentItemProps) => {
+export const CommentItem = ({ comment, onLike, onReply, onDelete, onEdit, onReplyLike, onReplyDelete, onReplyEdit }: CommentItemProps) => {
   const [showReplyInput, setShowReplyInput] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(comment.content);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const { user } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isEditing) {
+      setEditContent(comment.content);
+    }
+  }, [comment.content, isEditing]);
 
 
   if (!user) return null;
@@ -50,11 +64,12 @@ export const CommentItem = ({ comment, onLike, onReply, onDelete, onReplyLike, o
         ">
 
       <div className="flex gap-4">
-        <img src={imageUrl} className="w-10 h-10 rounded-full bg-slate-800" alt={comment.username} />
+        <img src={imageUrl} className="w-10 h-10 rounded-full bg-slate-800" alt={comment.username} onClick={()=>{router.push(`/profile/${comment.userId}`)}} />
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-start">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" onClick={()=>{router.push(`/profile/${comment.userId}`)}}>
               <span className="font-bold text-sm">{comment.username}</span>
+              <span className="text-[10px] text-slate-600">{timeAgo(comment.createdAt)}</span>
             </div>
             {comment.userId === user.id && (
               <div className="relative">
@@ -76,6 +91,15 @@ export const CommentItem = ({ comment, onLike, onReply, onDelete, onReplyLike, o
                     >
                       <Trash2 size={12} /> Delete
                     </button>
+                    <button
+                      onClick={() => {
+                        setIsEditing(true);
+                        setShowMenu(false);
+                      }}
+                      className="w-full text-left px-4 py-2 text-xs text-emerald-400 hover:bg-slate-700 flex items-center gap-2"
+                    >
+                      <Edit size={12} /> Edit
+                    </button>
                   </div>
                 )
                 }
@@ -84,7 +108,50 @@ export const CommentItem = ({ comment, onLike, onReply, onDelete, onReplyLike, o
           </div>
 
           <div className="mt-2">
-            <SpoilerText text={comment.content} />
+            {isEditing ? (
+              <div className="space-y-2">
+                <textarea
+                  className="w-full bg-transparent border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-red-500/50"
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  rows={3}
+                />
+                <div className="flex justify-end gap-2 text-xs">
+                  <button
+                    className="px-3 py-1 rounded-lg border border-slate-600"
+                    onClick={() => {
+                      setIsEditing(false);
+                      setEditContent(comment.content);
+                    }}
+                    disabled={isSavingEdit}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="px-4 py-1 rounded-lg bg-red-600 hover:bg-red-500 disabled:opacity-50"
+                    onClick={async () => {
+                      if (!editContent.trim()) {
+                        return;
+                      }
+                      try {
+                        setIsSavingEdit(true);
+                        await onEdit(editContent.trim());
+                        setIsEditing(false);
+                      } catch (error) {
+                        console.error('Failed to edit comment:', error);
+                      } finally {
+                        setIsSavingEdit(false);
+                      }
+                    }}
+                    disabled={isSavingEdit || !editContent.trim()}
+                  >
+                    {isSavingEdit ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <SpoilerText text={comment.content} />
+            )}
           </div>
 
           {comment.media?.[0] && (
@@ -135,6 +202,7 @@ export const CommentItem = ({ comment, onLike, onReply, onDelete, onReplyLike, o
                     onReplyLike(reply.id);
                   }}
                   onDelete={() => onReplyDelete(reply.id)}
+                  onEdit={(newContent) => onReplyEdit(reply.id, newContent)}
                 />
               ))}
             </div>

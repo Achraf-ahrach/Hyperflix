@@ -55,6 +55,12 @@ export const userService = {
   }
   ,
 
+  updatePreferences: async (data: { showWatchedPublic: boolean; showWatchlistPublic: boolean }) => {
+    const endpoint = `settings/preferences`;
+    return await userService.apiCall(endpoint, data, "Failed to update preferences");
+  }
+  ,
+
 
   addMovieToWatchlist: async (movieId: string) => {
     let endpoint = `movies/${movieId}/watch-later`;

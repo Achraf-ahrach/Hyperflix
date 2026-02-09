@@ -16,8 +16,10 @@ export class UsersProfileController {
     @Get(':userId')
     async getProfileData(
         @Param('userId') userId: number,
+        @Req() request: Request,
     ) {
-        return this.userProfileService.getProfilePublicInfo(userId);
+        const requesterId = (request as any)?.user?.id;
+        return this.userProfileService.getProfilePublicInfo(userId, requesterId);
     }
     @UseGuards(AuthGuard('jwt'))
     @Get(':userId/movies')
@@ -28,11 +30,13 @@ export class UsersProfileController {
         @Req() request: Request,
     ) {
         if (limit > 20) limit = 20;
+        const requesterId = (request as any)?.user?.id;
         return this.userProfileService.getUserWatchedMovies
             (
                 userId,
                 page,
-                limit
+                limit,
+                requesterId,
             )
     }
 
@@ -43,13 +47,16 @@ export class UsersProfileController {
         @Param('userId') userId: number,
         @Query('page') page = 1,
         @Query('limit') limit = 20,
+        @Req() request: Request,
     ) {
         if (limit > 20) limit = 20;
+        const requesterId = (request as any)?.user?.id;
         return this.userProfileService.getUserWatchLaterMovies
             (
                 userId,
                 page,
-                limit
+                limit,
+                requesterId,
             )
     }
 
