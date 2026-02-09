@@ -3,7 +3,7 @@ import * as dotenv from 'dotenv';
 import { resolve } from 'path';
 
 // Load .env from root
-dotenv.config({ path: resolve(__dirname, '../.env.local') });
+dotenv.config({ path: resolve(__dirname, '../.env') });
 
 let databaseUrl = process.env.DATABASE_URL || '';
 

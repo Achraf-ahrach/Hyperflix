@@ -86,13 +86,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
         if (Hls.isSupported()) {
             hls = new Hls({
                 debug: false,
-                manifestLoadingTimeOut: 20000, 
+                manifestLoadingTimeOut: 20000,
+                // SOLUTION: Force start at 0 seconds
+                startPosition: 0 
             });
             
             hls.loadSource(hlsUrl);
             hls.attachMedia(video);
             
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                // SOLUTION: Double ensure time is 0 before playing
+                video.currentTime = 0; 
                 video.play().catch(() => {});
             });
 
@@ -115,6 +119,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
         } 
         else if (video.canPlayType('application/vnd.apple.mpegurl')) {
             video.src = hlsUrl;
+            // SOLUTION: For Safari (native HLS), force time to 0
+            video.addEventListener('loadedmetadata', () => {
+                video.currentTime = 0;
+                video.play();
+            }, { once: true });
         }
 
         return () => {
