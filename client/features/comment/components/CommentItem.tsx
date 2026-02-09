@@ -6,6 +6,8 @@ import { ReplyItem } from "./ReplyItem";
 import { Comment } from "../types/types"
 import { API_URL } from "@/app/utils";
 import { useUser } from "@/lib/contexts/UserContext";
+import { useRouter } from "next/navigation";
+import { timeAgo } from "@/lib/utils";
 
 // --- Comment Item Component ---
 interface CommentItemProps {
@@ -26,6 +28,7 @@ export const CommentItem = ({ comment, onLike, onReply, onDelete, onEdit, onRepl
   const [editContent, setEditContent] = useState(comment.content);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const { user } = useUser();
+  const router = useRouter();
 
   useEffect(() => {
     if (!isEditing) {
@@ -61,11 +64,12 @@ export const CommentItem = ({ comment, onLike, onReply, onDelete, onEdit, onRepl
         ">
 
       <div className="flex gap-4">
-        <img src={imageUrl} className="w-10 h-10 rounded-full bg-slate-800" alt={comment.username} />
+        <img src={imageUrl} className="w-10 h-10 rounded-full bg-slate-800" alt={comment.username} onClick={()=>{router.push(`/profile/${comment.userId}`)}} />
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-start">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" onClick={()=>{router.push(`/profile/${comment.userId}`)}}>
               <span className="font-bold text-sm">{comment.username}</span>
+              <span className="text-[10px] text-slate-600">{timeAgo(comment.createdAt)}</span>
             </div>
             {comment.userId === user.id && (
               <div className="relative">

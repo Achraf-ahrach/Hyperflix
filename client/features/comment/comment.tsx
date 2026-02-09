@@ -170,9 +170,6 @@ export const CommentsSection = ({ movieId }: { movieId: string }) => {
       <div className="max-w-3xl mx-auto">
         <h2 className="text-3xl font-bold mb-8 flex items-center gap-3">
           Comments
-          <span className="text-sm font-normal px-3 py-1 rounded-full">
-            {total}
-          </span>
         </h2>
 
         <div className="mb-10">

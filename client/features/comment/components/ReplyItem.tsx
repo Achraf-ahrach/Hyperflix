@@ -3,6 +3,8 @@ import { Edit, Heart } from "lucide-react";
 import { Reply } from "../types/types";
 import { useEffect, useState } from "react";
 import { useUser } from "@/lib/contexts/UserContext";
+import { API_URL } from "@/app/utils";
+import { timeAgo } from "@/lib/utils";
 
 
 
@@ -29,18 +31,26 @@ export const ReplyItem = ({ reply, onLike, onDelete, onEdit }: ReplyItemProps) =
     }
   }, [reply.content, isEditing]);
 
+
+    let imageUrl: string = ''
+    if (!reply.userAvatar) {
+      imageUrl = '';
+    } else if (!reply.userAvatar.startsWith('http')) {
+      imageUrl = `${API_URL}${reply.userAvatar}`;
+    } else {
+      imageUrl = reply.userAvatar;
+    }
+
   return (
 
     <div className="flex gap-3">
-      <img src={reply.userAvatar} className="w-7 h-7 rounded-full bg-slate-800" alt={reply.username} />
+      <img src={imageUrl} className="w-7 h-7 rounded-full bg-slate-800" alt={reply.username} />
       <div className="flex-1">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="font-bold text-xs ">{reply.username}</span>
-            {/* <span className="text-[10px] text-slate-600">• Just now</span> */}
+            <span className="text-xs text-slate-500">{timeAgo(reply.createdAt)}</span>
           </div>
-
-          {/* Three dots menu for deletion */}
           {
             user?.id === reply.userId && (
 
