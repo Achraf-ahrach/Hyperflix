@@ -47,18 +47,9 @@ class VideoService:
 
         start_time = current_segment * self.segment_duration
         
-        # --- SIMPLIFIED NAMING ---
-        # Old way (Prone to errors): 
-        # file_name = os.path.basename(rel_path)
-        # base_name = os.path.splitext(file_name)[0]
-        # segment_name = f"{base_name}_segment_{current_segment:03d}.ts"
-        
-        # New way (Safe & Clean):
-        # Creates filenames like: segment_000.ts, segment_001.ts, etc.
         segment_name = f"segment_{current_segment:03d}.ts"
         # -------------------------
 
-        # Handle subdirectories if your input path logic requires it
         rel_path = os.path.relpath(input_path, output_dir)
         dir_path = os.path.dirname(rel_path)
 
