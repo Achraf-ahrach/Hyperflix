@@ -189,7 +189,7 @@ export default function MovieDetailsPage() {
   return (
     <div className="min-h-screen bg-[#141414] font-sans">
       {/* Hero Section */}
-      <div className="relative h-[85vh] w-full">
+      <div className="relative h-[85vh] min-h-[500px] w-full">
         {/* Background Image */}
         <div className="absolute inset-0">
           <Image
@@ -208,25 +208,25 @@ export default function MovieDetailsPage() {
           <div className="absolute inset-0 bg-linear-to-r from-[#141414] via-[#141414]/40 to-transparent" />
         </div>
 
-        {/* Play Button (Centered) */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        {/* Play Button (Centered, positioned higher on mobile) */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none sm:pb-0 pb-32">
           <button
             onClick={handlePlay}
-            className="w-20 h-20 rounded-full bg-primary/90 hover:bg-primary text-white flex items-center justify-center transition-transform hover:scale-110 shadow-[0_0_40px_rgba(var(--primary),0.5)] pointer-events-auto backdrop-blur-sm"
+            className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-primary/90 hover:bg-primary text-white flex items-center justify-center transition-transform hover:scale-110 shadow-[0_0_40px_rgba(var(--primary),0.5)] pointer-events-auto backdrop-blur-sm z-10"
             aria-label="Play"
           >
-            <Play className="w-8 h-8 fill-current ml-1" />
+            <Play className="w-6 h-6 sm:w-8 sm:h-8 fill-current ml-1" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="absolute bottom-0 left-0 w-full p-8 md:p-12 lg:p-16 space-y-6">
-          <div className="max-w-3xl space-y-4">
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight drop-shadow-lg">
+        <div className="absolute bottom-0 left-0 w-full p-4 sm:p-8 md:p-12 lg:p-16 space-y-4 sm:space-y-6 z-20">
+          <div className="max-w-3xl space-y-3 sm:space-y-4">
+            <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-tight drop-shadow-lg">
               {movie.title}
             </h1>
 
-            <div className="flex items-center gap-4 text-sm md:text-base text-gray-200 font-medium">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm md:text-base text-gray-200 font-medium">
               {movie.mpa_rating && (
                 <span className="px-2 py-0.5 border border-gray-400 rounded text-xs uppercase">
                   {movie.mpa_rating}
@@ -253,28 +253,30 @@ export default function MovieDetailsPage() {
               )}
             </div>
 
-            <div className="flex flex-wrap gap-3 pt-2">
+            <div className="flex flex-wrap gap-2 sm:gap-3 pt-2">
               <Button
                 onClick={() => toggleWatchedMutation.mutate(movie.watched || false)}
                 variant="secondary"
-                className="gap-2 bg-white/10 hover:bg-white/20 text-white border-none backdrop-blur-md"
+                className="gap-2 bg-white/10 hover:bg-white/20 text-white border-none backdrop-blur-md text-xs sm:text-sm"
                 disabled={toggleWatchedMutation.isPending}
               >
                 {movie.watched ? (
                   <>
-                    <CheckCircle2 className="w-4 h-4" />
-                    Watched
+                    <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">Watched</span>
+                    <span className="sm:hidden">✓</span>
                   </>
                 ) : (
                   <>
-                    <Circle className="w-4 h-4" />
-                    Mark as Watched
+                    <Circle className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">Mark as Watched</span>
+                    <span className="sm:hidden">Watch</span>
                   </>
                 )}
               </Button>
               <Button
                 variant="secondary"
-                className="gap-2 bg-white/10 hover:bg-white/20 text-white border-none backdrop-blur-md"
+                className="gap-2 bg-white/10 hover:bg-white/20 text-white border-none backdrop-blur-md text-xs sm:text-sm"
                 onClick={handleAddToWatchlist}
               >
                 {
@@ -283,11 +285,12 @@ export default function MovieDetailsPage() {
                   )
                     :
                     isInWatchlist ? (
-                      <Minus className="w-4 h-4" />
+                      <Minus className="w-3 h-3 sm:w-4 sm:h-4" />
                     ) : (
-                      <Plus className="w-4 h-4" />
+                      <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
                     )}
-                Watch List
+                <span className="hidden sm:inline">Watch List</span>
+                <span className="sm:hidden">List</span>
               </Button>
               {/* <Button
                 variant="secondary"
