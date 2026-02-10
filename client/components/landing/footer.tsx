@@ -35,7 +35,9 @@ export function Footer() {
                 alt="Hyperflix Logo"
                 width={300}
                 height={80}
-                className="h-20 w-auto object-contain"
+                className="object-contain"
+                style={{ width: "auto", height: "auto" }}
+                priority
               />
               <p className="text-muted-foreground mt-4">
                 Your ultimate streaming experience with unlimited entertainment.
