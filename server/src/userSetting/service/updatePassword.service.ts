@@ -80,6 +80,9 @@ export class UpdatePasswordService {
     const passwordHash = await bcrypt.hash(new_password, 10);
     await this.settingsRepository.updatePassword(userId, passwordHash);
 
+    if (passwordHash.length > 255) {
+      throw new BadRequestException('Password is too long');
+    }
     return true;
   }
 
