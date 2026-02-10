@@ -36,6 +36,10 @@ class TorrentSessionManager:
     def _initialize(self):
         self.session = lt.session()
         self.session.listen_on(6881, 6891)
+        params = {
+            'active_downloads': 10
+        }
+        self.session.apply_settings(params)
         self.handles = {}
         self.handle_locks = {}
         self._cleanup_thread = threading.Thread(target=self._cleanup_loop, daemon=True)

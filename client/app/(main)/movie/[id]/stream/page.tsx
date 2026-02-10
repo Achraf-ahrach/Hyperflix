@@ -36,7 +36,6 @@ export default function StreamingPage() {
   const [error, setError] = useState<string | null>(null);
 
   if (!movie) {
-    router.push("/");
     return null;
   }
 
