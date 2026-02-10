@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
@@ -15,14 +15,23 @@ export class AuthService {
     private emailService: EmailService,
   ) {}
 
-  async validateLocalUser(userData: { email: string; password: string }) {
-    const user = await this.usersService.findByEmail(userData.email);
+  async validateLocalUser(userData: { identifier: string; password: string }) {
+    let user = await this.usersService.findByEmail(userData.identifier);
+
+    if (!user) {
+      user = await this.usersService.findByUsername(userData.identifier);
+    }
 
     if (
       user &&
       user.passwordHash &&
       (await bcrypt.compare(userData.password, user.passwordHash))
     ) {
+      if (user.provider === 'local' && !user.isEmailVerified) {
+        throw new UnauthorizedException(
+          'Please verify your email before logging in.',
+        );
+      }
       const { passwordHash, ...result } = user;
       return result;
     }
@@ -59,7 +68,7 @@ export class AuthService {
         let username = oauthData.username;
         let usernameExists = await this.usersService.findByUsername(username);
         let counter = 1;
-        
+
         while (usernameExists) {
           username = `${oauthData.username}${counter}`;
           usernameExists = await this.usersService.findByUsername(username);
@@ -104,13 +113,17 @@ export class AuthService {
     password: string;
   }) {
     // Check if email already exists
-    const existingUserByEmail = await this.usersService.findByEmail(userData.email);
+    const existingUserByEmail = await this.usersService.findByEmail(
+      userData.email,
+    );
     if (existingUserByEmail) {
       throw new Error('Email already exists');
     }
 
     // Check if username already exists
-    const existingUserByUsername = await this.usersService.findByUsername(userData.username);
+    const existingUserByUsername = await this.usersService.findByUsername(
+      userData.username,
+    );
     if (existingUserByUsername) {
       throw new Error('Username already exists');
     }

@@ -1,19 +1,28 @@
-import { IsString, MinLength } from 'class-validator';
+import { z } from 'zod';
+import { createZodDto } from 'nestjs-zod';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class ResetPasswordDto {
+const ResetPasswordSchema = z.object({
+  token: z.string().min(1, 'Token is required'),
+  newPassword: z
+    .string()
+    .min(8, 'Password must be at least 8 characters long')
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#]).{8,}$/,
+      'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&#)',
+    ),
+});
+
+export class ResetPasswordDto extends createZodDto(ResetPasswordSchema) {
   @ApiProperty({
-    example: 'newStrongPassword123',
-    description: 'New password (minimum 6 characters)',
+    example: 'abc123def456ghi789',
+    description: 'Password reset token',
   })
-  @IsString()
   token: string;
 
   @ApiProperty({
-    example: 'newStrongPassword123',
-    description: 'New password (minimum 6 characters)',
+    example: 'NewStrong@Pass123',
+    description: 'New password (minimum 8 characters)',
   })
-  @IsString()
-  @MinLength(6)
   newPassword: string;
 }

@@ -2,9 +2,13 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
+import { ZodValidationPipe } from 'nestjs-zod';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Enable global Zod validation pipe
+  app.useGlobalPipes(new ZodValidationPipe());
 
   const config = new DocumentBuilder()
     .setTitle('Hyperflix API')
