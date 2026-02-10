@@ -8,104 +8,108 @@ import ffmpeg
 from .models import MovieFile
 from srt_to_vtt import srt_to_vtt
 from django.conf import settings
-import requests
+import requests, subprocess
 from concurrent.futures import ThreadPoolExecutor
 import concurrent.futures
 
+logger = logging.getLogger(__name__)
 range_re = re.compile(r"bytes\s*=\s*(\d+)\s*-\s*(\d*)", re.I)
-
 
 class VideoService:
     def __init__(self):
-        self.segment_duration = 10
-        self.processed_segments = set()
-        self.failed_segments = set()
-        self.segment_retry_count = {}
-        self.segment_last_attempt = {}
-        self.max_retries = 3
-        self.retry_cooldown = 30
+        self.segment_duration = 10 
 
-    def get_video_duration(self, video_path: str) -> Optional[float]:
-        """Get video duration using ffprobe."""
+    def get_video_duration(self, file_path):
         try:
-            safe_path = f"file:{video_path}"
-            probe = ffmpeg.probe(safe_path)
-            return float(probe['format']['duration'])
-        except ffmpeg.Error as e:
-            logging.error(f"Error getting video duration: {e.stderr.decode()}")
-            return None
-        except Exception as e:
-            logging.error(f"Error getting video duration: {e}")
+            cmd = [
+                'ffprobe', '-v', 'error', 
+                '-show_entries', 'format=duration', 
+                '-of', 'default=noprint_wrappers=1:nokey=1', 
+                file_path
+            ]
+            output = subprocess.check_output(cmd, timeout=10).decode().strip()
+            return float(output)
+        except Exception:
             return None
 
-    def convert_segment(self, input_path: str, output_dir: str, current_segment: int, video_duration: float) -> bool:
-        """Convert a single segment of the video to HLS-compatible .ts format."""
+    def convert_all_segments(self, source_path, output_dir, segment_index):
+        """
+        CPU-Safe Transcoding (Includes 1080p).
+        Locked to 2 Cores + Ultrafast Preset to prevent System Freeze.
+        """
+        start_time = segment_index * self.segment_duration
         
-        if not os.path.exists(input_path):
-            logging.error(f"convert_segment: Input file missing at {input_path}")
-            return False
-
-        start_time = current_segment * self.segment_duration
+        res_dirs = {}
+        resolutions = ["1080p", "720p", "480p", "360p"]
         
-        segment_name = f"segment_{current_segment:03d}.ts"
-        # -------------------------
+        for res in resolutions:
+            path = os.path.join(output_dir, res)
+            os.makedirs(path, exist_ok=True)
+            res_dirs[res] = os.path.join(path, f"segment_{segment_index:03d}.ts")
 
-        rel_path = os.path.relpath(input_path, output_dir)
-        dir_path = os.path.dirname(rel_path)
+        if all(os.path.exists(p) and os.path.getsize(p) > 0 for p in res_dirs.values()):
+            return True
 
-        if dir_path and dir_path != '.':
-            segment_path = os.path.join(output_dir, dir_path, segment_name)
-            os.makedirs(os.path.dirname(segment_path), exist_ok=True)
-        else:
-            segment_path = os.path.join(output_dir, segment_name)
+        # Split input into 4 streams (1080, 720, 480, 360)
+        filter_complex = (
+            "[0:v]split=4[v1][v2][v3][v4];"
+            "[v1]scale=-2:1080,format=yuv420p[1080out];"
+            "[v2]scale=-2:720,format=yuv420p[720out];"
+            "[v3]scale=-2:480,format=yuv420p[480out];"
+            "[v4]scale=-2:360,format=yuv420p[360out]"
+        )
 
-        self.segment_last_attempt[current_segment] = time.time()
+        cmd = [
+            'ffmpeg', '-hide_banner', '-loglevel', 'error',
+            '-threads', '2',  # <--- CRITICAL: Leaves 2 cores free for your OS
+            '-ss', str(start_time),
+            '-t', str(self.segment_duration),
+            '-i', source_path,
+            '-filter_complex', filter_complex,
+        ]
+
+        # 3. Stream Configuration
+        configs = [
+            ("1080p", "[1080out]", "4000k", "8000k"),
+            ("720p",  "[720out]",  "2000k", "4000k"),
+            ("480p",  "[480out]",  "1000k", "2000k"),
+            ("360p",  "[360out]",  "600k",  "1200k"),
+        ]
+
+        for res_name, map_label, bitrate, bufsize in configs:
+            cmd.extend([
+                '-map', map_label,
+                '-c:v', 'libx264',
+                '-b:v', bitrate,
+                '-maxrate', bitrate,
+                '-bufsize', bufsize,
+                '-preset', 'ultrafast',  #  Lowest CPU usage possible
+                '-profile:v', 'main',
+                
+                # Audio
+                '-map', '0:a', '-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-ar', '44100',
+                
+                # HLS Glue
+                '-force_key_frames', 'expr:gte(t,0)',
+                '-output_ts_offset', str(start_time),
+                '-muxdelay', '0',
+                
+                '-f', 'mpegts', '-y',
+                res_dirs[res_name]
+            ])
 
         try:
-            safe_input_path = f"file:{input_path}"
-
-            stream = (
-                ffmpeg
-                .input(safe_input_path, ss=start_time, t=min(self.segment_duration, video_duration - start_time))
-                .output(
-                    segment_path,
-                    format='mpegts',
-                    vcodec='libx264',
-                    preset='ultrafast',
-                    pix_fmt='yuv420p',
-                    acodec='aac',
-                    ac=2,
-                    output_ts_offset=start_time,
-                    muxdelay=0
-                )
-                .overwrite_output()
-            )
-            
-            stream.run(capture_stdout=True, capture_stderr=True)
-
-            if os.path.exists(segment_path) and os.path.getsize(segment_path) > 0:
-                logging.info(f"✓ Converted segment {current_segment} -> {segment_name}")
-                self.processed_segments.add(current_segment)
-                return True
-            else:
-                logging.error(f"Output file not created for segment {current_segment}")
+            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+            return True
+        except subprocess.CalledProcessError as e:
+            err = e.stderr.decode()
+            if "invalid as first byte" in err or "Invalid data found" in err:
                 return False
+            
+            logger.error(f"FFmpeg CPU Error: {err}")
+            return False
 
-        except ffmpeg.Error as e:
-            error_msg = e.stderr.decode() if hasattr(e, 'stderr') else str(e)
-            logging.error(f"FFmpeg error for segment {current_segment}: {error_msg}")
-            self.segment_retry_count[current_segment] = self.segment_retry_count.get(current_segment, 0) + 1
-            if self.segment_retry_count[current_segment] >= self.max_retries:
-                self.failed_segments.add(current_segment)
-            return False
-        except Exception as e:
-            logging.error(f"Exception during segment {current_segment} conversion: {e}")
-            return False
 # ++++++++++++++++++++++++++++++++++++++++++
-
-
-
-
 
 
 class SubtitleService:
@@ -237,7 +241,11 @@ class SubtitleService:
             str(movie.id)
         )
         os.makedirs(subtitles_dir, exist_ok=True)
-
+        existing_subs = self._scan_local_subtitles(subtitles_dir, movie.id)
+        if existing_subs:
+            logging.info(f"Local subtitles found for movie {movie.id}. Skipping download.")
+            return existing_subs
+        
         lock_file = os.path.join(subtitles_dir, "download.lock")
         if os.path.exists(lock_file):
             logging.info(f"Subtitles download already in progress for movie {movie.id}")

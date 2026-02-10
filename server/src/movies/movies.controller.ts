@@ -59,10 +59,16 @@ export class MoviesController {
 
     const userId = req?.user?.id; // Extract userId if authenticated
     const results = await this.moviesService.searchMovies(query.trim(), userId);
+
+    // Sort results alphabetically by title (name)
+    const sortedResults = results.sort((a, b) =>
+      a.title.localeCompare(b.title, undefined, { sensitivity: 'base' })
+    );
+
     return {
       query,
-      count: results.length,
-      results
+      count: sortedResults.length,
+      results: sortedResults
     };
   }
 

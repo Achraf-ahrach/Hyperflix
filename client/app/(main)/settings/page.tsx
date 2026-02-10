@@ -1,23 +1,33 @@
 "use client";
-import React, { useEffect, useRef, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { User, Lock, Globe, Camera } from 'lucide-react';
-import { User as UserData, useUser } from '@/lib/contexts/UserContext';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { User, Lock, Globe, Camera } from "lucide-react";
+import { User as UserData, useUser } from "@/lib/contexts/UserContext";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { z } from 'zod';
-import { userService } from '@/services/user.service';
-import { API_URL } from '@/app/utils';
-import { toast } from 'sonner';
-
-
+import { z } from "zod";
+import { userService } from "@/services/user.service";
+import { API_URL } from "@/app/utils";
+import { toast } from "sonner";
 
 const profileSchema = z.object({
   firstName: z.string().trim().min(1, "First name is too short").max(100, "First name must be at most 100 characters long"),
@@ -26,44 +36,58 @@ const profileSchema = z.object({
   avatar: z.any().optional()
 });
 
-
 const emailSchema = z.object({
   email: z.email("Invalid email address"),
 });
 
-
-const passwordSchema = z.object({
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(/[A-Za-z]/, "Password must contain at least one letter")
-    .regex(/[0-9]/, "Password must contain at least one number")
-    .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
-  newPassword: z.string()
-    .min(8, "New password must be at least 8 characters")
-    .regex(/[A-Za-z]/, "New password must contain at least one letter")
-    .regex(/[0-9]/, "New password must contain at least one number")
-    .regex(/[^A-Za-z0-9]/, "New password must contain at least one special character"),
-  confirmPassword: z.string().min(8, "Confirm password should match the new password"),
-}).refine((data) => data.newPassword === data.confirmPassword, {
-  message: "Passwords do not match",
-});
-
+const passwordSchema = z
+  .object({
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters")
+      .regex(/[A-Za-z]/, "Password must contain at least one letter")
+      .regex(/[0-9]/, "Password must contain at least one number")
+      .regex(
+        /[^A-Za-z0-9]/,
+        "Password must contain at least one special character",
+      ),
+    newPassword: z
+      .string()
+      .min(8, "New password must be at least 8 characters")
+      .regex(/[A-Za-z]/, "New password must contain at least one letter")
+      .regex(/[0-9]/, "New password must contain at least one number")
+      .regex(
+        /[^A-Za-z0-9]/,
+        "New password must contain at least one special character",
+      ),
+    confirmPassword: z
+      .string()
+      .min(8, "Confirm password should match the new password"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Passwords do not match",
+  });
 
 const SettingsPage = () => {
-
   const { user } = useUser();
   const queryClient = useQueryClient();
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [formPasswordErrors, setFormPasswordErrors] = useState<Record<string, string>>({});
+  const [formPasswordErrors, setFormPasswordErrors] = useState<
+    Record<string, string>
+  >({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(user?.avatarUrl || null);
-  const [language_code, setLanguage_code] = useState(user?.langue_code || 'en');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(
+    user?.avatarUrl || null,
+  );
+  const [language_code, setLanguage_code] = useState(user?.langue_code || "en");
   const [isPreviewMode, setIsPreviewMode] = useState(false);
-  const [showWatchedPublic, setShowWatchedPublic] = useState(user?.showWatchedPublic ?? true);
-  const [showWatchlistPublic, setShowWatchlistPublic] = useState(user?.showWatchlistPublic ?? true);
-
+  const [showWatchedPublic, setShowWatchedPublic] = useState(
+    user?.showWatchedPublic ?? true,
+  );
+  const [showWatchlistPublic, setShowWatchlistPublic] = useState(
+    user?.showWatchlistPublic ?? true,
+  );
 
   useEffect(() => {
     if (user?.langue_code) {
@@ -77,7 +101,6 @@ const SettingsPage = () => {
     }
   }, [user]);
 
-
   const { mutate, isPending } = useMutation({
     mutationFn: userService.updateProfile,
     onSuccess: (result: any) => {
@@ -86,10 +109,10 @@ const SettingsPage = () => {
         (oldUser: any) =>
           oldUser
             ? {
-              ...oldUser,
-              ...result
-            }
-            : oldUser
+                ...oldUser,
+                ...result,
+              }
+            : oldUser,
       );
       queryClient.invalidateQueries({ queryKey: ["profile"] });
 
@@ -97,9 +120,8 @@ const SettingsPage = () => {
     },
     onError: (err: any) => {
       toast.error(err.message);
-    }
+    },
   });
-
 
   const { mutate: mutatePassword, isPending: isPasswordPending } = useMutation({
     mutationFn: userService.updatePassword,
@@ -108,29 +130,23 @@ const SettingsPage = () => {
     },
     onError: (err: any) => {
       toast.error(err.message);
-    }
+    },
   });
-
 
   const { mutate: mutateLanguage, isPending: isLanguagePending } = useMutation({
     mutationFn: userService.updateLanguage,
     onSuccess: () => {
-      queryClient.setQueryData<UserData | null>(
-        ["profile"],
-        (oldUser: any) =>
-          oldUser
-            ? { ...oldUser, langue_code: language_code }
-            : oldUser
+      queryClient.setQueryData<UserData | null>(["profile"], (oldUser: any) =>
+        oldUser ? { ...oldUser, langue_code: language_code } : oldUser,
       );
-      setIsPreviewMode(false)
+      setIsPreviewMode(false);
       toast.success("Language updated!");
     },
     onError: (err: any) => {
       // console.log(err.message);
-      toast.error(err.message)
-      setIsPreviewMode(false)
-
-    }
+      toast.error(err.message);
+      setIsPreviewMode(false);
+    },
   });
 
   const { mutate: mutateEmail, isPending: isEmailPending } = useMutation({
@@ -141,38 +157,36 @@ const SettingsPage = () => {
     onError: (err: any) => {
       // console.log(err.message);
       toast.error(err.message);
-    }
-  });
-
-
-  const { mutate: mutatePreferences, isPending: isPreferencesPending } = useMutation({
-    mutationFn: userService.updatePreferences,
-    onSuccess: (result: any) => {
-      queryClient.setQueryData<UserData | null>(
-        ["auth", "profile"],
-        (oldUser: any) =>
-          oldUser
-            ? {
-              ...oldUser,
-              ...result,
-            }
-            : oldUser
-      );
-      toast.success("Visibility preferences updated!");
     },
-    onError: (err: any) => {
-      toast.error(err.message);
-    }
   });
 
+  const { mutate: mutatePreferences, isPending: isPreferencesPending } =
+    useMutation({
+      mutationFn: userService.updatePreferences,
+      onSuccess: (result: any) => {
+        queryClient.setQueryData<UserData | null>(
+          ["auth", "profile"],
+          (oldUser: any) =>
+            oldUser
+              ? {
+                  ...oldUser,
+                  ...result,
+                }
+              : oldUser,
+        );
+        toast.success("Visibility preferences updated!");
+      },
+      onError: (err: any) => {
+        toast.error(err.message);
+      },
+    });
 
-  let startUrl = '';
+  let startUrl = "";
   if (!isPreviewMode) {
     if (previewUrl) {
-      if (previewUrl.startsWith('http')) {
-        startUrl = '';
-      }
-      else startUrl = API_URL;
+      if (previewUrl.startsWith("http")) {
+        startUrl = "";
+      } else startUrl = API_URL;
     }
   }
 
@@ -190,26 +204,22 @@ const SettingsPage = () => {
     }
   };
 
-
-
   const handleProfileUpdate = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFormErrors({});
-
 
     console.log(previewUrl);
     const formElement = event.currentTarget;
     const formData = new FormData(formElement);
 
     const dataToValidate = {
-      firstName: formData.get('firstName'),
-      lastName: formData.get('lastName'),
-      username: formData.get('username'),
-      avatar: formData.get('avatar'),
+      firstName: formData.get("firstName"),
+      lastName: formData.get("lastName"),
+      username: formData.get("username"),
+      avatar: formData.get("avatar"),
     };
 
     const result = profileSchema.safeParse(dataToValidate);
-
 
     if (!result.success) {
       console.log(result.error);
@@ -219,12 +229,9 @@ const SettingsPage = () => {
       });
       return setFormErrors(errors);
     }
-    console.log(formData)
+    console.log(formData);
     mutate(formData);
-
   };
-
-
 
   const handleEmailUpdate = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -243,8 +250,7 @@ const SettingsPage = () => {
     }
 
     mutateEmail(result.data.email);
-  }
-
+  };
 
   const handlePasswordUpdate = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -253,7 +259,7 @@ const SettingsPage = () => {
     const rawData = Object.fromEntries(formData);
     console.log(rawData);
     const result = passwordSchema.safeParse(rawData);
-    console.log("Jj")
+    console.log("Jj");
     console.log(result);
     if (!result.success) {
       const errors: Record<string, string> = {};
@@ -266,13 +272,12 @@ const SettingsPage = () => {
     mutatePassword(result.data);
   };
 
-
   const handleLanguageUpdate = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = { language: language_code };
     console.log(data);
     mutateLanguage(language_code);
-  }
+  };
 
   const handlePreferencesUpdate = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -280,26 +285,31 @@ const SettingsPage = () => {
       showWatchedPublic,
       showWatchlistPublic,
     });
-  }
+  };
 
   return (
-    <div  >
+    <div>
       <div className="min-h-screen bg-background text-foreground">
         <div className="container mx-auto px-4 py-8 max-w-4xl">
           {/* Header */}
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-3xl font-bold">Settings</h1>
-              <p className="text-muted-foreground mt-1">Manage your account settings and preferences</p>
+              <p className="text-muted-foreground mt-1">
+                Manage your account settings and preferences
+              </p>
             </div>
-
           </div>
 
           {/* Tabs Section */}
-          <Tabs defaultValue="profile" className="w-full" onValueChange={() => {
-            setFormPasswordErrors({});
-            setFormErrors({});
-          }}>
+          <Tabs
+            defaultValue="profile"
+            className="w-full"
+            onValueChange={() => {
+              setFormPasswordErrors({});
+              setFormErrors({});
+            }}
+          >
             <TabsList className="w-fit mb-8">
               <TabsTrigger value="profile" className="gap-2">
                 <User className="w-4 h-4" />
@@ -320,14 +330,16 @@ const SettingsPage = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>Profile Information</CardTitle>
-                  <CardDescription>Update your personal information and profile picture</CardDescription>
+                  <CardDescription>
+                    Update your personal information and profile picture
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleProfileUpdate} className="space-y-6">
                     {/* Avatar Upload */}
                     <div className="flex items-center gap-6">
                       <Avatar className="w-24 h-24">
-                        <AvatarImage src={`${startUrl}${previewUrl || ''}`} />
+                        <AvatarImage src={`${startUrl}${previewUrl || ""}`} />
                         <AvatarFallback>{user?.firstName?.[0]}</AvatarFallback>
                       </Avatar>
                       <div>
@@ -366,7 +378,11 @@ const SettingsPage = () => {
                           placeholder="Enter your first name"
                           className={`border ${formErrors.firstName ? "border-red-500" : "border-slate-400"}`}
                         />
-                        {formErrors.firstName && <span className="text-xs text-red-500">{formErrors.firstName}</span>}
+                        {formErrors.firstName && (
+                          <span className="text-xs text-red-500">
+                            {formErrors.firstName}
+                          </span>
+                        )}
                       </div>
 
                       {/* Last Name */}
@@ -379,8 +395,11 @@ const SettingsPage = () => {
                           placeholder="Enter your last name"
                           className={`border ${formErrors.lastName ? "border-red-500" : "border-slate-400"}`}
                         />
-                        {formErrors.lastName && <span className="text-xs text-red-500">{formErrors.lastName}</span>}
-
+                        {formErrors.lastName && (
+                          <span className="text-xs text-red-500">
+                            {formErrors.lastName}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -394,7 +413,11 @@ const SettingsPage = () => {
                         placeholder="Enter your username"
                         className={`border ${formErrors.username ? "border-red-500" : "border-slate-400"}`}
                       />
-                      {formErrors.username && <span className="text-xs text-red-500">{formErrors.username}</span>}
+                      {formErrors.username && (
+                        <span className="text-xs text-red-500">
+                          {formErrors.username}
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex justify-end">
@@ -415,13 +438,20 @@ const SettingsPage = () => {
                         name="email"
                         placeholder="Enter your email"
                         className={`border ${formErrors.email ? "border-red-500" : "border-slate-400"}`}
-                        disabled={user?.provider !== 'local'}
+                        disabled={user?.provider !== "local"}
                       />
-                      {formErrors.email && <span className="text-xs text-red-500">{formErrors.email}</span>}
+                      {formErrors.email && (
+                        <span className="text-xs text-red-500">
+                          {formErrors.email}
+                        </span>
+                      )}
                     </div>
                     {/* Email */}
                     <div className="flex justify-end">
-                      <Button type="submit" disabled={isEmailPending || user?.provider !== 'local'}>
+                      <Button
+                        type="submit"
+                        disabled={isEmailPending || user?.provider !== "local"}
+                      >
                         {isEmailPending ? "Saving..." : "Update Email"}
                       </Button>
                     </div>
@@ -435,10 +465,12 @@ const SettingsPage = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>Password & Security</CardTitle>
-                  <CardDescription>Manage your password and security settings</CardDescription>
+                  <CardDescription>
+                    Manage your password and security settings
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={handlePasswordUpdate} className="space-y-6" >
+                  <form onSubmit={handlePasswordUpdate} className="space-y-6">
                     {/* Current Password */}
                     <div className="space-y-2">
                       <Label htmlFor="currentPassword">Current Password</Label>
@@ -448,10 +480,13 @@ const SettingsPage = () => {
                         name="password"
                         placeholder="Enter your current password"
                         className={`border ${formPasswordErrors.password ? "border-red-500" : "border-slate-400"}`}
-                        disabled={user?.provider !== 'local'}
-
+                        disabled={user?.provider !== "local"}
                       />
-                      {formPasswordErrors.password && <span className="text-xs text-red-500">{formPasswordErrors.password}</span>}
+                      {formPasswordErrors.password && (
+                        <span className="text-xs text-red-500">
+                          {formPasswordErrors.password}
+                        </span>
+                      )}
                     </div>
 
                     {/* New Password */}
@@ -463,9 +498,13 @@ const SettingsPage = () => {
                         name="newPassword"
                         placeholder="Enter your new password"
                         className={`border ${formPasswordErrors.newPassword ? "border-red-500" : "border-slate-400"}`}
-                        disabled={user?.provider !== 'local'}
+                        disabled={user?.provider !== "local"}
                       />
-                      {formPasswordErrors.newPassword && <span className="text-xs text-red-500">{formPasswordErrors.newPassword}</span>}
+                      {formPasswordErrors.newPassword && (
+                        <span className="text-xs text-red-500">
+                          {formPasswordErrors.newPassword}
+                        </span>
+                      )}
                       <p className="text-xs text-muted-foreground">
                         Password must be at least 8 characters long
                       </p>
@@ -473,19 +512,32 @@ const SettingsPage = () => {
 
                     {/* Confirm Password */}
                     <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                      <Label htmlFor="confirmPassword">
+                        Confirm New Password
+                      </Label>
                       <Input
                         id="confirmPassword"
                         type="password"
                         name="confirmPassword"
                         placeholder="Confirm your new password"
                         className={`border ${formPasswordErrors.confirmPassword ? "border-red-500" : "border-slate-400"}`}
-                        disabled={user?.provider !== 'local'}
+                        disabled={user?.provider !== "local"}
                       />
-                      {formPasswordErrors.confirmPassword && <span className="text-xs text-red-500">{formPasswordErrors.confirmPassword}</span>}
+                      {formPasswordErrors.confirmPassword && (
+                        <span className="text-xs text-red-500">
+                          {formPasswordErrors.confirmPassword}
+                        </span>
+                      )}
                     </div>
                     <div className="flex justify-end">
-                      <Button type="submit" disabled={isPasswordPending || user?.provider !== 'local'}>Update Password</Button>
+                      <Button
+                        type="submit"
+                        disabled={
+                          isPasswordPending || user?.provider !== "local"
+                        }
+                      >
+                        Update Password
+                      </Button>
                     </div>
                   </form>
                 </CardContent>
@@ -515,6 +567,7 @@ const SettingsPage = () => {
                           <SelectItem value="en">English</SelectItem>
                           <SelectItem value="es">Español</SelectItem>
                           <SelectItem value="fr">Français</SelectItem>
+                          <SelectItem value="ar">العربية</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -526,38 +579,53 @@ const SettingsPage = () => {
                     </div>
                   </form>
 
-                  <form className="space-y-6 mt-8" onSubmit={handlePreferencesUpdate}>
+                  <form
+                    className="space-y-6 mt-8"
+                    onSubmit={handlePreferencesUpdate}
+                  >
                     <div className="space-y-4 rounded-xl border border-border p-4">
                       <div className="flex items-center justify-between gap-4">
                         <div>
-                          <Label htmlFor="watched-visibility" className="text-sm font-medium">
+                          <Label
+                            htmlFor="watched-visibility"
+                            className="text-sm font-medium"
+                          >
                             Share watched movies
                           </Label>
                           <p className="text-xs text-muted-foreground">
-                            Allow other users to see your watched history on your profile.
+                            Allow other users to see your watched history on
+                            your profile.
                           </p>
                         </div>
                         <Switch
                           id="watched-visibility"
                           checked={showWatchedPublic}
-                          onCheckedChange={(checked) => setShowWatchedPublic(!!checked)}
+                          onCheckedChange={(checked) =>
+                            setShowWatchedPublic(!!checked)
+                          }
                           disabled={isPreferencesPending}
                         />
                       </div>
 
                       <div className="flex items-center justify-between gap-4">
                         <div>
-                          <Label htmlFor="watchlist-visibility" className="text-sm font-medium">
+                          <Label
+                            htmlFor="watchlist-visibility"
+                            className="text-sm font-medium"
+                          >
                             Share watchlist
                           </Label>
                           <p className="text-xs text-muted-foreground">
-                            Control whether others can view your watch later list.
+                            Control whether others can view your watch later
+                            list.
                           </p>
                         </div>
                         <Switch
                           id="watchlist-visibility"
                           checked={showWatchlistPublic}
-                          onCheckedChange={(checked) => setShowWatchlistPublic(!!checked)}
+                          onCheckedChange={(checked) =>
+                            setShowWatchlistPublic(!!checked)
+                          }
                           disabled={isPreferencesPending}
                         />
                       </div>
@@ -565,7 +633,9 @@ const SettingsPage = () => {
 
                     <div className="flex justify-end">
                       <Button type="submit" disabled={isPreferencesPending}>
-                        {isPreferencesPending ? "Saving..." : "Update Visibility"}
+                        {isPreferencesPending
+                          ? "Saving..."
+                          : "Update Visibility"}
                       </Button>
                     </div>
                   </form>

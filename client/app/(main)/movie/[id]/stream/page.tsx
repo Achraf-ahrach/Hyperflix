@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import axios from "@/lib/axios";
@@ -36,7 +36,6 @@ export default function StreamingPage() {
   const [error, setError] = useState<string | null>(null);
 
   if (!movie) {
-    router.push("/");
     return null;
   }
 
@@ -65,119 +64,41 @@ export default function StreamingPage() {
     }
   };
 
+  useEffect(() => {
+    if (movie.torrents.length > 0) {
+      handleStart(movie.torrents[movie.torrents.length - 1].url);
+    }
+  }, [movie]);
+
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      {/* 1. SELECTION SCREEN (Show if no video ID is ready yet) */}
-      {!dbId && (
-        <Paper
-          elevation={3}
-          sx={{ p: 4, textAlign: "center", bgcolor: "#1a1a1a", color: "white" }}
+      {error && (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {error}
+        </Typography>
+      )}
+      {loading ? (
+        <Box
+          display="flex"
+          flexDirection="column"
+          alignItems="center"
+          gap={2}
         >
-          <Typography variant="h3" gutterBottom sx={{ fontWeight: "bold" }}>
-            {movie.title}
-          </Typography>
-
-          {movie.year && (
-            <Typography variant="h6" color="gray" gutterBottom>
-              {movie.year} • {movie.runtime} min
-            </Typography>
-          )}
-
-          <Box sx={{ my: 4 }}>
-            <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
-              Select Quality to Play
-            </Typography>
-
-            {/* Error Message */}
-            {error && (
-              <Typography color="error" sx={{ mb: 2 }}>
-                {error}
-              </Typography>
-            )}
-
-            {/* Loading Spinner */}
-            {loading ? (
-              <Box
-                display="flex"
-                flexDirection="column"
-                alignItems="center"
-                gap={2}
-              >
-                <CircularProgress color="secondary" />
-                <Typography>Initializing Stream...</Typography>
-              </Box>
-            ) : (
-              /* Quality Buttons */
-              <Stack
-                direction={{ xs: "column", sm: "row" }}
-                spacing={2}
-                justifyContent="center"
-                alignItems="center"
-              >
-                {movie.torrents?.map((torrent: any, index: number) => (
-                  <Button
-                    key={`${torrent.quality}-${index}`}
-                    variant="contained"
-                    size="large"
-                    color="secondary"
-                    startIcon={<PlayArrowIcon />}
-                    onClick={() => handleStart(torrent.url)}
-                    sx={{
-                      px: 4,
-                      py: 1.5,
-                      fontSize: "1.1rem",
-                      textTransform: "none",
-                      minWidth: "150px",
-                    }}
-                  >
-                    {torrent.quality}
-                    {torrent.type && (
-                      <span
-                        style={{
-                          fontSize: "0.8em",
-                          opacity: 0.7,
-                          marginLeft: "8px",
-                        }}
-                      >
-                        ({torrent.type})
-                      </span>
-                    )}
-                  </Button>
-                ))}
-              </Stack>
-            )}
-          </Box>
-
-          {/* Movie Metadata / Genres */}
-          <Stack
-            direction="row"
-            spacing={1}
-            justifyContent="center"
-            sx={{ mt: 4 }}
-          >
-            {movie.genres?.map((genre: string) => (
-              <Chip
-                key={genre}
-                label={genre}
-                sx={{ bgcolor: "#333", color: "#fff" }}
-              />
-            ))}
-          </Stack>
-        </Paper>
+          <CircularProgress color="secondary" />
+          <Typography>Initializing Stream...</Typography>
+        </Box>
+      ) : (
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={2}
+          justifyContent="center"
+          alignItems="center"
+        >
+        </Stack>
       )}
 
-      {/* 2. PLAYER SCREEN (Show ONLY when dbId exists) */}
       {dbId && (
         <Box>
-          <Button
-            onClick={() => setDbId(null)}
-            variant="outlined"
-            color="inherit"
-            sx={{ mb: 2 }}
-          >
-            ← Select Different Quality
-          </Button>
-
           <VideoPlayer movieId={dbId} />
         </Box>
       )}

@@ -18,6 +18,7 @@ from .utils import get_trackers, make_magnet_link
 from django.conf import settings
 from django.http import Http404, HttpResponse
 from urllib.parse import quote
+from concurrent.futures import ThreadPoolExecutor
 range_re = re.compile(r"bytes\s*=\s*(\d+)\s*-\s*(\d*)", re.I)
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,10 @@ class TorrentSessionManager:
     def _initialize(self):
         self.session = lt.session()
         self.session.listen_on(6881, 6891)
+        params = {
+            'active_downloads': 10
+        }
+        self.session.apply_settings(params)
         self.handles = {}
         self.handle_locks = {}
         self._cleanup_thread = threading.Thread(target=self._cleanup_loop, daemon=True)
@@ -81,261 +86,266 @@ class TorrentSessionManager:
 
 torrent_manager = TorrentSessionManager()
 
+def wait_for_header(file_path, timeout=60):
+    """Waits until file has non-zero data at the start"""
+    start = time.time()
+    while time.time() - start < timeout:
+        if os.path.exists(file_path) and os.path.getsize(file_path) > 1024:
+            try:
+                with open(file_path, 'rb') as f:
+                    if any(b != 0 for b in f.read(1024)): return True
+            except: pass
+        time.sleep(1)
+    return False
 
 def process_video_thread(video_id):
+    movie_file = None
     try:
         movie_file = MovieFile.objects.get(id=video_id)
         movie_file.download_status = "DOWNLOADING"
         movie_file.save()
 
-        downloads_dir = "/app/media"
-        movie_dir = os.path.join(downloads_dir, "movies", str(movie_file.id))
+        movies_root = os.path.join(settings.MEDIA_ROOT, "movies")
+        movie_dir = os.path.join(movies_root, str(movie_file.id))
         os.makedirs(movie_dir, exist_ok=True)
-        logging.info(f"Using movie directory: {movie_dir}")
 
+        logger.info(f"Starting torrent: {movie_file.magnet_link}")
         handle_id = torrent_manager.add_torrent(movie_file.magnet_link, movie_dir)
         handle = torrent_manager.get_handle(handle_id)
-        handle_lock = torrent_manager.get_handle_lock(handle_id)
+        
+        if not handle: raise Exception("No torrent handle")
 
-        if not handle:
-            logging.error(f"Failed to get torrent handle for movie {video_id}")
-            movie_file.download_status = "ERROR"
-            movie_file.save()
-            return
+        # 2. WAIT FOR METADATA
+        attempts = 0
+        while not handle.has_metadata():
+            if attempts > 60: raise Exception("Metadata timeout")
+            time.sleep(1)
+            attempts += 1
 
-        with handle_lock:
-            handle.set_sequential_download(True)
-            while not handle.has_metadata():
-                time.sleep(1)
+        info = handle.get_torrent_info()
+        largest = max(info.files(), key=lambda f: f.size)
+        file_path_in_torrent = largest.path
+        downloaded_path = os.path.join(movie_dir, file_path_in_torrent)
+        
+        # Save relative path
+        movie_file.file_path = os.path.relpath(downloaded_path, settings.MEDIA_ROOT)
+        movie_file.save()
 
-            torrent_info = handle.get_torrent_info()
-            largest_file = max(torrent_info.files(), key=lambda f: f.size)
-            file_path_in_torrent = largest_file.path
-            downloaded_path = os.path.join(movie_dir, file_path_in_torrent)
+        handle.set_sequential_download(True)
+        
+        try:
+            for i in range(min(20, info.num_pieces())): handle.piece_priority(i, 7)
+        except: pass
+
+        # 3. WAIT FOR HEADER (CRITICAL)
+        if not wait_for_header(downloaded_path):
+            raise Exception("File header missing (download stuck?)")
+
+        service = VideoService()
+        conversion_started = False
+        current_segment = 0
+        video_duration = None
+
+        while True:
+            status = handle.status()
+            progress = status.progress * 100
+            movie_file.download_progress = progress
             
-            movie_file.file_path = os.path.join("movies", str(movie_file.id), file_path_in_torrent)
-            movie_file.save()
+            if not conversion_started:
+                dur = service.get_video_duration(downloaded_path)
+                if dur:
+                    video_duration = dur
+                    conversion_started = True
+                    movie_file.download_status = "DL_AND_CONVERT"
+                    logger.info(f"Header ready. Duration: {dur}s")
 
-            os.makedirs(os.path.dirname(downloaded_path), exist_ok=True)
-
-            video_service = VideoService()
-            conversion_started = False
-            current_segment = 0
-            video_duration = None
-            first_segment_ready = False
-            last_attempt_time = 0
-
-            while True:
-                status = handle.status()
-                progress = status.progress * 100
+            # B. Transcode Available Segments
+            if conversion_started and video_duration:
+                segment_end_time = (current_segment + 1) * service.segment_duration
+                required_progress = (segment_end_time / video_duration) * 100
                 
-                if int(time.time()) % 2 == 0:
-                    state_str = ['queued', 'checking', 'downloading meta', 'downloading', 'finished', 'seeding', 'allocating']
-                    print(
-                        f"Progress: {progress:.2f}% | "
-                        f"Peers: {status.num_peers} | "
-                        f"Speed: {status.download_rate / 1000:.1f} kB/s | "
-                        f"State: {state_str[status.state]}", 
-                        flush=True
+                # Buffer 5% to avoid "Invalid Data" crashes
+                if progress >= (required_progress + 5) or status.is_seeding:
+                    success = service.convert_all_segments(
+                        downloaded_path, 
+                        movie_dir, 
+                        current_segment
                     )
-                # ---------------
 
-                movie_file.download_progress = progress
-                
-                if not conversion_started and os.path.exists(downloaded_path):
-                    current_time = time.time()
-                    if current_time - last_attempt_time > 2:
-                        last_attempt_time = current_time
-                        try:
-                            video_duration = video_service.get_video_duration(downloaded_path)
-                            if video_duration:
-                                conversion_started = True
-                                movie_file.download_status = "DL_AND_CONVERT"
-                                movie_file.save()
-                                logging.info(f"Starting segmentation at {progress:.2f}%")
-                        except Exception as e:
-                            logging.debug(f"File header not ready yet: {e}")
+                    if success:
+                        if current_segment == 0:
+                            movie_file.download_status = "PLAYABLE"
+                            logger.info("First segment ready!")
+                        
+                        current_segment += 1
+                        movie_file.save()
+                    else:
+                        time.sleep(2)
 
-                if conversion_started and video_duration:
-                    segment_start_time = current_segment * video_service.segment_duration
-                    required_progress = (segment_start_time + video_service.segment_duration) / video_duration * 100
-                    required_progress = min(required_progress + 5, 100) 
+            if status.is_seeding or progress >= 100:
+                break
+            
+            time.sleep(1)
+            if int(time.time()) % 5 == 0: movie_file.save()
 
-                    if progress >= required_progress:
-                        try:
-                            if current_segment not in video_service.processed_segments:
-                                success = video_service.convert_segment(
-                                    downloaded_path,
-                                    movie_dir,
-                                    current_segment,
-                                    video_duration
-                                )
-                                if success:
-                                    current_segment += 1
-                                    
-                                    if current_segment == 1:
-                                        rel_path = os.path.relpath(downloaded_path, movie_dir)
-                                        dir_path = os.path.dirname(rel_path)
-                                        
-                                        first_segment = "segment_000.ts"
-                                        
-                                        if dir_path:
-                                            first_segment = os.path.join(dir_path, first_segment)
-                                        # -----------------------
-                                        
-                                        movie_file.file_path = os.path.join("movies", str(movie_file.id), first_segment)
-                                        movie_file.download_status = "PLAYABLE"
-                                        first_segment_ready = True
-                                        movie_file.save()
-                                        logging.info("First segment ready, movie is now playable")
+        if video_duration:
+            total_segs = int(video_duration / service.segment_duration) + 1
+            remaining = list(range(current_segment, total_segs))
+            
+            if remaining:
+                logger.info(f"Batch processing {len(remaining)} segments with 4 threads...")
+                with ThreadPoolExecutor(max_workers=4) as executor:
+                    futures = [
+                        executor.submit(service.convert_all_segments, downloaded_path, movie_dir, idx)
+                        for idx in remaining
+                    ]
+                    for f in futures: f.result()
 
-                        except Exception as e:
-                            logging.error(f"Error converting segment {current_segment}: {e}")
-                            if video_service.segment_retry_count.get(current_segment, 0) >= video_service.max_retries:
-                                current_segment += 1
-
-                movie_file.save()
-
-                if status.is_seeding:
-                    break
-
-                time.sleep(1)
-
-            if video_duration:
-                remaining_segments = int(video_duration / video_service.segment_duration) + 1
-                while current_segment < remaining_segments:
-                    try:
-                        if current_segment not in video_service.processed_segments:
-                            success = video_service.convert_segment(
-                                downloaded_path,
-                                movie_dir,
-                                current_segment,
-                                video_duration
-                            )
-                            if success:
-                                current_segment += 1
-                            elif video_service.segment_retry_count.get(current_segment, 0) >= video_service.max_retries:
-                                current_segment += 1
-                    except Exception as e:
-                        logging.error(f"Error converting final segments: {e}")
-                        if video_service.segment_retry_count.get(current_segment, 0) >= video_service.max_retries:
-                            current_segment += 1
-                    
-                    time.sleep(0.1) 
-
-            if not video_service.failed_segments:
-                movie_file.download_status = "READY"
-            else:
-                if not first_segment_ready:
-                    movie_file.download_status = "ERROR"
-                logging.error(f"Failed segments: {sorted(list(video_service.failed_segments))}")
-            movie_file.save()
+        movie_file.download_status = "READY"
+        movie_file.save()
+        logger.info(f"Processing complete for {video_id}")
 
     except Exception as e:
-        logging.error(f"Error processing video {video_id}: {str(e)}")
-        movie_file.download_status = "ERROR"
-        movie_file.save()
+        logger.error(f"Thread Error: {e}")
+        if movie_file:
+            movie_file.download_status = "ERROR"
+            movie_file.save()
 
 class VideoViewSet(viewsets.ViewSet):
     """
-    ViewSet for video operations.
+    ViewSet for video operations supporting Adaptive Bitrate (ABR).
+    Assumes Transcoder outputs to: /media/movies/{id}/{resolution}/
     """
 
     @action(detail=True, methods=['get'])
     def playlist(self, request, pk=None):
         """
-        Generates the HLS playlist (.m3u8) scanning for 'segment_xxx.ts'.
+        Main HLS Endpoint.
+        - No params: Returns MASTER playlist (list of qualities).
+        - ?res=1080p: Returns MEDIA playlist (list of segments).
         """
+
         movie = get_object_or_404(MovieFile, pk=pk)
-        
-        if not movie.file_path:
+        resolution = request.query_params.get('res')
+
+        base_dir = os.path.join(settings.MEDIA_ROOT, 'movies', str(pk))
+
+        if not os.path.exists(base_dir):
             return Response(
-                {"status": "pending", "detail": "File path not set."}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
-            
-        absolute_file_path = os.path.join(settings.MEDIA_ROOT, movie.file_path)
-        output_dir = os.path.dirname(absolute_file_path)
-        
-        if not os.path.exists(output_dir):
-            return Response(
-                {"status": "pending", "detail": "Transcoding directory not created yet."}, 
+                {"status": "pending", "detail": "Transcoding directory missing."}, 
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        found_segments = []
+        if not resolution:
+            return self._generate_master_playlist(pk, base_dir)
+        else:
+            return self._generate_media_playlist(pk, base_dir, resolution, movie)
+
+    def _generate_master_playlist(self, pk, base_dir):
+        """
+        Scans for resolution folders (1080p, 720p, etc) in /media/movies/{id}/
+        """
+        resolutions = ["1080p", "720p", "480p", "360p"]
+        found_res = []
+
+        for r in resolutions:
+            if os.path.exists(os.path.join(base_dir, r)):
+                found_res.append(r)
         
-        pattern = re.compile(r"^segment_(\d+)\.ts$")
+        if not found_res:
+             return Response({"status": "pending"}, status=status.HTTP_404_NOT_FOUND)
+
+        content = ["#EXTM3U", "#EXT-X-VERSION:3"]
         
-        try:
-            all_files = os.listdir(output_dir)
-            for f in all_files:
-                match = pattern.match(f)
-                if match:
-                    found_segments.append((int(match.group(1)), f))
-        except Exception:
+        for res in found_res:
+            bw = self._get_bandwidth(res)
+            res_dim = self._get_res_dim(res)
+            content.append(f'#EXT-X-STREAM-INF:BANDWIDTH={bw},RESOLUTION={res_dim},NAME="{res}"')
+            content.append(f'/api/video/{pk}/playlist/?res={res}')
+
+        return HttpResponse("\n".join(content), content_type="application/vnd.apple.mpegurl")
+
+    def _generate_media_playlist(self, pk, base_dir, resolution, movie):
+        """
+        Generates segment list for a specific resolution folder.
+        """
+        target_dir = os.path.join(base_dir, resolution)
+        
+        if not os.path.exists(target_dir):
             return Response(status=status.HTTP_404_NOT_FOUND)
 
-        if not found_segments:
-            return Response(
-                {"status": "pending", "detail": "No segments generated yet."}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
+        found = []
+        pattern = re.compile(r"^segment_(\d+)\.ts$")
+        try:
+            for f in os.listdir(target_dir):
+                match = pattern.match(f)
+                if match:
+                    found.append((int(match.group(1)), f))
+        except:
+            return Response(status=status.HTTP_404_NOT_FOUND)
 
-        found_segments.sort(key=lambda x: x[0])
-        segments = [x[1] for x in found_segments]
+        if not found:
+             return Response(status=status.HTTP_404_NOT_FOUND)
+
+        found.sort(key=lambda x: x[0])
+        segments = [x[1] for x in found]
 
         is_finished = movie.download_status == 'READY'
-        playlist_type = "VOD" if is_finished else "EVENT"
+        pl_type = "VOD" if is_finished else "EVENT"
 
-        m3u8_content = [
+        content = [
             "#EXTM3U",
             "#EXT-X-VERSION:3",
-            "#EXT-X-TARGETDURATION:10", 
+            "#EXT-X-TARGETDURATION:10",
             "#EXT-X-MEDIA-SEQUENCE:0",
-            f"#EXT-X-PLAYLIST-TYPE:{playlist_type}", 
+            f"#EXT-X-PLAYLIST-TYPE:{pl_type}"
         ]
-        
+
         for seg in segments:
-            m3u8_content.append(f"#EXTINF:10.0,")
-            
-            m3u8_content.append(f"/api/video/{pk}/stream_ts/?file={seg}")
+            content.append("#EXTINF:10.0,")
+            content.append(f"/api/video/{pk}/stream_ts/?file={seg}&res={resolution}")
 
         if is_finished:
-            m3u8_content.append("#EXT-X-ENDLIST")
-            
-        return HttpResponse("\n".join(m3u8_content), content_type="application/vnd.apple.mpegurl")
+            content.append("#EXT-X-ENDLIST")
+
+        return HttpResponse("\n".join(content), content_type="application/vnd.apple.mpegurl")
 
     @action(detail=True, methods=['get'])
     def stream_ts(self, request, pk=None):
         """
-        Serves specific .ts segments via Nginx X-Accel-Redirect.
-        Expected URL: /api/video/1/stream_ts/?file=segment_001.ts
+        Serves the .ts file via Nginx X-Accel-Redirect.
+        URL: .../stream_ts/?file=segment_001.ts&res=720p
         """
         file_name = request.query_params.get('file')
-        
-        if not file_name:
+        res = request.query_params.get('res', '720p')
+
+        if not file_name or '..' in file_name: 
             return HttpResponse(status=400)
-            
-        if '..' in file_name or '/' in file_name:
-             return HttpResponse(status=400)
 
-        movie = get_object_or_404(MovieFile, pk=pk)
-        
-        relative_dir = os.path.dirname(movie.file_path)
-        
-        absolute_path = os.path.join(settings.MEDIA_ROOT, relative_dir, file_name)
-        if not os.path.exists(absolute_path):
-            return HttpResponse(status=404)
+        nginx_path = os.path.join('/media', 'movies', str(pk), res, file_name)
 
-        clean_relative_dir = relative_dir.lstrip('/')
-        
-        nginx_path = os.path.join('/media', clean_relative_dir, file_name)
-        
         response = HttpResponse()
-        response['X-Accel-Redirect'] = quote(nginx_path) 
+        response['X-Accel-Redirect'] = quote(nginx_path)
         response['Content-Type'] = 'video/MP2T'
         return response
+
+
+    def _get_bandwidth(self, res):
+        return {
+            "1080p": 5000000, # 5 Mbps
+            "720p":  2800000, # 2.8 Mbps
+            "480p":  1400000, # 1.4 Mbps
+            "360p":  800000   # 800 Kbps
+        }.get(res, 1000000)
+
+    def _get_res_dim(self, res):
+        return {
+            "1080p": "1920x1080",
+            "720p": "1280x720", 
+            "480p": "854x480",
+            "360p": "640x360"
+        }.get(res, "1280x720")
+
     @action(detail=True, methods=["post"], url_path="start")
     def start_stream(self, request, pk=None):
         """
