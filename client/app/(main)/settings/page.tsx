@@ -8,22 +8,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Moon, Sun, User, Lock, Globe, Camera } from 'lucide-react';
+import { User, Lock, Globe, Camera } from 'lucide-react';
 import { User as UserData, useUser } from '@/lib/contexts/UserContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { set, z } from 'zod';
+import { z } from 'zod';
 import { userService } from '@/services/user.service';
 import { API_URL } from '@/app/utils';
-import { is } from 'zod/v4/locales';
 import { toast } from 'sonner';
-// import { toast } from 'sonner';
+
 
 
 const profileSchema = z.object({
-  firstName: z.string().min(1, "First name is too short").max(50),
-  lastName: z.string().min(1, "Last name is too short").max(50),
-  username: z.string().min(3, "Username must be at least 3 characters").toLowerCase(),
+  firstName: z.string().min(1, "First name is too short").max(100, "First name must be at most 100 characters long"),
+  lastName: z.string().min(1, "Last name is too short").max(100, "Last name must be at most 100 characters long"),
+  username: z.string().min(3, "Username must be at least 3 characters").max(50, "Username must be at most 50 characters long").toLowerCase(),
   avatar: z.any().optional()
 });
 
@@ -31,8 +30,6 @@ const profileSchema = z.object({
 const emailSchema = z.object({
   email: z.email("Invalid email address"),
 });
-
-type ProfileFormValues = z.infer<typeof profileSchema>;
 
 
 const passwordSchema = z.object({
@@ -51,10 +48,6 @@ const passwordSchema = z.object({
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: "Passwords do not match",
 });
-
-
-
-type PasswordFormValues = z.infer<typeof passwordSchema>;
 
 
 const SettingsPage = () => {
@@ -87,10 +80,10 @@ const SettingsPage = () => {
 
   const { mutate, isPending } = useMutation({
     mutationFn: userService.updateProfile,
-    onSuccess: (result : any) => {
+    onSuccess: (result: any) => {
       queryClient.setQueryData<UserData | null>(
         ["auth", "profile"],
-        (oldUser : any) =>
+        (oldUser: any) =>
           oldUser
             ? {
               ...oldUser,
@@ -124,7 +117,7 @@ const SettingsPage = () => {
     onSuccess: () => {
       queryClient.setQueryData<UserData | null>(
         ["profile"],
-        (oldUser : any) =>
+        (oldUser: any) =>
           oldUser
             ? { ...oldUser, langue_code: language_code }
             : oldUser
@@ -160,9 +153,9 @@ const SettingsPage = () => {
         (oldUser: any) =>
           oldUser
             ? {
-                ...oldUser,
-                ...result,
-              }
+              ...oldUser,
+              ...result,
+            }
             : oldUser
       );
       toast.success("Visibility preferences updated!");
@@ -221,7 +214,7 @@ const SettingsPage = () => {
     if (!result.success) {
       console.log(result.error);
       const errors: Record<string, string> = {};
-      result.error.issues.forEach((issue : any) => {
+      result.error.issues.forEach((issue: any) => {
         errors[issue.path[0] as string] = issue.message;
       });
       return setFormErrors(errors);
@@ -243,7 +236,7 @@ const SettingsPage = () => {
 
     if (!result.success) {
       const errors: Record<string, string> = {};
-      result.error.issues.forEach((issue : any) => {
+      result.error.issues.forEach((issue: any) => {
         errors[issue.path[0] as string] = issue.message;
       });
       return setFormErrors(errors);
@@ -288,10 +281,6 @@ const SettingsPage = () => {
       showWatchlistPublic,
     });
   }
-  const handleAvatarChange = () => {
-    // Trigger file input
-    console.log('Change avatar');
-  };
 
   return (
     <div  >

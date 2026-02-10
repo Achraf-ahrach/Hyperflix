@@ -1,5 +1,5 @@
 // comments.service.ts
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { comments, users, commentMedia, movies } from '../../database/schema';
 import { DRIZZLE } from 'src/database/database.module';

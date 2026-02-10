@@ -4,7 +4,8 @@ import { Reply } from "../types/types";
 import { useEffect, useState } from "react";
 import { useUser } from "@/lib/contexts/UserContext";
 import { API_URL } from "@/app/utils";
-import { timeAgo } from "@/lib/utils";
+import { resolveApiUrl, timeAgo } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 
 
@@ -22,8 +23,9 @@ export const ReplyItem = ({ reply, onLike, onDelete, onEdit }: ReplyItemProps) =
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(reply.content);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
-  const {user} = useUser();
-  console.log(reply);
+  const { user } = useUser();
+  const router = useRouter();
+
 
   useEffect(() => {
     if (!isEditing) {
@@ -32,19 +34,28 @@ export const ReplyItem = ({ reply, onLike, onDelete, onEdit }: ReplyItemProps) =
   }, [reply.content, isEditing]);
 
 
-    let imageUrl: string = ''
-    if (!reply.userAvatar) {
-      imageUrl = '';
-    } else if (!reply.userAvatar.startsWith('http')) {
-      imageUrl = `${API_URL}${reply.userAvatar}`;
-    } else {
-      imageUrl = reply.userAvatar;
-    }
+  const avatarUrl = resolveApiUrl(reply.userAvatar);
 
   return (
 
     <div className="flex gap-3">
-      <img src={imageUrl} className="w-7 h-7 rounded-full bg-slate-800" alt={reply.username} />
+
+      {avatarUrl ? (
+        <img
+          src={avatarUrl}
+          className="w-10 h-10 rounded-full bg-slate-800 cursor-pointer"
+          alt={reply.username}
+          onClick={() => router.push(`/profile/${reply.userId}`)}
+        />
+      ) : (
+        <div
+          className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white cursor-pointer"
+          onClick={() => router.push(`/profile/${reply.userId}`)}
+        >
+          {reply.username.charAt(0).toUpperCase()}
+        </div>
+      )}
+
       <div className="flex-1">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -53,8 +64,6 @@ export const ReplyItem = ({ reply, onLike, onDelete, onEdit }: ReplyItemProps) =
           </div>
           {
             user?.id === reply.userId && (
-
-
               <div className="relative group">
                 <button className="p-1 text-slate-500 hover:text-foreground transition-colors"
                   onClick={() => setShowMenu(!showMenu)} >

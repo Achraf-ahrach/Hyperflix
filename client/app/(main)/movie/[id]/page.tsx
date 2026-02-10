@@ -80,7 +80,7 @@ export default function MovieDetailsPage() {
 
       // Update library query cache to reflect watched status change
       queryClient.setQueriesData(
-        { queryKey: ["movies", "library"] },
+        { queryKey: ["movies", "library", "movie"] },
         (oldData: any) => {
           if (!oldData?.pages) return oldData;
 
@@ -133,7 +133,7 @@ export default function MovieDetailsPage() {
       } else {
         toast.message("Movie added to watchlist");
       }
-      queryClient.invalidateQueries({ queryKey: ["watchlist", "profile"] });
+      queryClient.invalidateQueries({ queryKey: ["watchList", "profile"] });
       setIsInWatchlist(!isInWatchlist);
     },
     onError: (err: any) => {

@@ -1,10 +1,10 @@
+import { API_URL } from "@/app/utils";
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
-
 
 export function timeAgo(dateString: string) {
     const date = new Date(dateString);
@@ -27,3 +27,8 @@ export function timeAgo(dateString: string) {
 
     return 'just now';
 }
+
+export const resolveApiUrl = (path?: string | null, baseUrl: string = API_URL) => {
+  if (!path) return null;
+  return path.startsWith('http') ? path : `${baseUrl}${path}`;
+};
