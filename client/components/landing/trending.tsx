@@ -22,7 +22,11 @@ const fetchTrendingMovies = async (): Promise<TrendingMovie[]> => {
 export function Trending() {
   const router = useRouter();
 
-  const { data: trendingItems, isLoading, isError } = useQuery<TrendingMovie[]>({
+  const {
+    data: trendingItems,
+    isLoading,
+    isError,
+  } = useQuery<TrendingMovie[]>({
     queryKey: ["movies", "trending"],
     queryFn: fetchTrendingMovies,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -75,7 +79,7 @@ export function Trending() {
                   color: "black",
                 }}
               >
-                {/* {index + 1} */}
+                {index + 1}
               </span>
             </div>
 

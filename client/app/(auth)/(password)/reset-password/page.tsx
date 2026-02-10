@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import bgImage from "@/public/hero-bg.jpg";
+import { resetPasswordSchema } from "@/lib/validations/auth";
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -42,13 +43,15 @@ function ResetPasswordForm() {
     e.preventDefault();
     setError("");
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
+    // Validate with Zod
+    const result = resetPasswordSchema.safeParse({
+      password,
+      confirmPassword,
+    });
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (!result.success) {
+      const firstError = result.error.issues[0];
+      setError(firstError.message);
       return;
     }
 

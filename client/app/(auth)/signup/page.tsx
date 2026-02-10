@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/card";
 import bgImage from "@/public/hero-bg.jpg";
 import Image from "next/image";
-import { useUser } from "@/lib/contexts/UserContext";
+import { registerSchema } from "@/lib/validations/auth";
 
 function SignUpForm() {
   const searchParams = useSearchParams();
@@ -41,7 +41,6 @@ function SignUpForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const router = useRouter();
-  const { refetch } = useUser();
 
   useEffect(() => {
     const emailParam = searchParams.get("email");
@@ -54,14 +53,19 @@ function SignUpForm() {
     e.preventDefault();
     setError("");
 
-    // Validation
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters long");
-      return;
-    }
+    // Validate with Zod
+    const result = registerSchema.safeParse({
+      email,
+      username,
+      firstName,
+      lastName,
+      password,
+      confirmPassword,
+    });
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
+    if (!result.success) {
+      const firstError = result.error.issues[0];
+      setError(firstError.message);
       return;
     }
 
@@ -76,7 +80,6 @@ function SignUpForm() {
       });
       setRegistrationSuccess(true);
     } catch (err: any) {
-      // Extract error message from response
       const errorMessage =
         err.response?.data?.message ||
         (Array.isArray(err.response?.data?.message)

@@ -1,46 +1,49 @@
+import { z } from 'zod';
+import { createZodDto } from 'nestjs-zod';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
 
-export class RegisterDto {
+const RegisterSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  username: z.string().min(1, 'Username is required'),
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters long')
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#]).{8,}$/,
+      'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&#)',
+    ),
+});
+
+export class RegisterDto extends createZodDto(RegisterSchema) {
   @ApiProperty({
     example: 'user@example.com',
     description: 'User email address',
   })
-  @IsEmail()
-  @IsNotEmpty()
   email: string;
 
   @ApiProperty({
     example: 'johndoe',
     description: 'Username for the account',
   })
-  @IsString()
-  @IsNotEmpty()
   username: string;
 
   @ApiProperty({
     example: 'John',
     description: 'User first name',
   })
-  @IsString()
-  @IsNotEmpty()
   firstName: string;
 
   @ApiProperty({
     example: 'Doe',
     description: 'User last name',
   })
-  @IsString()
-  @IsNotEmpty()
   lastName: string;
 
   @ApiProperty({
-    example: 'strongPassword123',
-    description: 'Password (minimum 6 characters)',
-    minLength: 6,
+    example: 'StrongPass@123',
+    description: 'Password (minimum 8 characters)',
   })
-  @IsString()
-  @IsNotEmpty()
-  @MinLength(6)
   password: string;
 }

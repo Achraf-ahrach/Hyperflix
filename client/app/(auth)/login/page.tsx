@@ -20,7 +20,7 @@ import bgImage from "@/public/hero-bg.jpg";
 import { useUser } from "@/lib/contexts/UserContext";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -32,12 +32,13 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await api.post("/auth/login", { email, password });
+      await api.post("/auth/login", { identifier, password });
       await refetch();
-      console.log("reoute to home");
       router.push("/home");
-    } catch (err) {
-      setError("Incorrect password. Please try again.");
+    } catch (err: any) {
+      const errorMessage =
+        err.response?.data?.message || "Incorrect password. Please try again.";
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -63,7 +64,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     setError("");
-  }, [email, password]);
+  }, [identifier, password]);
 
   return (
     <div
@@ -85,18 +86,17 @@ export default function LoginPage() {
 
         <CardContent className="space-y-6 pt-8">
           <form onSubmit={handleLogin} className="space-y-5">
-            {/* Email Field */}
             <div className="space-y-2.5">
-              <Label htmlFor="email" className="  text-primary">
-                Email Address
+              <Label htmlFor="identifier" className="  text-primary">
+                Email Address or Username
               </Label>
               <div className="relative group">
                 <Input
-                  id="email"
+                  id="identifier"
                   type="text"
                   placeholder="mail@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
                   required
                   disabled={isLoading}
                   className="h-13 bg-card border-border/60 group-hover:border-border transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary"
