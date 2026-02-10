@@ -18,6 +18,7 @@ from .utils import get_trackers, make_magnet_link
 from django.conf import settings
 from django.http import Http404, HttpResponse
 from urllib.parse import quote
+from concurrent.futures import ThreadPoolExecutor
 range_re = re.compile(r"bytes\s*=\s*(\d+)\s*-\s*(\d*)", re.I)
 
 logger = logging.getLogger(__name__)
@@ -85,6 +86,17 @@ class TorrentSessionManager:
 
 torrent_manager = TorrentSessionManager()
 
+def wait_for_header(file_path, timeout=60):
+    """Waits until file has non-zero data at the start"""
+    start = time.time()
+    while time.time() - start < timeout:
+        if os.path.exists(file_path) and os.path.getsize(file_path) > 1024:
+            try:
+                with open(file_path, 'rb') as f:
+                    if any(b != 0 for b in f.read(1024)): return True
+            except: pass
+        time.sleep(1)
+    return False
 
 def process_video_thread(video_id):
     movie_file = None
@@ -97,13 +109,13 @@ def process_video_thread(video_id):
         movie_dir = os.path.join(movies_root, str(movie_file.id))
         os.makedirs(movie_dir, exist_ok=True)
 
-        logging.info(f"Adding torrent: {movie_file.magnet_link}")
+        logger.info(f"Starting torrent: {movie_file.magnet_link}")
         handle_id = torrent_manager.add_torrent(movie_file.magnet_link, movie_dir)
         handle = torrent_manager.get_handle(handle_id)
         
-        if not handle:
-            raise Exception("No torrent handle")
+        if not handle: raise Exception("No torrent handle")
 
+        # 2. WAIT FOR METADATA
         attempts = 0
         while not handle.has_metadata():
             if attempts > 60: raise Exception("Metadata timeout")
@@ -112,19 +124,27 @@ def process_video_thread(video_id):
 
         info = handle.get_torrent_info()
         largest = max(info.files(), key=lambda f: f.size)
-        downloaded_path = os.path.join(movie_dir, largest.path)
+        file_path_in_torrent = largest.path
+        downloaded_path = os.path.join(movie_dir, file_path_in_torrent)
         
+        # Save relative path
         movie_file.file_path = os.path.relpath(downloaded_path, settings.MEDIA_ROOT)
         movie_file.save()
 
         handle.set_sequential_download(True)
+        
+        try:
+            for i in range(min(20, info.num_pieces())): handle.piece_priority(i, 7)
+        except: pass
+
+        # 3. WAIT FOR HEADER (CRITICAL)
+        if not wait_for_header(downloaded_path):
+            raise Exception("File header missing (download stuck?)")
 
         service = VideoService()
         conversion_started = False
         current_segment = 0
         video_duration = None
-        
-        resolutions = ["1080p", "720p", "480p", "360p"]
 
         while True:
             status = handle.status()
@@ -132,36 +152,35 @@ def process_video_thread(video_id):
             movie_file.download_progress = progress
             
             if not conversion_started:
-                if os.path.exists(downloaded_path) and os.path.getsize(downloaded_path) > 10 * 1024 * 1024:
-                    dur = service.get_video_duration(downloaded_path)
-                    if dur:
-                        video_duration = dur
-                        conversion_started = True
-                        movie_file.download_status = "DL_AND_CONVERT"
-                        logging.info(f"Header ready. Duration: {dur}s")
+                dur = service.get_video_duration(downloaded_path)
+                if dur:
+                    video_duration = dur
+                    conversion_started = True
+                    movie_file.download_status = "DL_AND_CONVERT"
+                    logger.info(f"Header ready. Duration: {dur}s")
 
+            # B. Transcode Available Segments
             if conversion_started and video_duration:
                 segment_end_time = (current_segment + 1) * service.segment_duration
                 required_progress = (segment_end_time / video_duration) * 100
                 
-                if progress >= (required_progress + 2) or status.is_seeding:
-                    
-                    success_all = True
-                    for res in resolutions:
-                        ok = service.convert_segment(
-                            downloaded_path, 
-                            movie_dir,
-                            current_segment, 
-                            resolution=res
-                        )
-                        if not ok: success_all = False
+                # Buffer 5% to avoid "Invalid Data" crashes
+                if progress >= (required_progress + 5) or status.is_seeding:
+                    success = service.convert_all_segments(
+                        downloaded_path, 
+                        movie_dir, 
+                        current_segment
+                    )
 
-                    if success_all:
+                    if success:
                         if current_segment == 0:
                             movie_file.download_status = "PLAYABLE"
-                            logging.info("First segment ready! Playable.")
+                            logger.info("First segment ready!")
+                        
                         current_segment += 1
                         movie_file.save()
+                    else:
+                        time.sleep(2)
 
             if status.is_seeding or progress >= 100:
                 break
@@ -171,20 +190,26 @@ def process_video_thread(video_id):
 
         if video_duration:
             total_segs = int(video_duration / service.segment_duration) + 1
-            while current_segment < total_segs:
-                for res in resolutions:
-                    service.convert_segment(downloaded_path, movie_dir, current_segment, res)
-                current_segment += 1
+            remaining = list(range(current_segment, total_segs))
+            
+            if remaining:
+                logger.info(f"Batch processing {len(remaining)} segments with 4 threads...")
+                with ThreadPoolExecutor(max_workers=4) as executor:
+                    futures = [
+                        executor.submit(service.convert_all_segments, downloaded_path, movie_dir, idx)
+                        for idx in remaining
+                    ]
+                    for f in futures: f.result()
 
         movie_file.download_status = "READY"
         movie_file.save()
+        logger.info(f"Processing complete for {video_id}")
 
     except Exception as e:
-        logging.error(f"Thread Error: {e}")
+        logger.error(f"Thread Error: {e}")
         if movie_file:
             movie_file.download_status = "ERROR"
             movie_file.save()
-
 
 class VideoViewSet(viewsets.ViewSet):
     """
