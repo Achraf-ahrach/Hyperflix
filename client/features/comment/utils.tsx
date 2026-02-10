@@ -13,27 +13,21 @@ type UpdateCommentResponse = Pick<Comment, "id" | "content">;
 export const INITIAL_BATCH = 10;
 export const LOAD_MORE_BATCH = 3;
 
-
-
 // --- API Service ---
 export const comment_api = {
   async getComments(movieId: string, limit: number, offset: number) {
 
     const endpoint = `${API_URL}/comments/${movieId}?limit=${limit}&offset=${offset}`;
-
-    const response = await fetch(endpoint, {
-      method: "GET",
-      credentials: "include",
-      // body: formData
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error('Unauthorized');
-      }
-      throw new Error('Failed to load comments');
+    
+    try
+    {
+      const response = await api.get(endpoint);
+      return await response.data;
     }
-    return await response.json();
+    catch (error: any)
+    {
+      throw error.response?.data || new Error('Failed to load comments');
+    }
   },
 
   async createComment(
@@ -59,7 +53,7 @@ export const comment_api = {
       );
       return response.data;
     } catch (error: any) {
-      throw error;
+      throw error.response?.data || new Error('Failed to create comment');
     }
   }
 
@@ -82,7 +76,8 @@ export const comment_api = {
       return response.data;
 
     } catch (error: any) {
-      throw error;
+      throw error.response?.data || new Error('Failed to create reply');
+
     }
   },
 
@@ -116,7 +111,7 @@ export const comment_api = {
       const response = await api.patch(`/comments/${commentId}`, { content });
       return response.data;
     } catch (error: any) {
-      throw error;
+        throw error.response?.data || new Error('Failed to update comment');
     }
   },
 };

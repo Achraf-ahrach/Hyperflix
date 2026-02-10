@@ -24,10 +24,32 @@ export class SettingsService {
     }
 
     const updateData: Partial<ProfileSettingsDto> = {};
-    if (dto.firstName !== undefined) updateData.firstName = dto.firstName  ;
-    if (dto.lastName !== undefined) updateData.lastName = dto.lastName;
-    if (dto.username !== undefined) updateData.username = dto.username;
-    if (dto.avatarUrl !== undefined) updateData.avatarUrl = dto.avatarUrl;
+    if (dto.firstName !== undefined){
+      if (dto.firstName.length > 100) {
+        throw new BadRequestException('First name must be at most 100 characters long');
+      }
+      updateData.firstName = dto.firstName  ;
+    }
+
+    if (dto.lastName !== undefined) {
+      if (dto.lastName.length > 100) {
+        throw new BadRequestException('Last name must be at most 100 characters long');
+      }
+      updateData.lastName = dto.lastName;
+    }
+
+    if (dto.username !== undefined){
+      if (dto.username.length > 50) {
+        throw new BadRequestException('Username must be at most 50 characters long');
+      }
+      updateData.username = dto.username;
+    }
+    if (dto.avatarUrl !== undefined){
+      if (dto.avatarUrl.length > 1000) {
+        throw new BadRequestException('Avatar URL must be at most 1000 characters long');
+      }
+      updateData.avatarUrl = dto.avatarUrl;
+    }
 
     if (Object.keys(updateData).length > 0) {
       const result = await this.settingRepository.updateProfile(id, updateData);
@@ -48,7 +70,6 @@ export class SettingsService {
   async updateLanguage(id: number, dto: any) {
     if (dto.language_code !== undefined)
     {
-      console.log(dto);
       try
       {
         await this.settingRepository.updateLanguage(id, dto.language_code);
@@ -72,7 +93,7 @@ export class SettingsService {
     }
 
     if (Object.keys(updateData).length === 0) {
-      return { message: 'No preference changes detected' };
+      return { message: 'No preference changes detected' };      console.log(dto);
     }
 
     await this.settingRepository.updatePreferences(id, updateData);

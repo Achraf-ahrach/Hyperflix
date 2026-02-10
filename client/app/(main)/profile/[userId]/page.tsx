@@ -74,7 +74,7 @@ const ProfilePage = () => {
     isError: isWatchListError,
     error: watchListError
   } = useQuery({
-    queryKey: ['watchlist', currentPage.watchlist, userId],
+    queryKey: ['watchList', currentPage.watchlist, userId],
     queryFn: () => profileService.getWatchLater({
       userId: Number(userId),
       pageNum: currentPage.watchlist

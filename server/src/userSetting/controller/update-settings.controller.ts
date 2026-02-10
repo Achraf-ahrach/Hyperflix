@@ -46,9 +46,9 @@ export class UsersSettingsController {
 
             await this.updateMailService.verifyUpdateMail(token);
 
-            return res.redirect(302, `${process.env.BACKEND_URL}/update-email?status=success`);
+            return res.redirect(302, `${process.env.FRONTEND_URL}/update-email?status=success`);
         } catch (err) {
-            return res.redirect(302, `${process.env.BACKEND_URL}/update-email?status=error`);
+            return res.redirect(302, `${process.env.FRONTEND_URL}/update-email?status=error`);
         }
     }
 

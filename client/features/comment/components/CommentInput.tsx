@@ -3,6 +3,8 @@ import { useUser } from "@/lib/contexts/UserContext";
 import { ImageIcon, Loader2, Send, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { resolveApiUrl } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 
 // --- Comment Input Component ---
@@ -19,7 +21,7 @@ export const CommentInput = ({ onSubmit, placeholder = "Write a comment...", aut
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useUser();
-
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   if (!user) return null;
@@ -64,20 +66,31 @@ export const CommentInput = ({ onSubmit, placeholder = "Write a comment...", aut
     );
   }
 
-  let imageUrl : string =  ''
-  if (!user.avatarUrl) {
-    imageUrl = '';
-  } else if (!user.avatarUrl.startsWith('http')) {
-    imageUrl = `${API_URL}${user.avatarUrl}`;
-  } else {
-    imageUrl = user.avatarUrl;
-  }
+
+
+    const avatarUrl = resolveApiUrl(user.avatarUrl);
 
   return (
 <div className="border border-zinc-400 dark:border-zinc-600 p-5 rounded-2xl">
 
       <div className="flex gap-4">
-        <img src={imageUrl} className="w-10 h-10 rounded-full border border-red-500/50" alt={user.username} />
+        {/* <img src={imageUrl} className="w-10 h-10 rounded-full border border-red-500/50" alt={user.username} /> */}
+        {
+        avatarUrl ? (
+          <img
+            src={avatarUrl}
+            className="w-10 h-10 rounded-full bg-slate-800 cursor-pointer"
+            alt={user.username}
+            onClick={() => router.push(`/profile/${user.id}`)}
+          />
+        ) : (
+          <div
+            className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white cursor-pointer"
+            onClick={() => router.push(`/profile/${user.id}`)}
+          >
+            {user.username.charAt(0).toUpperCase()}
+          </div>
+        )}
         <div className="flex-1">
           <textarea
             className="w-full bg-transparent border-none outline-none resize-none text-sm placeholder:text-slate-600"

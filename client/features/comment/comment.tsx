@@ -9,7 +9,7 @@ import { comment_api, INITIAL_BATCH } from './utils';
 import { CommentInput } from './components/CommentInput';
 import { CommentItem } from './components/CommentItem';
 import { Comment } from './types/types';
-
+import { toast } from 'sonner';
 
 
 export const CommentsSection = ({ movieId }: { movieId: string }) => {
@@ -41,8 +41,8 @@ export const CommentsSection = ({ movieId }: { movieId: string }) => {
     try {
     const newComment = await comment_api.createComment(movieId, content, media);
     setComments(prev => [newComment, ...prev]);
-    } catch (error) {
-      console.error('Failed to add comment:', error);
+    } catch (error : any) {
+      toast.error(error.message || 'Failed to add comment');
     }
   };
 
