@@ -68,6 +68,7 @@ export class UpdatePasswordService {
 
 
     const user = await this.settingsRepository.findById(userId);
+    
     if (!user)
       throw new NotFoundException('User not found');
     if (!user.passwordHash)

@@ -20,9 +20,9 @@ import { toast } from 'sonner';
 
 
 const profileSchema = z.object({
-  firstName: z.string().min(1, "First name is too short").max(100, "First name must be at most 100 characters long"),
-  lastName: z.string().min(1, "Last name is too short").max(100, "Last name must be at most 100 characters long"),
-  username: z.string().min(3, "Username must be at least 3 characters").max(50, "Username must be at most 50 characters long").toLowerCase(),
+  firstName: z.string().trim().min(1, "First name is too short").max(100, "First name must be at most 100 characters long"),
+  lastName: z.string().trim().min(1, "Last name is too short").max(100, "Last name must be at most 100 characters long"),
+  username: z.string().trim().min(3, "Username must be at least 3 characters").max(50, "Username must be at most 50 characters long").toLowerCase(),
   avatar: z.any().optional()
 });
 
@@ -350,7 +350,7 @@ const SettingsPage = () => {
                           Change Avatar
                         </Button>
                         <p className="text-xs text-muted-foreground mt-2">
-                          JPG, PNG or GIF. Max size 2MB.
+                          JPG, PNG or GIF. Max size 5MB.
                         </p>
                       </div>
                     </div>
