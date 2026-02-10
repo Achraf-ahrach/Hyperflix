@@ -14,9 +14,9 @@ export function Hero() {
 
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
-    console.log("Submitted email:", email);
+    // console.log("Submitted email:", email);
     if (!email || !email.includes("@")) {
-      console.log("Please enter a valid email address.\n\n");
+      // console.log("Please enter a valid email address.\n\n");
       setError("Please enter a valid email address.");
       return;
     }

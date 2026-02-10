@@ -15,7 +15,7 @@ export class SettingsService {
 
 
   async updateProfileSettings(id: number, dto: ProfileSettingsDto) {
-    console.log(dto);
+    // console.log(dto);
     if (dto.username) {
       const user = await this.settingRepository.findByUsername(dto.username);
       if (user && user.id !== id) {
@@ -108,7 +108,8 @@ export class SettingsService {
     }
 
     if (Object.keys(updateData).length === 0) {
-      return { message: 'No preference changes detected' };      console.log(dto);
+      return { message: 'No preference changes detected' };      
+      // console.log(dto);
     }
 
     await this.settingRepository.updatePreferences(id, updateData);

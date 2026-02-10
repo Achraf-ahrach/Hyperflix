@@ -208,7 +208,7 @@ const SettingsPage = () => {
     event.preventDefault();
     setFormErrors({});
 
-    console.log(previewUrl);
+    // console.log(previewUrl);
     const formElement = event.currentTarget;
     const formData = new FormData(formElement);
 
@@ -222,14 +222,14 @@ const SettingsPage = () => {
     const result = profileSchema.safeParse(dataToValidate);
 
     if (!result.success) {
-      console.log(result.error);
+      // console.log(result.error);
       const errors: Record<string, string> = {};
       result.error.issues.forEach((issue: any) => {
         errors[issue.path[0] as string] = issue.message;
       });
       return setFormErrors(errors);
     }
-    console.log(formData);
+    // console.log(formData);
     mutate(formData);
   };
 
@@ -238,7 +238,7 @@ const SettingsPage = () => {
     setFormErrors({});
     const formData = new FormData(event.currentTarget);
     const rawData = Object.fromEntries(formData);
-    console.log(rawData);
+    // console.log(rawData);
     const result = emailSchema.safeParse(rawData);
 
     if (!result.success) {
@@ -257,10 +257,10 @@ const SettingsPage = () => {
     setFormPasswordErrors({});
     const formData = new FormData(event.currentTarget);
     const rawData = Object.fromEntries(formData);
-    console.log(rawData);
+    // console.log(rawData);
     const result = passwordSchema.safeParse(rawData);
-    console.log("Jj");
-    console.log(result);
+    // console.log("Jj");
+    // console.log(result);
     if (!result.success) {
       const errors: Record<string, string> = {};
       result.error.issues.forEach((issue: any) => {
@@ -275,7 +275,7 @@ const SettingsPage = () => {
   const handleLanguageUpdate = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = { language: language_code };
-    console.log(data);
+    // console.log(data);
     mutateLanguage(language_code);
   };
 

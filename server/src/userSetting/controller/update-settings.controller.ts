@@ -82,7 +82,7 @@ export class UsersSettingsController {
                 updateData.avatarUrl = `/profile_public/${file.filename}`;
             }
             
-            console.log(updateData);
+            // console.log(updateData);
             return this.usersService.updateProfileSettings(request.user.id, updateData);
         
 
@@ -94,7 +94,7 @@ export class UsersSettingsController {
         @Body() dto: PasswordSettingsDto,
         @Req() request,
     ) {
-        console.log(request.user);
+        // console.log(request.user);
         return this.updatePasswordService.updatePassword(request.user.id, dto);
     }
 

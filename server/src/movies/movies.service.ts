@@ -418,7 +418,7 @@ export class MoviesService {
     try {
       const topMovies = await this.fetchData<any[]>(API_URLS.APIBAY_TRENDING);
 
-      console.log('APIBay trending movies fetched:', topMovies.length);
+      // console.log('APIBay trending movies fetched:', topMovies.length);
 
       if (!Array.isArray(topMovies)) {
         return [];

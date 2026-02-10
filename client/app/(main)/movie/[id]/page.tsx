@@ -38,9 +38,10 @@ export default function MovieDetailsPage() {
   });
 
   const reduxMovie = useSelector((state: any) => state.ui.selectedMovie);
+  const isReduxMovieMatch = reduxMovie?.imdb_code === id;
 
-  // Use Redux movie for data (torrents, etc.) but ALWAYS use API for watched status
-  const movie = reduxMovie
+  // Use Redux movie only when it matches current id; otherwise use API data
+  const movie = isReduxMovieMatch
     ? { ...reduxMovie, watched: movieQ?.watched ?? false }
     : movieQ;
 
@@ -108,7 +109,7 @@ export default function MovieDetailsPage() {
   });
 
   const { data: watchListData, isLoading: isWatchListLoading } = useQuery({
-    queryKey: ["watchList",],
+    queryKey: ["watchList", id],
     queryFn: async () => {
       // console.log("Checking if movie is in watchlist...");
       const { data } = await api.get(`/movies/${id}/watch-later`);
@@ -116,6 +117,7 @@ export default function MovieDetailsPage() {
       setIsInWatchlist(data);
       return data;
     },
+    enabled: !!id,
   })
 
   const { mutate: mutateWatchList, isPending: isWatchListPending } = useMutation({
@@ -133,7 +135,7 @@ export default function MovieDetailsPage() {
       } else {
         toast.message("Movie added to watchlist");
       }
-      queryClient.invalidateQueries({ queryKey: ["watchList", "profile"] });
+      queryClient.invalidateQueries({ queryKey: ["watchList", id] });
       setIsInWatchlist(!isInWatchlist);
     },
     onError: (err: any) => {

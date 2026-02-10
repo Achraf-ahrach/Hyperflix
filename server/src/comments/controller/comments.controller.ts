@@ -60,7 +60,7 @@ export class CommentsController {
     @Req() req: any,
   ) {
     const userId = req.user.id;
-    console.log(commentId);
+    // console.log(commentId);
     return this.commentService.toggleLike(commentId, userId);
   }
 

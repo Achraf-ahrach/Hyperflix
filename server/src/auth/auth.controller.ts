@@ -239,7 +239,7 @@ export class AuthController {
     @Request() req,
     @Res({ passthrough: true }) response: Response,
   ) {
-    console.log('\n42 OAuth callback user:', req.user);
+    // console.log('\n42 OAuth callback user:', req.user);
     const { access_token } = await this.authService.login(req.user);
 
     response.cookie('Authentication', access_token, {
