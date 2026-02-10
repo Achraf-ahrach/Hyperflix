@@ -129,7 +129,7 @@ export default function MovieDetailsPage() {
     onSuccess: (result) => {
       if (isInWatchlist) {
         toast.message
-        ("Movie removed from watchlist");
+          ("Movie removed from watchlist");
       } else {
         toast.message("Movie added to watchlist");
       }
@@ -183,7 +183,7 @@ export default function MovieDetailsPage() {
 
 
   const handleAddToWatchlist = async () => {
-    mutateWatchList(id); 
+    mutateWatchList(id);
   }
 
   return (
@@ -279,14 +279,14 @@ export default function MovieDetailsPage() {
               >
                 {
                   isWatchListLoading ? (
-                    <Spinner/>
+                    <Spinner />
                   )
-                  :
-                  isInWatchlist ? (
-                    <Minus className="w-4 h-4" />
-                  ) : (
-                    <Plus className="w-4 h-4" />
-                  )}
+                    :
+                    isInWatchlist ? (
+                      <Minus className="w-4 h-4" />
+                    ) : (
+                      <Plus className="w-4 h-4" />
+                    )}
                 Watch List
               </Button>
               {/* <Button
@@ -318,6 +318,57 @@ export default function MovieDetailsPage() {
               {movie.synopsis || "No synopsis available."}
             </p>
           </div>
+
+          {/* Cast & Crew Section */}
+          {(movie.director || movie.writer || movie.actors || movie.production || movie.country || movie.language || movie.awards) && (
+            <div className="space-y-4">
+              <h3 className="text-xl font-semibold">Details</h3>
+              <div className="space-y-3 text-gray-300">
+                {movie.director && (
+                  <div className="flex gap-3">
+                    <span className="text-gray-400 font-medium min-w-[120px]">Director:</span>
+                    <span>{movie.director}</span>
+                  </div>
+                )}
+                {movie.writer && (
+                  <div className="flex gap-3">
+                    <span className="text-gray-400 font-medium min-w-[120px]">Writer:</span>
+                    <span>{movie.writer}</span>
+                  </div>
+                )}
+                {movie.actors && (
+                  <div className="flex gap-3">
+                    <span className="text-gray-400 font-medium min-w-[120px]">Cast:</span>
+                    <span>{movie.actors}</span>
+                  </div>
+                )}
+                {movie.production && (
+                  <div className="flex gap-3">
+                    <span className="text-gray-400 font-medium min-w-[120px]">Production:</span>
+                    <span>{movie.production}</span>
+                  </div>
+                )}
+                {movie.country && (
+                  <div className="flex gap-3">
+                    <span className="text-gray-400 font-medium min-w-[120px]">Country:</span>
+                    <span>{movie.country}</span>
+                  </div>
+                )}
+                {movie.language && (
+                  <div className="flex gap-3">
+                    <span className="text-gray-400 font-medium min-w-[120px]">Language:</span>
+                    <span>{movie.language}</span>
+                  </div>
+                )}
+                {movie.awards && (
+                  <div className="flex gap-3">
+                    <span className="text-gray-400 font-medium min-w-[120px]">Awards:</span>
+                    <span>{movie.awards}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Column: Rating & Metadata */}

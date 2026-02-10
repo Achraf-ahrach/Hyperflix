@@ -116,12 +116,6 @@ volumes:
   postgres_data:
   redis_data:
   media_volume:
-    driver: local
-    driver_opts:
-      type: none 
-      device:  /home/yoyahya/goinfre/Hyperflix/torrent/torrent_service/media/
-      o: bind
-      
   static_volume:
 
   backend_node_modules:
@@ -129,3 +123,4 @@ volumes:
 networks:
   hypertube_network:
     driver: bridge
+
