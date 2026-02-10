@@ -8,104 +8,104 @@ import ffmpeg
 from .models import MovieFile
 from srt_to_vtt import srt_to_vtt
 from django.conf import settings
-import requests
+import requests, subprocess
 from concurrent.futures import ThreadPoolExecutor
 import concurrent.futures
 
+logger = logging.getLogger(__name__)
 range_re = re.compile(r"bytes\s*=\s*(\d+)\s*-\s*(\d*)", re.I)
-
 
 class VideoService:
     def __init__(self):
         self.segment_duration = 10
-        self.processed_segments = set()
-        self.failed_segments = set()
-        self.segment_retry_count = {}
-        self.segment_last_attempt = {}
-        self.max_retries = 3
-        self.retry_cooldown = 30
 
-    def get_video_duration(self, video_path: str) -> Optional[float]:
-        """Get video duration using ffprobe."""
+    def get_video_duration(self, file_path):
+        """Get duration of video in seconds using ffprobe"""
         try:
-            safe_path = f"file:{video_path}"
-            probe = ffmpeg.probe(safe_path)
-            return float(probe['format']['duration'])
-        except ffmpeg.Error as e:
-            logging.error(f"Error getting video duration: {e.stderr.decode()}")
-            return None
+            cmd = [
+                'ffprobe', 
+                '-v', 'error', 
+                '-show_entries', 'format=duration', 
+                '-of', 'default=noprint_wrappers=1:nokey=1', 
+                file_path
+            ]
+            output = subprocess.check_output(cmd).decode().strip()
+            return float(output)
         except Exception as e:
-            logging.error(f"Error getting video duration: {e}")
+            logger.error(f"Error getting duration: {e}")
             return None
 
-    def convert_segment(self, input_path: str, output_dir: str, current_segment: int, video_duration: float) -> bool:
-        """Convert a single segment of the video to HLS-compatible .ts format."""
+    def convert_segment(self, source_path, output_dir, segment_index, resolution="720p"):
+        """
+        Transcodes a specific 10-second chunk into the target resolution.
+        """
+        res_map = {
+            "1080p": ("scale=-2:1080", "4500k", "192k", "9000k"),
+            "720p":  ("scale=-2:720",  "2500k", "128k", "5000k"),
+            "480p":  ("scale=-2:480",  "1200k", "96k",  "2400k"),
+            "360p":  ("scale=-2:360",  "800k",  "64k",  "1600k"),
+        }
         
-        if not os.path.exists(input_path):
-            logging.error(f"convert_segment: Input file missing at {input_path}")
-            return False
+        scale_filter, v_bitrate, a_bitrate, bufsize = res_map.get(resolution, res_map["720p"])
 
-        start_time = current_segment * self.segment_duration
+        resolution_dir = os.path.join(output_dir, resolution)
+        os.makedirs(resolution_dir, exist_ok=True)
         
-        segment_name = f"segment_{current_segment:03d}.ts"
-        # -------------------------
+        output_file = os.path.join(resolution_dir, f"segment_{segment_index:03d}.ts")
 
-        rel_path = os.path.relpath(input_path, output_dir)
-        dir_path = os.path.dirname(rel_path)
+        if os.path.exists(output_file) and os.path.getsize(output_file) > 0:
+            return True
 
-        if dir_path and dir_path != '.':
-            segment_path = os.path.join(output_dir, dir_path, segment_name)
-            os.makedirs(os.path.dirname(segment_path), exist_ok=True)
-        else:
-            segment_path = os.path.join(output_dir, segment_name)
-
-        self.segment_last_attempt[current_segment] = time.time()
-
-        try:
-            safe_input_path = f"file:{input_path}"
-
-            stream = (
-                ffmpeg
-                .input(safe_input_path, ss=start_time, t=min(self.segment_duration, video_duration - start_time))
-                .output(
-                    segment_path,
-                    format='mpegts',
-                    vcodec='libx264',
-                    preset='ultrafast',
-                    pix_fmt='yuv420p',
-                    acodec='aac',
-                    ac=2,
-                    output_ts_offset=start_time,
-                    muxdelay=0
-                )
-                .overwrite_output()
-            )
+        start_time = segment_index * self.segment_duration
+        
+        cmd = [
+            'ffmpeg',
+            '-hide_banner', '-loglevel', 'error',
             
-            stream.run(capture_stdout=True, capture_stderr=True)
+            '-ss', str(start_time),
+            '-t', str(self.segment_duration),
+            '-i', source_path,
+            
+            '-vf', scale_filter,
+            '-c:v', 'libx264',
+            '-b:v', v_bitrate,
+            '-maxrate', v_bitrate, # Constrain bitrate for HLS stability
+            '-bufsize', bufsize,
+            
+            # PRESET: 'ultrafast' or 'veryfast' is REQUIRED for real-time torrent streaming
+            # 'slow' preset will cause buffering if the CPU can't keep up
+            '-preset', 'veryfast',
+            '-profile:v', 'main',  # 'main' profile is safer for older devices than 'high'
+            
+            # KEYFRAME ENFORCEMENT
+            # HLS segments MUST start with a keyframe. 
+            # libx264 usually does this automatically at the start of a new encode,
+            # but -force_key_frames ensures it.
+            '-force_key_frames', 'expr:gte(t,0)',
+            
+            # AUDIO
+            '-c:a', 'aac',
+            '-b:a', a_bitrate,
+            '-ac', '2', # Force Stereo (safer than keeping 5.1/7.1 for web players)
+            
+            # This tells the player "This segment belongs at timestamp X"
+            # Without this, every segment looks like it starts at 0:00
+            '-output_ts_offset', str(start_time),
+            
+            # FORMAT
+            '-f', 'mpegts',
+            '-y',
+            output_file
+        ]
 
-            if os.path.exists(segment_path) and os.path.getsize(segment_path) > 0:
-                logging.info(f"✓ Converted segment {current_segment} -> {segment_name}")
-                self.processed_segments.add(current_segment)
-                return True
-            else:
-                logging.error(f"Output file not created for segment {current_segment}")
-                return False
+        try:
+            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+            return True
+        except subprocess.CalledProcessError as e:
+            logger.error(f"FFmpeg failed for {resolution} seg {segment_index}: {e.stderr.decode()}")
+            return False
 
-        except ffmpeg.Error as e:
-            error_msg = e.stderr.decode() if hasattr(e, 'stderr') else str(e)
-            logging.error(f"FFmpeg error for segment {current_segment}: {error_msg}")
-            self.segment_retry_count[current_segment] = self.segment_retry_count.get(current_segment, 0) + 1
-            if self.segment_retry_count[current_segment] >= self.max_retries:
-                self.failed_segments.add(current_segment)
-            return False
-        except Exception as e:
-            logging.error(f"Exception during segment {current_segment} conversion: {e}")
-            return False
 # ++++++++++++++++++++++++++++++++++++++++++
-
-
-
-
 
 
 class SubtitleService:
@@ -237,7 +237,11 @@ class SubtitleService:
             str(movie.id)
         )
         os.makedirs(subtitles_dir, exist_ok=True)
-
+        existing_subs = self._scan_local_subtitles(subtitles_dir, movie.id)
+        if existing_subs:
+            logging.info(f"Local subtitles found for movie {movie.id}. Skipping download.")
+            return existing_subs
+        
         lock_file = os.path.join(subtitles_dir, "download.lock")
         if os.path.exists(lock_file):
             logging.info(f"Subtitles download already in progress for movie {movie.id}")
