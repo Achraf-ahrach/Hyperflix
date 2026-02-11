@@ -26,13 +26,17 @@ export function MovieCard({ movie }: MovieCardProps) {
         }}>
             <div className="group relative rounded-xl bg-card text-card-foreground shadow-sm transition-all hover:scale-105 hover:shadow-lg overflow-hidden cursor-pointer">
                 <div className="relative aspect-[2/3] w-full overflow-hidden">
-                    <Image
+                    <img
                         src={movie.thumbnail || "https://placehold.co/600x400"}
-
                         alt={movie.title}
-                        fill
-                        unoptimized
-                        className="object-cover transition-transform duration-300 group-hover:scale-110"
+                        // mimic "fill" and "object-cover"
+                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+                        // manual lazy loading (or "eager" if it's above the fold)
+                        loading="eager"
+                        // Simple fallback if the source 404s
+                        onError={(e) => {
+                            (e.target as HTMLImageElement).src = "https://placehold.co/600x400?text=No+Image";
+                        }}
                     />
                     {/* Watched Badge */}
                     {movie.watched && (

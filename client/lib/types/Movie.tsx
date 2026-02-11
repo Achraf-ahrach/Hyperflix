@@ -22,4 +22,11 @@ export interface Movie {
         size: number;
     }[];
     watched?: boolean;
+    director?: string;
+    writer?: string;
+    actors?: string;
+    production?: string;
+    country?: string;
+    language?: string;
+    awards?: string;
 }

@@ -91,6 +91,7 @@ export function Trending() {
                   fill
                   className="object-cover"
                   sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 16vw"
+                  priority
                 />
               ) : (
                 <div className="w-full h-full bg-gray-700 flex items-center justify-center">

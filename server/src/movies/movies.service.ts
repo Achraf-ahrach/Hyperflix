@@ -28,6 +28,13 @@ export interface NormalizedMovie {
   backdrop_image?: string | null;
   torrents?: Torrent[];
   watched?: boolean; // User-specific watched status
+  director?: string;
+  writer?: string;
+  actors?: string;
+  production?: string;
+  country?: string;
+  language?: string;
+  awards?: string;
 }
 
 
@@ -53,6 +60,13 @@ interface TMDbMetadata {
   genres: string[];
   tmdbId: number;
   imdbId: string;
+  director?: string;
+  writer?: string;
+  actors?: string;
+  production?: string;
+  country?: string;
+  language?: string;
+  awards?: string;
 }
 
 interface TMDbFindResponse {
@@ -76,6 +90,22 @@ interface TMDbMovieDetails {
       release_dates: Array<{ certification: string }>;
     }>;
   };
+  production_companies?: Array<{ name: string }>;
+  production_countries?: Array<{ name: string }>;
+  spoken_languages?: Array<{ english_name: string }>;
+}
+
+interface TMDbCredits {
+  cast: Array<{
+    name: string;
+    character: string;
+    order: number;
+  }>;
+  crew: Array<{
+    name: string;
+    job: string;
+    department: string;
+  }>;
 }
 
 interface OMDbMetadata {
@@ -88,6 +118,13 @@ interface OMDbMetadata {
   rated: string;
   genres: string[];
   imdbId: string;
+  director?: string;
+  writer?: string;
+  actors?: string;
+  production?: string;
+  country?: string;
+  language?: string;
+  awards?: string;
 }
 
 interface OMDbResponse {
@@ -102,6 +139,13 @@ interface OMDbResponse {
   imdbRating: string;
   Response: string;
   Error?: string;
+  Director?: string;
+  Writer?: string;
+  Actors?: string;
+  Production?: string;
+  Country?: string;
+  Language?: string;
+  Awards?: string;
 }
 
 // ===== CONSTANTS =====
@@ -306,6 +350,13 @@ export class MoviesService {
         background_image: omdbMetadata.posterUrl || normalizedYTS.background_image,
         // Ensure torrents are preserved
         torrents: normalizedYTS.torrents,
+        director: omdbMetadata.director,
+        writer: omdbMetadata.writer,
+        actors: omdbMetadata.actors,
+        production: omdbMetadata.production,
+        country: omdbMetadata.country,
+        language: omdbMetadata.language,
+        awards: omdbMetadata.awards,
       };
     }
 
@@ -480,6 +531,13 @@ export class MoviesService {
       genres: metadata.genres,
       background_image: metadata.posterUrl,
       torrents: [],
+      director: metadata.director,
+      writer: metadata.writer,
+      actors: metadata.actors,
+      production: metadata.production,
+      country: metadata.country,
+      language: metadata.language,
+      awards: metadata.awards,
     };
   }
 
@@ -498,6 +556,13 @@ export class MoviesService {
       background_image: metadata.backdropUrl || metadata.posterUrl,
       backdrop_image: metadata.backdropUrl,
       torrents: [],
+      director: metadata.director,
+      writer: metadata.writer,
+      actors: metadata.actors,
+      production: metadata.production,
+      country: metadata.country,
+      language: metadata.language,
+      awards: metadata.awards,
     };
   }
 
@@ -579,6 +644,52 @@ export class MoviesService {
         imdbId: movieDetails.imdb_id || imdbCode,
       };
 
+      // Extract production info from movie details
+      if (movieDetails.production_companies && movieDetails.production_companies.length > 0) {
+        metadata.production = movieDetails.production_companies.map(c => c.name).join(', ');
+      }
+      if (movieDetails.production_countries && movieDetails.production_countries.length > 0) {
+        metadata.country = movieDetails.production_countries.map(c => c.name).join(', ');
+      }
+      if (movieDetails.spoken_languages && movieDetails.spoken_languages.length > 0) {
+        metadata.language = movieDetails.spoken_languages.map(l => l.english_name).join(', ');
+      }
+
+      // Step 3: Fetch cast and crew from TMDb credits endpoint
+      try {
+        const creditsUrl = `${API_URLS.TMDB_BASE}/movie/${tmdbId}/credits?api_key=${this.tmdbApiKey}`;
+        const credits = await this.fetchData<TMDbCredits>(creditsUrl);
+
+        if (credits) {
+          // Extract director(s) from crew
+          const directors = credits.crew
+            .filter(member => member.job === 'Director')
+            .map(director => director.name);
+          if (directors.length > 0) {
+            metadata.director = directors.join(', ');
+          }
+
+          // Extract writer(s) from crew
+          const writers = credits.crew
+            .filter(member => member.department === 'Writing' && (member.job === 'Writer' || member.job === 'Screenplay' || member.job === 'Story'))
+            .map(writer => writer.name);
+          if (writers.length > 0) {
+            metadata.writer = [...new Set(writers)].join(', '); // Remove duplicates
+          }
+
+          // Extract top actors from cast (first 5)
+          const actors = credits.cast
+            .sort((a, b) => a.order - b.order)
+            .slice(0, 5)
+            .map(actor => actor.name);
+          if (actors.length > 0) {
+            metadata.actors = actors.join(', ');
+          }
+        }
+      } catch (error) {
+        this.logger.warn(`Failed to fetch TMDb credits for ${tmdbId}: ${error.message}`);
+      }
+
       // Cache the result
       await this.cacheManager.set(cacheKey, metadata, LIMITS.CACHE_TTL);
 
@@ -649,6 +760,13 @@ export class MoviesService {
         rated: response.Rated && response.Rated !== 'N/A' ? response.Rated : 'Not Rated',
         genres,
         imdbId: response.imdbID || imdbCode,
+        director: response.Director && response.Director !== 'N/A' ? response.Director : undefined,
+        writer: response.Writer && response.Writer !== 'N/A' ? response.Writer : undefined,
+        actors: response.Actors && response.Actors !== 'N/A' ? response.Actors : undefined,
+        production: response.Production && response.Production !== 'N/A' ? response.Production : undefined,
+        country: response.Country && response.Country !== 'N/A' ? response.Country : undefined,
+        language: response.Language && response.Language !== 'N/A' ? response.Language : undefined,
+        awards: response.Awards && response.Awards !== 'N/A' ? response.Awards : undefined,
       };
 
       // Cache the result
@@ -690,6 +808,13 @@ export class MoviesService {
             size: parseInt(res.size) || 0,
           },
         ],
+        director: omdbMetadata.director,
+        writer: omdbMetadata.writer,
+        actors: omdbMetadata.actors,
+        production: omdbMetadata.production,
+        country: omdbMetadata.country,
+        language: omdbMetadata.language,
+        awards: omdbMetadata.awards,
       };
     }
 
