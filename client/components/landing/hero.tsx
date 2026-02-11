@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Languages, CircleX } from "lucide-react";
+import { ChevronRight, CircleX } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -45,9 +45,9 @@ export function Hero() {
           priority
           className="w-36 md:w-48 lg:w-60 object-contain"
         />
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 p-0">
           <Link href="/login">
-            <Button className="bg-[#e50914] hover:bg-[#c11119] text-white font-medium px-6 py-2 h-auto text-md rounded-md transition-colors">
+            <Button className="bg-[#e50914] hover:bg-[#c11119] cursor-pointer text-white font-medium px-6 py-2 h-auto text-md rounded-md transition-colors">
               Sign In
             </Button>
           </Link>
@@ -124,7 +124,7 @@ export function Hero() {
 
           <Button
             type="submit"
-            className="bg-[#e50914] hover:bg-[#c11119] h-12 md:h-14 lg:h-16 px-6 md:px-8 text-xl md:text-2xl font-bold text-white rounded-md flex items-center gap-2 shrink-0 transition-colors"
+            className="bg-[#e50914] hover:bg-[#c11119] cursor-pointer h-12 md:h-14 lg:h-16 px-6 md:px-8 text-xl md:text-2xl font-bold text-white rounded-md flex items-center gap-2 shrink-0 transition-colors"
           >
             Get Started <ChevronRight className="w-6 h-6 md:w-8 md:h-8" />
           </Button>

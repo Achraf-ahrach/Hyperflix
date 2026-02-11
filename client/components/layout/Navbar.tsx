@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
 import { Search, LogOut, User, Settings } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -23,7 +22,7 @@ import { API_URL } from "@/app/utils";
 
 export default function Navbar() {
   const router = useRouter();
-  const { user, refetch } = useUser();
+  const { user } = useUser();
   const queryClient = useQueryClient();
 
   const logoutMutaion = useMutation({
@@ -33,7 +32,6 @@ export default function Navbar() {
     onSuccess: () => {
       queryClient.setQueriesData({ queryKey: ["auth", "profile"] }, null);
       queryClient.removeQueries({ queryKey: ["auth"] });
-      // refetch();
       router.push("/login");
     },
   });
@@ -49,14 +47,12 @@ export default function Navbar() {
     return "U";
   };
 
+  let startUrl = "";
+  let imgUrl = user?.avatarUrl || "";
 
-  let startUrl = '';
-  let imgUrl = user?.avatarUrl || '';
-
-  if (imgUrl.startsWith('http')) {
-    startUrl = '';
-  }
-  else startUrl = API_URL;
+  if (imgUrl.startsWith("http")) {
+    startUrl = "";
+  } else startUrl = API_URL;
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur-sm">
@@ -67,20 +63,23 @@ export default function Navbar() {
           width={140}
           height={40}
           priority
-          className="w-32 md:w-44 lg:w-48 object-contain"
-          onClick={()=> router.push('/home')}
+          className="w-32 md:w-44 lg:w-48 object-contain cursor-pointer"
+          onClick={() => router.push("/home")}
         />
 
         {/* Search Bar - Wide center area */}
         <div className="flex-1 max-w-xl mx-4">
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            const formData = new FormData(e.currentTarget);
-            const query = formData.get("q") as string;
-            if (query?.trim()) {
-              router.push(`/search?q=${encodeURIComponent(query.trim())}`);
-            }
-          }} className="relative">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              const query = formData.get("q") as string;
+              if (query?.trim()) {
+                router.push(`/search?q=${encodeURIComponent(query.trim())}`);
+              }
+            }}
+            className="relative"
+          >
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               name="q"
@@ -124,7 +123,9 @@ export default function Navbar() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-border" />
-              <DropdownMenuItem onClick={() => router.push(`/profile/${user?.id}`)}>
+              <DropdownMenuItem
+                onClick={() => router.push(`/profile/${user?.id}`)}
+              >
                 <User className="mr-2 h-4 w-4" />
                 <span>Profile</span>
               </DropdownMenuItem>
