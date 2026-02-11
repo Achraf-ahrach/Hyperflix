@@ -29,7 +29,7 @@ export const CommentsSection = ({ movieId }: { movieId: string }) => {
         setPage(data.page);
         setTotal(data.total);
       } catch (error) {
-        console.error('Failed to load comments:', error);
+        // console.error('Failed to load comments:', error);
       } finally {
         setIsInitialLoading(false);
       }
