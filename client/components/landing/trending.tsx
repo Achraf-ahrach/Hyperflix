@@ -67,7 +67,7 @@ export function Trending() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {trendingItems.map((item, index) => (
           <div
-            key={item.imdb_code}
+            key={`${item.imdb_code}-${index}`}
             className="relative aspect-[2/3] group cursor-pointer"
             onClick={handleMovieClick}
           >
