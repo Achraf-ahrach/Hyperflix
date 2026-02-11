@@ -6,6 +6,7 @@ import { useUser } from "@/lib/contexts/UserContext";
 import { API_URL } from "@/app/utils";
 import { resolveApiUrl, timeAgo } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 
 
@@ -135,8 +136,9 @@ export const ReplyItem = ({ reply, onLike, onDelete, onEdit }: ReplyItemProps) =
                       setIsSavingEdit(true);
                       await onEdit(editContent.trim());
                       setIsEditing(false);
-                    } catch (error) {
-                      console.error('Failed to edit reply:', error);
+                    } catch (error : any) {
+                      // console.error('Failed to edit reply:', error);
+                      toast.error(error.message || 'Failed to edit reply');
                     } finally {
                       setIsSavingEdit(false);
                     }

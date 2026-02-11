@@ -482,7 +482,7 @@ export class MoviesService {
         return [];
       }
 
-      console.log('Enriching APIBay trending movies...');
+      // console.log('Enriching APIBay trending movies...');
       const enrichedMovies = await Promise.allSettled(
         topMovies.map((movie: any) => this.enrichAPIBayMovie(movie))
       );
