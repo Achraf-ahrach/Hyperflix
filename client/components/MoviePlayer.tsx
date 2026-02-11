@@ -188,13 +188,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
                     data.type === Hls.ErrorTypes.NETWORK_ERROR ? hls.startLoad() : hls.recoverMediaError();
                 } else {
                     // Non-fatal: attempt small nudge to unstuck
-                    if (data.details === 'bufferStalledError' || data.details === 'fragLoadError' || data.details === 'fragLoadEmergencyAborted') {
+                    if (
+                        data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR ||
+                        data.details === Hls.ErrorDetails.FRAG_LOAD_ERROR
+                    ) {
                         nudge();
                     }
                 }
             });
 
-            hls.on(Hls.Events.BUFFER_STALLED, nudge);
         } 
         else if (vid.canPlayType('application/vnd.apple.mpegurl')) {
             vid.src = src;
