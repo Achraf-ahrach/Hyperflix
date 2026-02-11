@@ -56,7 +56,6 @@ services:
   frontend:
     build: ./client
     container_name: hypertube_frontend
-    command: npm run dev
     depends_on:
       - backend
     env_file:
@@ -66,12 +65,11 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     ports:
-      - "${FRONTEND_PORT}:${FRONTEND_PORT}"
+      - "${FRONTEND_PORT}:80"
     working_dir: /app
     volumes:
       - ./client:/app
       - /app/node_modules
-
 
   torrent:
     build: ./torrent/torrent_service/
@@ -96,7 +94,7 @@ services:
       - static_volume:/app/static
       - media_volume:/app/media
     restart: always
-  
+
   nginx_torrent:
     image: nginx:alpine
     container_name: nginx_torrent_container

@@ -1,32 +1,30 @@
-# -------- Base image --------
-FROM node:20-alpine AS base
-
-# -------- Dependencies --------
-FROM base AS deps
+# Stage 1: Build the application
+FROM node:20-alpine AS builder
 WORKDIR /app
+
+# Install dependencies first (better caching)
 COPY package*.json ./
 RUN npm install
 
-# -------- Build --------
-FROM base AS builder
-WORKDIR /app
+# Copy the rest of the code and build
 COPY . .
-COPY --from=deps /app/node_modules ./node_modules
-RUN rm -rf .next
+# Ensure your next.config.js has 'output: "export"'
 RUN npm run build
 
-# -------- Production Run --------
-FROM base AS runner
-WORKDIR /app
+# Stage 2: Serve the static files with Nginx
+FROM nginx:alpine
+WORKDIR /usr/share/nginx/html
 
-ENV NODE_ENV=production
-ENV PORT=3000
+# Clean the default Nginx public folder
+RUN rm -rf ./*
 
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/package*.json ./
-COPY --from=deps /app/node_modules ./node_modules
-COPY public ./public
+# Copy the build output from the builder stage
+# Next.js exports to the 'out' directory by default
+COPY --from=builder /app/out .
 
-EXPOSE 3000
+# Expose port 80
+EXPOSE 80
 
-CMD ["npm", "run", "start"]
+CMD ["nginx", "-g", "daemon off;"]
+
+
