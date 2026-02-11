@@ -40,7 +40,6 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/hls.js": "^0.13.3",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

@@ -160,3 +160,36 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 DOWNLOAD_PATH = '/app/downloads'
 os.makedirs(DOWNLOAD_PATH, exist_ok=True)
+
+# --- Logging: ensure INFO from app code goes to stdout for Docker ---
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '%(asctime)s %(levelname)s %(name)s: %(message)s'
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'stream': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}

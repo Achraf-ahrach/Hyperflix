@@ -18,60 +18,103 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
     const hlsRef = useRef<Hls | null>(null);
     const lastPos = useRef<number>(0); 
     const isSwitching = useRef<boolean>(false);
+    const lastNudge = useRef<number>(0);
 
     const [subtitles, setSubtitles] = useState<Subtitle[]>([]);
-    const [qualities] = useState<string[]>(["1080p", "720p", "480p", "360p"]);
+    const [levels, setLevels] = useState<{ index: number; label: string }[]>([]);
     
     const [isReady, setIsReady] = useState(false);
     const [msg, setMsg] = useState("Starting...");
-    const [quality, setQuality] = useState<string | null>(null);
+    const [terminalError, setTerminalError] = useState<string | null>(null);
+    const [quality, setQuality] = useState<number | "auto">("auto");
     const [subLang, setSubLang] = useState<string>('off');
     const [anchorSub, setAnchorSub] = useState<null | HTMLElement>(null);
+    const [retryToken, setRetryToken] = useState<number>(0);
 
     // --- CONFIG: Aggressive Gap Skipping ---
     const hlsConfig = useMemo(() => ({
         debug: false,
         enableWorker: true,
-        lowLatencyMode: true,
-        backBufferLength: 90,
-        maxBufferLength: 30,
+        lowLatencyMode: false,
+        capLevelToPlayerSize: true,
+        backBufferLength: 60,
+        maxBufferLength: 20,
         startPosition: -1,
-        maxBufferHole: 2.5, // Jumps holes < 2.5s
-        highBufferWatchdogPeriod: 1, 
-        nudgeOffset: 0.2, // Nudges if stuck
+        maxBufferHole: 1.0,
+        highBufferWatchdogPeriod: 1,
+        nudgeOffset: 0.2,
         nudgeMaxRetry: 10,
+        startFragPrefetch: false,
+        manifestLoadingMaxRetry: 4,
+        manifestLoadingRetryDelay: 1000,
+        fragLoadingMaxRetry: 4,
+        fragLoadingRetryDelay: 1000,
+        fragLoadingMaxRetryTimeout: 8000,
         manifestLoadingTimeOut: 60000,
         fragLoadingTimeOut: 60000,
         levelLoadingTimeOut: 60000,
     }), []);
 
     // --- DATA FETCHING ---
+    // Fetch subtitles only when movieId changes (Retry should not refetch subs)
     useEffect(() => {
         let mounted = true;
-
-        // Subtitles
         axios.get<Subtitle[]>(`${API_BASE_URL}/subtitles/?movie_id=${movieId}`)
-            .then(res => { 
-                if (mounted) {
-                    setSubtitles(res.data || []);
-                    if (res.data?.some(s => s.language === 'en')) setSubLang('en');
-                }
-            }).catch(() => {});
+            .then(res => {
+                if (!mounted) return;
+                setSubtitles(res.data || []);
+                if (res.data?.some(s => s.language === 'en')) setSubLang('en');
+            })
+            .catch(() => {});
+        return () => { mounted = false; };
+    }, [movieId]);
 
-        // Infinite Stream Polling
+    // HEAD readiness polling + status endpoint UI
+    useEffect(() => {
+        let mounted = true;
         const checkStream = async (attempt = 1) => {
             if (!mounted) return;
             try {
                 if (attempt % 5 === 0) setMsg(`Buffering... (${attempt})`);
                 await axios.head(`${API_BASE_URL}/video/${movieId}/playlist/`);
                 if (mounted) { setIsReady(true); setMsg("Ready"); }
-            } catch {
-                if (mounted) setTimeout(() => checkStream(attempt + 1), 2000);
+            } catch (err: any) {
+                const status = err?.response?.status;
+                if (status === 410) {
+                    setTerminalError("Torrent error or unavailable. Please try another source.");
+                    setIsReady(false);
+                    return; // stop polling
+                }
+                if (attempt < 60 && mounted) setTimeout(() => checkStream(attempt + 1), 2000);
             }
         };
         checkStream();
-        return () => { mounted = false; };
-    }, [movieId]);
+
+        // Status polling to show swarm/progress while waiting
+        const statusTimer = setInterval(async () => {
+            if (!mounted || isReady) return;
+            try {
+                const res = await axios.get(`${API_BASE_URL}/video/${movieId}/status/`);
+                const data = res.data as any;
+                const swarm = data?.swarm || {};
+                const progress = data?.progress ?? 0;
+                const problem = data?.problem || null;
+                setMsg(`Progress ${progress?.toFixed?.(1) || progress}% — seeds ${swarm.seeds || 0}, peers ${swarm.peers || 0}, down ${swarm.down_kbps || 0} kB/s`);
+                if (problem === 'error') {
+                    setTerminalError("Torrent error or unavailable. Please try another source.");
+                }
+            } catch {}
+        }, 3000);
+
+        return () => { mounted = false; clearInterval(statusTimer); };
+    }, [movieId, retryToken, isReady]);
+
+    const retryStart = () => {
+        setTerminalError(null);
+        setIsReady(false);
+        setMsg('Retrying...');
+        setRetryToken(x => x + 1);
+    };
 
     // --- SUBTITLE LOGIC ---
     useEffect(() => {
@@ -87,13 +130,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
         return () => vid.removeEventListener('loadedmetadata', apply);
     }, [subLang, subtitles]);
 
-    const changeQuality = (q: string | null) => {
+    const changeQuality = (q: number | "auto") => {
         if (q === quality) return;
-        if (videoRef.current && !videoRef.current.paused) {
-            lastPos.current = videoRef.current.currentTime;
-            isSwitching.current = true;
-        }
         setQuality(q);
+        const hls = hlsRef.current;
+        if (hls) {
+            if (q === "auto") {
+                hls.currentLevel = -1; // auto ABR
+            } else {
+                hls.currentLevel = q;
+            }
+        }
     };
 
     // --- PLAYER LOGIC ---
@@ -103,8 +150,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
         if (hlsRef.current) hlsRef.current.destroy();
 
         const base = `${API_BASE_URL}/video/${movieId}/playlist/`;
-        const src = quality ? `${base}?res=${quality}` : base;
+        const src = base; // always load master; quality via Hls levels
 
+        let nudge = () => {};
         if (Hls.isSupported()) {
             const hls = new Hls(hlsConfig);
             hlsRef.current = hls;
@@ -112,18 +160,43 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
             hls.attachMedia(vid);
 
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                if (isSwitching.current && lastPos.current > 0) {
-                    vid.currentTime = lastPos.current;
-                    isSwitching.current = false;
-                }
+                const discovered = hls.levels || [];
+                const lvls = discovered.map((lvl, idx) => {
+                    const height = (lvl as any).height as number | undefined;
+                    const name = (lvl as any).name as string | undefined;
+                    const label = name || (height ? `${height}p` : `Level ${idx}`);
+                    return { index: idx, label };
+                });
+                setLevels(lvls);
                 vid.play().catch(() => {});
             });
+
+            nudge = () => {
+                const now = Date.now();
+                if (now - lastNudge.current < 3000) return;
+                lastNudge.current = now;
+                try {
+                    const ct = vid.currentTime;
+                    vid.currentTime = Math.max(0, ct + 0.05);
+                } catch {}
+                try { hls.recoverMediaError(); } catch {}
+                try { hls.startLoad(); } catch {}
+            };
 
             hls.on(Hls.Events.ERROR, (_, data) => {
                 if (data.fatal) {
                     data.type === Hls.ErrorTypes.NETWORK_ERROR ? hls.startLoad() : hls.recoverMediaError();
+                } else {
+                    // Non-fatal: attempt small nudge to unstuck
+                    if (
+                        data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR ||
+                        data.details === Hls.ErrorDetails.FRAG_LOAD_ERROR
+                    ) {
+                        nudge();
+                    }
                 }
             });
+
         } 
         else if (vid.canPlayType('application/vnd.apple.mpegurl')) {
             vid.src = src;
@@ -134,14 +207,26 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
             vid.addEventListener('loadedmetadata', onMeta, { once: true });
         }
         return () => { if (hlsRef.current) hlsRef.current.destroy(); };
-    }, [isReady, quality, movieId, hlsConfig]);
+    }, [isReady, movieId, hlsConfig]);
 
     return (
         <Box sx={{ width: '100%', bgcolor: '#000', borderRadius: 2, overflow: 'hidden', boxShadow: 3 }}>
             {!isReady && (
                 <Box sx={{ height: '56.25vw', maxHeight: '600px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-                    <CircularProgress color="inherit" />
-                    <Typography sx={{ mt: 2, opacity: 0.7 }}>{msg}</Typography>
+                    {!terminalError ? (
+                        <>
+                            <CircularProgress color="inherit" />
+                            <Typography sx={{ mt: 2, opacity: 0.7 }}>{msg}</Typography>
+                            <Typography sx={{ mt: 0.5, opacity: 0.6 }}>Fetching torrent metadata and segments...</Typography>
+                            <Button sx={{ mt: 2 }} variant="outlined" color="inherit" onClick={retryStart}>Retry</Button>
+                        </>
+                    ) : (
+                        <>
+                            <Typography variant="h6" sx={{ opacity: 0.9 }}>{terminalError}</Typography>
+                            <Typography sx={{ mt: 1, opacity: 0.7 }}>HEAD returned 410 — the torrent failed or is gone.</Typography>
+                            <Button sx={{ mt: 2 }} variant="contained" color="error" onClick={retryStart}>Retry</Button>
+                        </>
+                    )}
                 </Box>
             )}
 
@@ -162,9 +247,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
                     <Box display="flex" alignItems="center" gap={1}>
                         <SettingsIcon sx={{ color: '#888' }} />
                         <Stack direction="row" spacing={1}>
-                            <Button variant={quality===null?"contained":"outlined"} size="small" onClick={()=>changeQuality(null)}>Auto</Button>
-                            {qualities.map(q => (
-                                <Button key={q} variant={quality===q?"contained":"outlined"} size="small" onClick={()=>changeQuality(q)}>{q}</Button>
+                            <Button variant={quality==="auto"?"contained":"outlined"} size="small" onClick={()=>changeQuality("auto")}>Auto</Button>
+                            {levels.map(l => (
+                                <Button key={l.index} variant={quality===l.index?"contained":"outlined"} size="small" onClick={()=>changeQuality(l.index)}>{l.label}</Button>
                             ))}
                         </Stack>
                     </Box>

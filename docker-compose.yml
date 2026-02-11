@@ -122,4 +122,3 @@ volumes:
 networks:
   hypertube_network:
     driver: bridge
-
