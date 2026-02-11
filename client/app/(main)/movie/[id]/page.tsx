@@ -167,15 +167,15 @@ export default function MovieDetailsPage() {
   }
 
   const handlePlay = () => {
-    console.log(movie);
+    // console.log(movie);
     if (!reduxMovie || !movie?.torrents || movie?.torrents.length === 0) {
-      console.log(movie?.torrents);
-      console.log("No magnets found");
+      // console.log(movie?.torrents);
+      // console.log("No magnets found");
       setShowNoMagnetPopup(true);
     } else {
-      console.log(movie?.torrents);
-      console.log("Playing...");
-      console.log(movie.torrents);
+      // console.log(movie?.torrents);
+      // console.log("Playing...");
+      // console.log(movie.torrents);
       // TODO: Navigate to player or open player modal
       router.push(`/movie/${id}/stream`);
     }

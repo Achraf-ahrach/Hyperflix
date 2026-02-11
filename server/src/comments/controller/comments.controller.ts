@@ -34,8 +34,8 @@ export class CommentsController {
     @Query('offset', new ParseIntPipe({ optional: true })) offset = 1,
     @Req() req: any,
   ) {
-    console.log("||")
-    console.log(req.user);
+    // console.log("||")
+    // console.log(req.user);
     return this.commentService.getCommentsByMovie({ movieId, limit, page: offset,currentUserId: req.user.id});
   }
 

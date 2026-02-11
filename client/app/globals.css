@@ -76,10 +76,14 @@
   --sidebar-accent-foreground: #0F172A;
   --sidebar-border: #E2E8F0;
   --sidebar-ring: #6366F1;
-  --font-sans: Inter, sans-serif;
+  --font-sans: var(--font-geist-sans), Inter, sans-serif;
   --font-serif: Georgia, serif;
-  --font-mono: JetBrains Mono, monospace;
+  --font-mono: var(--font-geist-mono), JetBrains Mono, monospace;
   --radius: 0.5rem;
+}
+
+body {
+  font-family: var(--font-sans);
 }
 
 /* Dark Mode */

@@ -8,6 +8,7 @@ import { API_URL } from "@/app/utils";
 import { useUser } from "@/lib/contexts/UserContext";
 import { useRouter } from "next/navigation";
 import { resolveApiUrl, timeAgo } from "@/lib/utils";
+import { toast } from "sonner";
 
 // --- Comment Item Component ---
 interface CommentItemProps {
@@ -145,8 +146,9 @@ export const CommentItem = ({ comment, onLike, onReply, onDelete, onEdit, onRepl
                         setIsSavingEdit(true);
                         await onEdit(editContent.trim());
                         setIsEditing(false);
-                      } catch (error) {
-                        console.error('Failed to edit comment:', error);
+                      } catch (error : any) {
+                        // console.error('Failed to edit comment:', error);
+                        toast.error(error.message || 'Failed to edit comment');
                       } finally {
                         setIsSavingEdit(false);
                       }

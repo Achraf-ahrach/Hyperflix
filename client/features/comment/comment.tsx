@@ -54,8 +54,10 @@ export const CommentsSection = ({ movieId }: { movieId: string }) => {
           ? { ...c, replies: [...c.replies, newReply], replyCount: c.replyCount + 1 }
           : c
       ));
-    } catch (error) {
-      console.error('Failed to add reply:', error);
+    } catch (error : any) {
+      // console.error('Failed to add reply:', error);
+      toast.error(error.message || 'Failed to add reply');
+
     }
   };
 
@@ -106,8 +108,10 @@ export const CommentsSection = ({ movieId }: { movieId: string }) => {
       setComments(prev => prev.map(c =>
         c.id === commentId ? { ...c, content: updated.content } : c
       ));
-    } catch (error) {
-      console.error('Failed to edit comment:', error);
+    } catch (error : any) {
+      // console.error('Failed to edit comment:', error);
+      toast.error(error.message || 'Failed to edit comment');
+
     }
   };
 
@@ -125,8 +129,9 @@ export const CommentsSection = ({ movieId }: { movieId: string }) => {
           ),
         };
       }));
-    } catch (error) {
-      console.error('Failed to edit reply:', error);
+    } catch (error : any) {
+      // console.error('Failed to edit reply:', error);
+      toast.error(error.message || 'Failed to edit reply');
     }
   };
 
@@ -141,8 +146,9 @@ export const CommentsSection = ({ movieId }: { movieId: string }) => {
       ]);
       setPage(data.page);
       setTotal(data.total);
-    } catch (error) {
-      console.error('Failed to load more:', error);
+    } catch (error : any) {
+      // console.error('Failed to load more:', error);
+      // toast.error(error.message || 'Failed to load more comments');
     } finally {
       setIsLoadingMore(false);
     }

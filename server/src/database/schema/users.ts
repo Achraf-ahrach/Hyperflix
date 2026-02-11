@@ -1,5 +1,5 @@
                                                                                                                                                                                                                                                                                                                                                                                                                                                       import { timestamp } from 'drizzle-orm/pg-core';
-import { pgTable, serial, varchar, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, boolean , text} from 'drizzle-orm/pg-core';
 import { languages } from './languages';
 import { integer } from 'drizzle-orm/pg-core';
 
@@ -9,7 +9,8 @@ export const users = pgTable('users', {
   username: varchar('username', { length: 50 }).notNull().unique(),
   firstName: varchar('first_name', { length: 100 }).notNull(),
   lastName: varchar('last_name', { length: 100 }).notNull(),
-  avatarUrl: varchar('avatar_url', { length: 1000 }), // Increased for OAuth URLs
+  avatarUrl: text('avatar_url'), // Increased for OAuth URLs
+  // sed for OAuth URLs
   passwordHash: varchar('password_hash', { length: 255 }),
   provider: varchar('provider', { length: 50 }),
   providerId: varchar('provider_id', { length: 1000 }), // Increased for safety

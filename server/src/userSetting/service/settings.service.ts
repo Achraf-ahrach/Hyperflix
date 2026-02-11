@@ -60,8 +60,8 @@ export class SettingsService {
       updateData.username = dto.username;
     }
     if (dto.avatarUrl !== undefined){
-      if (dto.avatarUrl.length > 1000) {
-        throw new BadRequestException('Avatar URL must be at most 1000 characters long');
+      if (dto.avatarUrl.length > 4000) {
+        throw new BadRequestException('Avatar URL must be at most 4000 characters long');
       }
       updateData.avatarUrl = dto.avatarUrl;
     }
@@ -91,7 +91,7 @@ export class SettingsService {
       }
       catch (err)
       {
-        console.error(err);
+        // console.error(err);
         throw new NotFoundException('Language not found');
       }
       return {message: 'Language updated successfully'};

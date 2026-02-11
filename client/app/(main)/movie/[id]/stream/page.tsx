@@ -57,7 +57,7 @@ export default function StreamingPage() {
         setDbId(res.data.id);
       }
     } catch (err: any) {
-      console.error(err);
+      // console.error(err);
       setError(err.response?.data?.message || "Failed to start movie");
     } finally {
       setLoading(false);
