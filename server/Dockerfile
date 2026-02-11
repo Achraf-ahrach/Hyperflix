@@ -34,5 +34,4 @@ COPY tsconfig.json ./
 RUN npm install drizzle-kit drizzle-orm dotenv pg
 
 EXPOSE 3001
-# ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["node", "dist/main.js"]
