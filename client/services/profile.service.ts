@@ -8,9 +8,9 @@ export const profileService = {
 
     apiCall: async (endpoint: string) => {
         try {
-            console.log("Fetching comments with endpoint:", endpoint);
+            // console.log("Fetching comments with endpoint:", endpoint);
             const response = await api.get(endpoint);
-            console.log("Received response:", response.data);
+            // console.log("Received response:", response.data);
             return response.data;
         } catch (error) {
             if (axios.isAxiosError(error)) {

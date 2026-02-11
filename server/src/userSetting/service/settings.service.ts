@@ -15,7 +15,7 @@ export class SettingsService {
 
 
   async updateProfileSettings(id: number, dto: ProfileSettingsDto) {
-    console.log(dto);
+    // console.log(dto);
     if (dto.username) {
       const user = await this.settingRepository.findByUsername(dto.username);
       if (user && user.id !== id) {
@@ -25,13 +25,24 @@ export class SettingsService {
 
     const updateData: Partial<ProfileSettingsDto> = {};
     if (dto.firstName !== undefined){
-      if (dto.firstName.length > 100) {
+      const trimmed = dto.firstName.trim();
+      if (trimmed.length === 0) {
+        throw new BadRequestException('First name cannot be empty');
+      }
+      if (trimmed.length > 100) {
         throw new BadRequestException('First name must be at most 100 characters long');
       }
       updateData.firstName = dto.firstName  ;
     }
 
     if (dto.lastName !== undefined) {
+      const trimmed = dto.lastName.trim();
+      if (trimmed.length === 0) {
+        throw new BadRequestException('Last name cannot be empty');
+      }
+      if (trimmed.length > 100) {
+        throw new BadRequestException('Last name must be at most 100 characters long');
+      }
       if (dto.lastName.length > 100) {
         throw new BadRequestException('Last name must be at most 100 characters long');
       }
@@ -39,7 +50,11 @@ export class SettingsService {
     }
 
     if (dto.username !== undefined){
-      if (dto.username.length > 50) {
+      const trimmed = dto.username.trim();
+      if (trimmed.length === 0) {
+        throw new BadRequestException('Username cannot be empty');
+      }
+      if (trimmed.length > 50) {
         throw new BadRequestException('Username must be at most 50 characters long');
       }
       updateData.username = dto.username;
@@ -93,7 +108,8 @@ export class SettingsService {
     }
 
     if (Object.keys(updateData).length === 0) {
-      return { message: 'No preference changes detected' };      console.log(dto);
+      return { message: 'No preference changes detected' };      
+      // console.log(dto);
     }
 
     await this.settingRepository.updatePreferences(id, updateData);

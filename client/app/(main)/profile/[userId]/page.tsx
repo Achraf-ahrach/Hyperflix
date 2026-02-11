@@ -21,7 +21,7 @@ const ProfilePage = () => {
   const params = useParams();
   const userId = params.userId;
 
-  console.log('ProfilePage userId:', userId);
+  // console.log('ProfilePage userId:', userId);
 
   const {
     data: userData,
@@ -97,7 +97,7 @@ const ProfilePage = () => {
     let diff = ((Number(userValue) - avgValue) / avgValue) * 100;
     const isHigher = diff > 0;
     const barWidth = Number(Math.min((Number(userValue) / (avgValue * 2)) * 100, 100));
-    console.log(`ActivityItem - ${label}: userValue=${userValue}, avgValue=${avgValue}, diff=${diff}, barWidth=${barWidth}`);
+    // console.log(`ActivityItem - ${label}: userValue=${userValue}, avgValue=${avgValue}, diff=${diff}, barWidth=${barWidth}`);
     if (isNaN(diff)) {
       diff = 0;
     }

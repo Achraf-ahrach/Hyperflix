@@ -30,20 +30,10 @@ import { API_URL } from "@/app/utils";
 import { toast } from "sonner";
 
 const profileSchema = z.object({
-  firstName: z
-    .string()
-    .min(1, "First name is too short")
-    .max(100, "First name must be at most 100 characters long"),
-  lastName: z
-    .string()
-    .min(1, "Last name is too short")
-    .max(100, "Last name must be at most 100 characters long"),
-  username: z
-    .string()
-    .min(3, "Username must be at least 3 characters")
-    .max(50, "Username must be at most 50 characters long")
-    .toLowerCase(),
-  avatar: z.any().optional(),
+  firstName: z.string().trim().min(1, "First name is too short").max(100, "First name must be at most 100 characters long"),
+  lastName: z.string().trim().min(1, "Last name is too short").max(100, "Last name must be at most 100 characters long"),
+  username: z.string().trim().min(3, "Username must be at least 3 characters").max(50, "Username must be at most 50 characters long").toLowerCase(),
+  avatar: z.any().optional()
 });
 
 const emailSchema = z.object({
@@ -146,7 +136,7 @@ const SettingsPage = () => {
   const { mutate: mutateLanguage, isPending: isLanguagePending } = useMutation({
     mutationFn: userService.updateLanguage,
     onSuccess: () => {
-      queryClient.setQueryData<UserData | null>(["profile"], (oldUser: any) =>
+      queryClient.setQueryData<UserData | null>(["auth","profile"], (oldUser: any) =>
         oldUser ? { ...oldUser, langue_code: language_code } : oldUser,
       );
       setIsPreviewMode(false);
@@ -218,7 +208,7 @@ const SettingsPage = () => {
     event.preventDefault();
     setFormErrors({});
 
-    console.log(previewUrl);
+    // console.log(previewUrl);
     const formElement = event.currentTarget;
     const formData = new FormData(formElement);
 
@@ -232,14 +222,14 @@ const SettingsPage = () => {
     const result = profileSchema.safeParse(dataToValidate);
 
     if (!result.success) {
-      console.log(result.error);
+      // console.log(result.error);
       const errors: Record<string, string> = {};
       result.error.issues.forEach((issue: any) => {
         errors[issue.path[0] as string] = issue.message;
       });
       return setFormErrors(errors);
     }
-    console.log(formData);
+    // console.log(formData);
     mutate(formData);
   };
 
@@ -248,7 +238,7 @@ const SettingsPage = () => {
     setFormErrors({});
     const formData = new FormData(event.currentTarget);
     const rawData = Object.fromEntries(formData);
-    console.log(rawData);
+    // console.log(rawData);
     const result = emailSchema.safeParse(rawData);
 
     if (!result.success) {
@@ -267,10 +257,10 @@ const SettingsPage = () => {
     setFormPasswordErrors({});
     const formData = new FormData(event.currentTarget);
     const rawData = Object.fromEntries(formData);
-    console.log(rawData);
+    // console.log(rawData);
     const result = passwordSchema.safeParse(rawData);
-    console.log("Jj");
-    console.log(result);
+    // console.log("Jj");
+    // console.log(result);
     if (!result.success) {
       const errors: Record<string, string> = {};
       result.error.issues.forEach((issue: any) => {
@@ -285,7 +275,7 @@ const SettingsPage = () => {
   const handleLanguageUpdate = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = { language: language_code };
-    console.log(data);
+    // console.log(data);
     mutateLanguage(language_code);
   };
 
@@ -372,7 +362,7 @@ const SettingsPage = () => {
                           Change Avatar
                         </Button>
                         <p className="text-xs text-muted-foreground mt-2">
-                          JPG, PNG or GIF. Max size 2MB.
+                          JPG, PNG or GIF. Max size 5MB.
                         </p>
                       </div>
                     </div>

@@ -206,7 +206,7 @@ export const CommentItem = ({ comment, onLike, onReply, onDelete, onEdit, onRepl
                   key={reply.id}
                   reply={reply}
                   onLike={() => {
-                    console.log('Liking reply with ID:', reply.id);
+                    // console.log('Liking reply with ID:', reply.id);
                     onReplyLike(reply.id);
                   }}
                   onDelete={() => onReplyDelete(reply.id)}

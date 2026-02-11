@@ -24,7 +24,7 @@ export const CommentsSection = ({ movieId }: { movieId: string }) => {
       try
       {
         const data = await comment_api.getComments(movieId, INITIAL_BATCH, page+1);
-        console.log('Initial load:', data);
+        // console.log('Initial load:', data);
         setComments(data.comments);
         setPage(data.page);
         setTotal(data.total);
@@ -134,13 +134,7 @@ export const CommentsSection = ({ movieId }: { movieId: string }) => {
     setIsLoadingMore(true);
     try {
       const data = await comment_api.getComments(movieId, INITIAL_BATCH, page+1);
-      console.log(page)
-      console.log(
-      'prev last:',
-      comments.at(-1)?.id,
-      'new first:',
-      data.comments[0]?.id
-    );
+
       setComments(prevComments => [
         ...prevComments,
         ...data.comments,

@@ -47,7 +47,7 @@ export class UserCommentsRepository {
     ) {
         const offset = (page - 1) * limit;
         const cleanLimit = Math.max(1, Number(limit));
-        console.log(`Fetching comments for userId: ${userId}, page: ${page}, limit: ${cleanLimit} offset: ${offset}`);
+        // console.log(`Fetching comments for userId: ${userId}, page: ${page}, limit: ${cleanLimit} offset: ${offset}`);
 
         const topLevelComments = await this.db
             .select({
@@ -111,7 +111,7 @@ export class UserCommentsRepository {
             .select({ count: sql<number>`count(*)` })
             .from(comments)
             .where(sql`${comments.userId} = ${userId} AND ${comments.parentId} IS NULL`);
-        console.log(`Total comments count for userId: ${userId} is ${commentsArray.length}`);
+        // console.log(`Total comments count for userId: ${userId} is ${commentsArray.length}`);
         return {
             data: commentsArray,
             meta: {

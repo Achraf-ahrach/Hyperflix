@@ -7,7 +7,7 @@ export const userService = {
   apiCall: async (endpoint: string, payload: any, msgError: string) => {
     try {
       const response = await api.patch(endpoint, payload);
-      console.log(response.data)
+      // console.log(response.data)
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {

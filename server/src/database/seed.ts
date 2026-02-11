@@ -9,7 +9,7 @@ const pool = new Pool({
 const db = drizzle(pool);
 
 async function seed() {
-  console.log('Seeding languages...');
+  // console.log('Seeding languages...');
 
   await db
     .insert(languages)
@@ -21,7 +21,7 @@ async function seed() {
     ])
     .onConflictDoNothing();
 
-  console.log('Languages seeded');
+  // console.log('Languages seeded');
   process.exit(0);
 }
 

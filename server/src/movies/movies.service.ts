@@ -469,7 +469,7 @@ export class MoviesService {
     try {
       const topMovies = await this.fetchData<any[]>(API_URLS.APIBAY_TRENDING);
 
-      console.log('APIBay trending movies fetched:', topMovies.length);
+      // console.log('APIBay trending movies fetched:', topMovies.length);
 
       if (!Array.isArray(topMovies)) {
         return [];
@@ -936,6 +936,22 @@ export class MoviesService {
         throw new NotFoundException('Movie not found');
       }
       else {
+        // i should just add the movie and let the unique constraint handle duplicates,
+        // but this way ......... whatwever later...
+        const existingEntry = await this.db
+          .select()
+          .from(watchLaterMovies)
+          .where(
+            and(
+              eq(watchLaterMovies.userId, userId),
+              eq(watchLaterMovies.movieId, movieId)
+            )
+          )
+          .limit(1);
+
+        if (existingEntry.length > 0)
+          return { message: "Movie already in watch later" };
+
         await this.db.insert(movies).values({
           id: new_movie.imdb_code,
           title: new_movie.title,
