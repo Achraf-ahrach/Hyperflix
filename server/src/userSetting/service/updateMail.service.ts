@@ -20,6 +20,13 @@ export class UpdateMailService {
   async updateEmailSettings(userId: number, email: string) {
 
     if (email) {
+      const emailtrimmed = email.trim();
+      if (emailtrimmed === '') {
+        throw new BadRequestException('Email cannot be empty');
+      }
+      if (emailtrimmed.length > 255) {
+        throw new BadRequestException('Email is too long');
+      }
       const user : any = await this.usersRepository.findByEmail(email);
       if (user)
         throw new BadRequestException('Email already in use');
@@ -49,7 +56,7 @@ export class UpdateMailService {
       if (savedToken.length === 0) {
         throw new UnauthorizedException('Invalid or expired key');
       }
-
+      
       await this.usersRepository.updateEmail(payload.id, payload.email);
       await this.tokenRepository.deleteById(payload.id);
     } catch (err) {

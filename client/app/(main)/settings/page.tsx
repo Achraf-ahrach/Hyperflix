@@ -37,7 +37,7 @@ const profileSchema = z.object({
 });
 
 const emailSchema = z.object({
-  email: z.email("Invalid email address"),
+  email: z.email("Invalid email address").max(255, "Email must be at most 255 characters long"),
 });
 
 const passwordSchema = z
