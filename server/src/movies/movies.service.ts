@@ -811,6 +811,22 @@ export class MoviesService {
         throw new NotFoundException('Movie not found');
       }
       else {
+        // i should just add the movie and let the unique constraint handle duplicates,
+        // but this way ......... whatwever later...
+        const existingEntry = await this.db
+          .select()
+          .from(watchLaterMovies)
+          .where(
+            and(
+              eq(watchLaterMovies.userId, userId),
+              eq(watchLaterMovies.movieId, movieId)
+            )
+          )
+          .limit(1);
+
+        if (existingEntry.length > 0)
+          return { message: "Movie already in watch later" };
+
         await this.db.insert(movies).values({
           id: new_movie.imdb_code,
           title: new_movie.title,
@@ -826,7 +842,7 @@ export class MoviesService {
         movieId,
       });
     }
-    catch (error : any) {
+    catch (error: any) {
       this.logger.error(`Failed to add movie ${movieId} to user ${userId}'s watch-later list: ${error.message}`);
       throw new HttpException('Failed to add movie to watch-later list', HttpStatus.FORBIDDEN);
     }
@@ -845,7 +861,7 @@ export class MoviesService {
       );
 
     }
-    catch (error : any) {
+    catch (error: any) {
       this.logger.error(`Failed to remove movie ${movieId} from user ${userId}'s watch-later list: ${error.message}`);
       throw new HttpException('Failed to remove movie from watch-later list', HttpStatus.FORBIDDEN);
     }
@@ -876,7 +892,7 @@ export class MoviesService {
         movieId,
       });
     }
-    catch (error : any) {
+    catch (error: any) {
       this.logger.error(`Failed to add movie ${movieId} to user ${userId}'s watched list: ${error.message}`);
       throw new HttpException('Failed to add movie to watched list', HttpStatus.FORBIDDEN);
     }

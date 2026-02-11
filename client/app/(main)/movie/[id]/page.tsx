@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Play, Plus, ThumbsUp, Share2, CheckCircle2, Circle, Minus } from "lucide-react";
@@ -24,7 +24,7 @@ export default function MovieDetailsPage() {
   const { id }: { id: string } = useParams();
   const queryClient = useQueryClient();
   const dispatch = useDispatch();
-  const [isInWatchlist, setIsInWatchlist] = useState(false);
+  const watchListQueryKey = useMemo(() => ["watchList", id] as const, [id]);
 
 
 
@@ -77,7 +77,7 @@ export default function MovieDetailsPage() {
     },
     onSuccess: () => {
       // Invalidate individual movie query
-      queryClient.invalidateQueries({ queryKey: ["movie", id, "profile"] });
+      queryClient.invalidateQueries({ queryKey: ["movie"] });
 
       // Update library query cache to reflect watched status change
       queryClient.setQueriesData(
@@ -108,38 +108,40 @@ export default function MovieDetailsPage() {
     },
   });
 
-  const { data: watchListData, isLoading: isWatchListLoading } = useQuery({
-    queryKey: ["watchList", id],
+  const { data: isInWatchlist = false, isLoading: isWatchListLoading } = useQuery<boolean>({
+    queryKey: watchListQueryKey,
     queryFn: async () => {
-      // console.log("Checking if movie is in watchlist...");
       const { data } = await api.get(`/movies/${id}/watch-later`);
-      // console.log("Watchlist response:", data);
-      setIsInWatchlist(data);
-      return data;
+      return Boolean(data);
     },
     enabled: !!id,
-  })
+  });
 
   const { mutate: mutateWatchList, isPending: isWatchListPending } = useMutation({
-    mutationFn: async (movieId: string) => {
-      if (isInWatchlist) {
-        return await userService.deleteMovieFromWatchlist(movieId);
-      } else {
-        return await userService.addMovieToWatchlist(movieId);
-      }
+    mutationFn: async (currentlyInWatchlist: boolean) => {
+      if (!id) throw new Error("Missing movie id");
+      return currentlyInWatchlist
+        ? await userService.deleteMovieFromWatchlist(id)
+        : await userService.addMovieToWatchlist(id);
     },
-    onSuccess: (result) => {
-      if (isInWatchlist) {
-        toast.message
-        ("Movie removed from watchlist");
-      } else {
-        toast.message("Movie added to watchlist");
-      }
-      queryClient.invalidateQueries({ queryKey: ["watchList", id] });
-      setIsInWatchlist(!isInWatchlist);
+    onMutate: async (currentlyInWatchlist: boolean) => {
+      await queryClient.cancelQueries({ queryKey: watchListQueryKey });
+      const previousValue = queryClient.getQueryData<boolean>(watchListQueryKey);
+      queryClient.setQueryData(watchListQueryKey, !currentlyInWatchlist);
+      return { previousValue, currentlyInWatchlist };
     },
-    onError: (err: any) => {
+    onError: (err: any, _variables, context) => {
+      if (context?.previousValue !== undefined) {
+        queryClient.setQueryData(watchListQueryKey, context.previousValue);
+      }
       toast.error(err.message);
+    },
+    onSuccess: (_data, currentlyInWatchlist) => {
+      toast.message(currentlyInWatchlist ? "Movie removed from watchlist" : "Movie added to watchlist");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: watchListQueryKey });
+      queryClient.invalidateQueries({ queryKey: ["watchList"]  });
     }
   });
 
@@ -185,9 +187,8 @@ export default function MovieDetailsPage() {
 
 
   const handleAddToWatchlist = async () => {
-    mutateWatchList(id); 
+    mutateWatchList(isInWatchlist);
   }
-
   return (
     <div className="min-h-screen bg-[#141414] font-sans">
       {/* Hero Section */}
@@ -278,17 +279,15 @@ export default function MovieDetailsPage() {
                 variant="secondary"
                 className="gap-2 bg-white/10 hover:bg-white/20 text-white border-none backdrop-blur-md"
                 onClick={handleAddToWatchlist}
+                disabled={isWatchListPending}
               >
-                {
-                  isWatchListLoading ? (
-                    <Spinner/>
-                  )
-                  :
-                  isInWatchlist ? (
-                    <Minus className="w-4 h-4" />
-                  ) : (
-                    <Plus className="w-4 h-4" />
-                  )}
+                {isWatchListLoading || isWatchListPending ? (
+                  <Spinner/>
+                ) : isInWatchlist ? (
+                  <Minus className="w-4 h-4" />
+                ) : (
+                  <Plus className="w-4 h-4" />
+                )}
                 Watch List
               </Button>
               {/* <Button

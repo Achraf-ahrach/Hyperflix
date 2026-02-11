@@ -136,7 +136,7 @@ const SettingsPage = () => {
   const { mutate: mutateLanguage, isPending: isLanguagePending } = useMutation({
     mutationFn: userService.updateLanguage,
     onSuccess: () => {
-      queryClient.setQueryData<UserData | null>(["profile"], (oldUser: any) =>
+      queryClient.setQueryData<UserData | null>(["auth","profile"], (oldUser: any) =>
         oldUser ? { ...oldUser, langue_code: language_code } : oldUser,
       );
       setIsPreviewMode(false);

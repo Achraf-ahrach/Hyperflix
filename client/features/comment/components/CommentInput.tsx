@@ -37,6 +37,9 @@ export const CommentInput = ({ onSubmit, placeholder = "Write a comment...", aut
       queryClient.invalidateQueries({
         queryKey: ['comments']
       });
+      queryClient.invalidateQueries({
+        queryKey: ['profile']
+      });
     } catch (error) {
       console.error('Failed to submit:', error);
     } finally {
