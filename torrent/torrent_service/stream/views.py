@@ -118,7 +118,7 @@ def process_video_thread(video_id):
         # 2. WAIT FOR METADATA
         attempts = 0
         while not handle.has_metadata():
-            if attempts > 60: raise Exception("Metadata timeout")
+            if attempts > 120: raise Exception("Metadata timeout")
             time.sleep(1)
             attempts += 1
 
