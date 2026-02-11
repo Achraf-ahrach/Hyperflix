@@ -34,7 +34,7 @@ services:
   backend:
     build: ./server
     container_name: hypertube_backend
-    command: sh -c "npm install --include=dev && npm run start:dev"
+    command: sh -c "npm install  && npm run start"
     depends_on:
       db:
         condition: service_healthy
@@ -49,14 +49,13 @@ services:
     working_dir: /app
     networks:
       - hypertube_network
-    volumes:
-      - ./server:/app
-      - backend_node_modules:/app/node_modules
+    # volumes:
+    #   - ./server:/app
+    #   - backend_node_modules:/app/node_modules
 
   frontend:
     build: ./client
     container_name: hypertube_frontend
-    command: npm run dev
     depends_on:
       - backend
     env_file:
@@ -68,9 +67,9 @@ services:
     ports:
       - "${FRONTEND_PORT}:${FRONTEND_PORT}"
     working_dir: /app
-    volumes:
-      - ./client:/app
-      - /app/node_modules
+    # volumes:
+    #   - ./client:/app
+    #   - /app/node_modules
 
 
   torrent:
@@ -117,7 +116,7 @@ volumes:
   redis_data:
   media_volume:
   static_volume:
-
+  frontend_node_modules:
   backend_node_modules:
 
 networks:

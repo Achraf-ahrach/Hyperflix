@@ -32,6 +32,10 @@ COPY tsconfig.json ./
 
 # Install drizzle-kit locally for migrations
 RUN npm install drizzle-kit drizzle-orm dotenv pg
-
+RUN npm install
 EXPOSE 3001
-CMD ["node", "dist/main.js"]
+
+
+# CMD ["node", "dist/main.js"]
+# CMD ["npm", "run", "start"]
+# npm run start
