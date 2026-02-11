@@ -4,9 +4,7 @@ from typing import Optional, Union
 from django.http import StreamingHttpResponse, FileResponse
 import re, os
 import time
-import ffmpeg
 from .models import MovieFile
-from srt_to_vtt import srt_to_vtt
 from django.conf import settings
 import requests, subprocess
 from concurrent.futures import ThreadPoolExecutor
@@ -18,6 +16,8 @@ range_re = re.compile(r"bytes\s*=\s*(\d+)\s*-\s*(\d*)", re.I)
 class VideoService:
     def __init__(self):
         self.segment_duration = 10 
+        self.ffmpeg_threads = int(os.getenv("FFMPEG_THREADS", "2"))
+        self.ffmpeg_preset = os.getenv("FFMPEG_PRESET", "superfast")
 
     def get_video_duration(self, file_path):
         try:
@@ -61,7 +61,7 @@ class VideoService:
 
         cmd = [
             'ffmpeg', '-hide_banner', '-loglevel', 'error',
-            '-threads', '1',  # <--- CRITICAL: Leaves 2 cores free for your OS
+            '-threads', str(self.ffmpeg_threads),
             '-ss', str(start_time),
             '-t', str(self.segment_duration),
             '-i', source_path,
@@ -84,15 +84,15 @@ class VideoService:
                 '-maxrate', bitrate,
                 '-bufsize', bufsize,
                 
-                '-preset', 'superfast',  # Much better quality than 'ultrafast', slightly more CPU
+                '-preset', self.ffmpeg_preset,
                 '-profile:v', 'high',    # Better compression efficiency (looks sharper)
                 '-level', '4.1',         # Broad compatibility
                 '-crf', '23',            # Quality target (helps static scenes look better)
                 # Audio
-                '-map', '0:a', '-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-ar', '44100',
+                '-map', '0:a:0?', '-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-ar', '44100',
                 
                 # HLS Glue
-                '-force_key_frames', 'expr:gte(t,0)',
+                '-force_key_frames', f'expr:gte(t,n_forced*{self.segment_duration})',
                 '-output_ts_offset', str(start_time),
                 '-muxdelay', '0',
                 
@@ -118,21 +118,27 @@ class SubtitleService:
     BASE_URL = "https://api.opensubtitles.com/api/v1"
 
     def __init__(self):
-        """Initialize the subtitle service with authentication"""
+        """Initialize the subtitle service with authentication (robust, non-fatal if missing env)"""
         self.api_key = os.getenv("OPENSUBTITLE_API_KEY")
         if not self.api_key:
-            raise ValueError("OPENSUBTITLE_API_KEY environment variable not set")
-        
+            logging.warning("OpenSubtitles API key not set; operating in local-only mode")
+            self.token = None
+            self.headers = {
+                "Content-Type": "application/json",
+                "User-Agent": "MySubScript/1.0",
+            }
+            return
+
         self.token = self.login_and_get_token()
-        
+
+        # Build headers; omit Authorization when token is unavailable
         self.headers = {
             "Api-Key": self.api_key,
             "Content-Type": "application/json",
             "User-Agent": "MySubScript/1.0",
-            "Authorization": f"Bearer {self.token}" if self.token else ""
         }
-        
         if self.token:
+            self.headers["Authorization"] = f"Bearer {self.token}"
             self.check_user_info()
 
     def login_and_get_token(self):
@@ -247,6 +253,11 @@ class SubtitleService:
         if existing_subs:
             logging.info(f"Local subtitles found for movie {movie.id}. Skipping download.")
             return existing_subs
+
+        # If API key or token is unavailable, operate in local-only mode
+        if not self.api_key or not self.token:
+            logging.info("SubtitleService: No remote credentials; returning local-only subtitles")
+            return existing_subs
         
         lock_file = os.path.join(subtitles_dir, "download.lock")
         if os.path.exists(lock_file):
@@ -348,6 +359,84 @@ class SubtitleService:
                     os.remove(lock_file)
                 except:
                     pass
+
+    def _ensure_dir(self, path: str):
+        try:
+            os.makedirs(path, exist_ok=True)
+        except Exception:
+            pass
+
+    def transcode_to_hls(self, source_path: str, output_dir: str, segment_time: int = 10) -> bool:
+        """
+        Industry-standard HLS ABR packaging in a single pass.
+        Generates resolution-specific playlists and segments with aligned keyframes.
+        Output structure:
+            output_dir/
+              1080p/index.m3u8, segment_%03d.ts
+              720p/index.m3u8,  segment_%03d.ts
+              480p/index.m3u8,  segment_%03d.ts
+              360p/index.m3u8,  segment_%03d.ts
+        """
+        try:
+            self._ensure_dir(output_dir)
+            for res in ("1080p", "720p", "480p", "360p"):
+                self._ensure_dir(os.path.join(output_dir, res))
+
+            # If all variant playlists exist, assume done
+            if all(os.path.exists(os.path.join(output_dir, r, "index.m3u8")) for r in ("1080p","720p","480p","360p")):
+                return True
+
+            filter_complex = (
+                "[0:v]split=4[v1][v2][v3][v4];"
+                "[v1]scale=-2:1080:flags=bicubic,format=yuv420p[v1080];"
+                "[v2]scale=-2:720:flags=bicubic,format=yuv420p[v720];"
+                "[v3]scale=-2:480:flags=bicubic,format=yuv420p[v480];"
+                "[v4]scale=-2:360:flags=bicubic,format=yuv420p[v360]"
+            )
+
+            cmd = [
+                'ffmpeg', '-hide_banner', '-loglevel', 'error',
+                '-threads', str(self.ffmpeg_threads),
+                '-i', source_path,
+                '-filter_complex', filter_complex,
+            ]
+
+            # Variant configs: bitrate aligned, keyframe alignment enforced
+            configs = [
+                ("v1080", "1080p", "5000k", "10000k"),
+                ("v720",  "720p",  "3000k", "6000k"),
+                ("v480",  "480p",  "1500k", "3000k"),
+                ("v360",  "360p",  "800k",  "1600k"),
+            ]
+
+            for vlabel, folder, bitrate, bufsize in configs:
+                variant_out_dir = os.path.join(output_dir, folder)
+                playlist_path = os.path.join(variant_out_dir, 'index.m3u8')
+                segment_pattern = os.path.join(variant_out_dir, 'segment_%03d.ts')
+
+                cmd.extend([
+                    '-map', f'[{vlabel}]', '-map', '0:a:0?',
+                    '-c:v', 'libx264', '-b:v', bitrate, '-maxrate', bitrate, '-bufsize', bufsize,
+                    '-preset', self.ffmpeg_preset, '-profile:v', 'high', '-level', '4.1', '-crf', '23',
+                    '-force_key_frames', f'expr:gte(t,n_forced*{segment_time})',
+                    '-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-ar', '44100',
+                    '-f', 'hls',
+                    '-hls_time', str(segment_time),
+                    '-hls_playlist_type', 'vod',
+                    '-hls_flags', 'independent_segments',
+                    '-hls_segment_filename', segment_pattern,
+                    playlist_path
+                ])
+
+            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+            return True
+        except subprocess.CalledProcessError as e:
+            err = e.stderr.decode() if e.stderr else str(e)
+            logger.error(f"HLS packaging failed: {err}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected HLS packaging error: {e}")
+            return False
 
     def _download_single_subtitle(self, task):
         """

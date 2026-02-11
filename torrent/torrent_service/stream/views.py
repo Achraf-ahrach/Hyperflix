@@ -166,18 +166,21 @@ def process_video_thread(video_id):
         current_segment = 0
         video_duration = None
 
+        dl_last_log = 0
         while True:
             status = handle.status()
             progress = status.progress * 100
             movie_file.download_progress = progress
-            # Periodic swarm stats to diagnose slowness
-            if int(time.time()) % 5 == 0:
+            # Periodic swarm stats to diagnose slowness (every ~2s)
+            now = time.time()
+            if now - dl_last_log >= 2:
                 seeds = getattr(status, 'num_seeds', 0)
                 peers = getattr(status, 'num_peers', 0)
                 down_kbps = (getattr(status, 'download_rate', 0) / 1000.0)
                 logger.info(
                     f"[dl] movie={movie_file.id} progress={progress:.2f}% seeds={seeds} peers={peers} down={down_kbps:.1f} kB/s"
                 )
+                dl_last_log = now
             
             if not conversion_started:
                 dur = service.get_video_duration(downloaded_path)
@@ -229,15 +232,47 @@ def process_video_thread(video_id):
                     ]
                     for f in futures: f.result()
 
+        # After progressive segments, produce finalized ABR playlists (industry-standard)
+        try:
+            service = VideoService()
+            out_ok = service.transcode_to_hls(downloaded_path, movie_dir, segment_time=10)
+            if out_ok:
+                logger.info(f"Final HLS packaging complete for movie={video_id}")
+            else:
+                logger.warning(f"Final HLS packaging failed; continuing with progressive segments for movie={video_id}")
+        except Exception as e:
+            logger.warning(f"HLS packaging exception: {e}")
+
         movie_file.download_status = "READY"
         movie_file.save()
         logger.info(f"Processing complete for {video_id}")
 
     except Exception as e:
-        logger.error(f"Thread Error: {e}")
+        # Log final swarm stats if available
+        try:
+            if 'handle' in locals() and handle and handle.is_valid():
+                st = handle.status()
+                seeds = getattr(st, 'num_seeds', 0)
+                peers = getattr(st, 'num_peers', 0)
+                down_kbps = (getattr(st, 'download_rate', 0) / 1000.0)
+                logger.error(
+                    f"Thread Error: {e} | final swarm movie={video_id} seeds={seeds} peers={peers} down={down_kbps:.1f} kB/s"
+                )
+            else:
+                logger.error(f"Thread Error: {e} | no valid torrent handle for movie={video_id}")
+        except Exception:
+            logger.error(f"Thread Error: {e}")
         if movie_file:
             movie_file.download_status = "ERROR"
             movie_file.save()
+            # Ensure we remove any lingering torrent handle
+            try:
+                handle_id = str(hash(movie_file.magnet_link)) if movie_file.magnet_link else None
+                if handle_id:
+                    torrent_manager.remove_torrent(handle_id)
+                    logger.info(f"Removed torrent handle for movie={movie_file.id} after error")
+            except Exception as re:
+                logger.warning(f"Failed to remove torrent after error: {re}")
 
 class VideoViewSet(viewsets.ViewSet):
     """
@@ -265,6 +300,21 @@ class VideoViewSet(viewsets.ViewSet):
             )
 
         if not resolution:
+            # HEAD readiness probe: respond quickly if any variant folder has segments
+            if request.method == 'HEAD':
+                # If movie is in ERROR, signal to client
+                if movie.download_status == 'ERROR':
+                    return HttpResponse(status=410)  # Gone
+                for r in ("1080p", "720p", "480p", "360p"):
+                    rdir = os.path.join(base_dir, r)
+                    if os.path.isdir(rdir):
+                        try:
+                            if any(name.startswith("segment_") and name.endswith(".ts") for name in os.listdir(rdir)):
+                                return HttpResponse(status=200)
+                        except Exception:
+                            pass
+                return HttpResponse(status=404)
+
             return self._generate_master_playlist(pk, base_dir)
         else:
             return self._generate_media_playlist(pk, base_dir, resolution, movie)
@@ -277,7 +327,17 @@ class VideoViewSet(viewsets.ViewSet):
         found_res = []
 
         for r in resolutions:
-            if os.path.exists(os.path.join(base_dir, r)):
+            rdir = os.path.join(base_dir, r)
+            if not os.path.isdir(rdir):
+                continue
+            static_pl = os.path.join(rdir, 'index.m3u8')
+            has_static = os.path.exists(static_pl)
+            has_segments = False
+            try:
+                has_segments = any(name.startswith('segment_') and name.endswith('.ts') for name in os.listdir(rdir))
+            except Exception:
+                has_segments = False
+            if has_static or has_segments:
                 found_res.append(r)
         
         if not found_res:
@@ -302,6 +362,23 @@ class VideoViewSet(viewsets.ViewSet):
         if not os.path.exists(target_dir):
             return Response(status=status.HTTP_404_NOT_FOUND)
 
+        # If a static playlist exists (from finalized HLS packaging), serve it with segment URIs rewritten
+        static_pl = os.path.join(target_dir, 'index.m3u8')
+        if os.path.exists(static_pl):
+            try:
+                lines = []
+                with open(static_pl, 'r') as f:
+                    for line in f.read().splitlines():
+                        if not line or line.startswith('#'):
+                            lines.append(line)
+                        else:
+                            # rewrite segment filename to our stream_ts route
+                            seg = line.strip()
+                            lines.append(f"/api/video/{pk}/stream_ts/?file={seg}&res={resolution}")
+                return HttpResponse("\n".join(lines), content_type="application/vnd.apple.mpegurl")
+            except Exception:
+                pass
+
         found = []
         pattern = re.compile(r"^segment_(\d+)\.ts$")
         try:
@@ -320,17 +397,18 @@ class VideoViewSet(viewsets.ViewSet):
 
         is_finished = movie.download_status == 'READY'
         pl_type = "VOD" if is_finished else "EVENT"
+        seg_len = 10
 
         content = [
             "#EXTM3U",
             "#EXT-X-VERSION:3",
-            "#EXT-X-TARGETDURATION:10",
+            f"#EXT-X-TARGETDURATION:{seg_len}",
             "#EXT-X-MEDIA-SEQUENCE:0",
             f"#EXT-X-PLAYLIST-TYPE:{pl_type}"
         ]
 
         for seg in segments:
-            content.append("#EXTINF:10.0,")
+            content.append(f"#EXTINF:{seg_len}.0,")
             content.append(f"/api/video/{pk}/stream_ts/?file={seg}&res={resolution}")
 
         if is_finished:
@@ -373,6 +451,77 @@ class VideoViewSet(viewsets.ViewSet):
             "480p": "854x480",
             "360p": "640x360"
         }.get(res, "1280x720")
+
+    @action(detail=True, methods=["get"], url_path="status")
+    def status(self, request, pk=None):
+        """
+        Report current movie status with swarm info; optionally cleanup on error.
+        Query param: cleanup=1 to remove torrent handle if status=ERROR.
+        """
+        try:
+            movie = get_object_or_404(MovieFile, pk=pk)
+            base_dir = os.path.join(settings.MEDIA_ROOT, 'movies', str(pk))
+            handle = None
+            seeds = peers = 0
+            down_kbps = 0.0
+            try:
+                handle_id = str(hash(movie.magnet_link)) if movie.magnet_link else None
+                if handle_id:
+                    handle = torrent_manager.get_handle(handle_id)
+                if handle and handle.is_valid():
+                    st = handle.status()
+                    seeds = getattr(st, 'num_seeds', 0)
+                    peers = getattr(st, 'num_peers', 0)
+                    down_kbps = round(getattr(st, 'download_rate', 0) / 1000.0, 1)
+            except Exception:
+                pass
+
+            # Check variants readiness
+            variants = {}
+            for r in ("1080p", "720p", "480p", "360p"):
+                rdir = os.path.join(base_dir, r)
+                static_pl = os.path.join(rdir, 'index.m3u8')
+                segs = 0
+                try:
+                    if os.path.isdir(rdir):
+                        segs = sum(1 for name in os.listdir(rdir) if name.startswith('segment_') and name.endswith('.ts'))
+                except Exception:
+                    pass
+                variants[r] = {
+                    "static_playlist": os.path.exists(static_pl),
+                    "segments": segs,
+                }
+
+            problem = None
+            if movie.download_status == 'ERROR':
+                problem = 'error'
+            elif (seeds + peers) == 0 and not any(v.get('segments', 0) > 0 for v in variants.values()):
+                problem = 'no-peers'
+
+            # Optional cleanup on explicit request when in error
+            if problem == 'error' and request.query_params.get('cleanup') == '1':
+                try:
+                    handle_id = str(hash(movie.magnet_link)) if movie.magnet_link else None
+                    if handle_id:
+                        torrent_manager.remove_torrent(handle_id)
+                        logger.info(f"Cleanup: removed torrent handle for movie={movie.id}")
+                except Exception as e:
+                    logger.warning(f"Cleanup failed for movie={movie.id}: {e}")
+
+            return Response({
+                "id": movie.id,
+                "status": movie.download_status,
+                "progress": movie.download_progress,
+                "swarm": {"seeds": seeds, "peers": peers, "down_kbps": down_kbps},
+                "variants": variants,
+                "problem": problem,
+            }, status=status.HTTP_200_OK)
+
+        except Http404:
+            return Response({"error": "Movie not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"status endpoint error: {e}")
+            return Response({"error": "Internal error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=["post"], url_path="start")
     def start_stream(self, request, pk=None):
