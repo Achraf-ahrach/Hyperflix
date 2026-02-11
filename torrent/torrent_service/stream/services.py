@@ -61,7 +61,7 @@ class VideoService:
 
         cmd = [
             'ffmpeg', '-hide_banner', '-loglevel', 'error',
-            '-threads', '2',  # <--- CRITICAL: Leaves 2 cores free for your OS
+            '-threads', '1',  # <--- CRITICAL: Leaves 2 cores free for your OS
             '-ss', str(start_time),
             '-t', str(self.segment_duration),
             '-i', source_path,

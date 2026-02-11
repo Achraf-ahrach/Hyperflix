@@ -116,8 +116,6 @@ volumes:
   postgres_data:
   redis_data:
   media_volume:
-
-      
   static_volume:
 
   backend_node_modules:

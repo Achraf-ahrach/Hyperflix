@@ -1,5 +1,4 @@
-# 1. Base Image: Slim is much smaller (~120MB)
-FROM python:3.10-slim
+FROM python:3.11-slim-bookworm
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
@@ -9,6 +8,7 @@ WORKDIR /app
 # 2. System Deps: Cleanup ensures the layer remains small
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
+    libavfilter-extra \
     cron \
     && rm -rf /var/lib/apt/lists/*
 

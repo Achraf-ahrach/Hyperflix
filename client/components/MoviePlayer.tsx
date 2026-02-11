@@ -1,219 +1,188 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import Hls from 'hls.js';
 import { 
-    Box, 
-    Typography, 
-    CircularProgress, 
-    Button, 
-    Stack 
+    Box, Typography, CircularProgress, Button, Stack, Menu, MenuItem 
 } from '@mui/material';
 import axios from 'axios';
 import SettingsIcon from '@mui/icons-material/Settings';
+import ClosedCaptionIcon from '@mui/icons-material/ClosedCaption';
 
 const API_HOST = process.env.REACT_APP_STREAMING_API_URL || 'http://localhost:8001';
 const API_BASE_URL = `${API_HOST}/api`;
 
-interface VideoPlayerProps {
-    movieId: number;
-}
-
-interface Subtitle {
-    language: string;
-    language_name: string;
-    label?: string;
-    file_path: string;
-    src?: string;
-}
+interface VideoPlayerProps { movieId: number; }
+interface Subtitle { language: string; language_name: string; label?: string; src?: string; }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const hlsRef = useRef<Hls | null>(null);
-    
-    const lastPositionRef = useRef<number>(0); 
-    const isSwitchingRef = useRef<boolean>(false);
+    const lastPos = useRef<number>(0); 
+    const isSwitching = useRef<boolean>(false);
 
-    // Data State
     const [subtitles, setSubtitles] = useState<Subtitle[]>([]);
     const [qualities] = useState<string[]>(["1080p", "720p", "480p", "360p"]);
     
-    // UI State
-    const [isPlayerReady, setIsPlayerReady] = useState(false);
-    const [statusMessage, setStatusMessage] = useState("Initializing Stream...");
-    const [error, setError] = useState<string | null>(null);
-    const [currentQuality, setCurrentQuality] = useState<string | null>(null);
-    const [userLanguage] = useState('en');
+    const [isReady, setIsReady] = useState(false);
+    const [msg, setMsg] = useState("Starting...");
+    const [quality, setQuality] = useState<string | null>(null);
+    const [subLang, setSubLang] = useState<string>('off');
+    const [anchorSub, setAnchorSub] = useState<null | HTMLElement>(null);
 
-    // --- 1. CONFIGURATION ---
+    // --- CONFIG: Aggressive Gap Skipping ---
     const hlsConfig = useMemo(() => ({
-        debug: false, // Ensure internal HLS logs are off
+        debug: false,
         enableWorker: true,
         lowLatencyMode: true,
         backBufferLength: 90,
         maxBufferLength: 30,
         startPosition: -1,
-        maxBufferHole: 2.5, 
+        maxBufferHole: 2.5, // Jumps holes < 2.5s
         highBufferWatchdogPeriod: 1, 
-        nudgeOffset: 0.2, 
+        nudgeOffset: 0.2, // Nudges if stuck
         nudgeMaxRetry: 10,
         manifestLoadingTimeOut: 60000,
         fragLoadingTimeOut: 60000,
         levelLoadingTimeOut: 60000,
     }), []);
 
-    // --- 2. DATA FETCHING ---
+    // --- DATA FETCHING ---
     useEffect(() => {
-        let isMounted = true;
-        const initSession = async () => {
-            if (!isMounted) return;
+        let mounted = true;
 
-            // Subtitles
-            axios.get(`${API_BASE_URL}/subtitles/?movie_id=${movieId}&language=${userLanguage}`)
-                .then(res => { if (isMounted) setSubtitles(res.data || []); })
-                .catch(() => {});
-
-            // Stream Polling
-            const checkStream = async (attempt = 1) => {
-                if (!isMounted) return;
-                try {
-                    setStatusMessage(`Buffering Video... (${attempt})`);
-                    await axios.head(`${API_BASE_URL}/video/${movieId}/playlist/`);
-                    if (isMounted) {
-                        setIsPlayerReady(true);
-                        setStatusMessage("Ready");
-                    }
-                } catch (err: any) {
-                    if (isMounted && (err.response?.status === 404 || err.response?.status === 503)) {
-                        if (attempt < 120) setTimeout(() => checkStream(attempt + 1), 2000);
-                        else setError("Stream timed out. Please refresh.");
-                    } else if (isMounted) {
-                        setError("Network Error: Server unreachable.");
-                    }
+        // Subtitles
+        axios.get<Subtitle[]>(`${API_BASE_URL}/subtitles/?movie_id=${movieId}`)
+            .then(res => { 
+                if (mounted) {
+                    setSubtitles(res.data || []);
+                    if (res.data?.some(s => s.language === 'en')) setSubLang('en');
                 }
-            };
-            checkStream();
+            }).catch(() => {});
+
+        // Infinite Stream Polling
+        const checkStream = async (attempt = 1) => {
+            if (!mounted) return;
+            try {
+                if (attempt % 5 === 0) setMsg(`Buffering... (${attempt})`);
+                await axios.head(`${API_BASE_URL}/video/${movieId}/playlist/`);
+                if (mounted) { setIsReady(true); setMsg("Ready"); }
+            } catch {
+                if (mounted) setTimeout(() => checkStream(attempt + 1), 2000);
+            }
         };
-
-        setIsPlayerReady(false);
-        setError(null);
-        initSession();
-
-        return () => { isMounted = false; };
+        checkStream();
+        return () => { mounted = false; };
     }, [movieId]);
 
-    const handleQualityChange = (newQuality: string | null) => {
-        if (newQuality === currentQuality) return;
+    // --- SUBTITLE LOGIC ---
+    useEffect(() => {
+        if (!videoRef.current) return;
+        const vid = videoRef.current;
+        const apply = () => {
+            Array.from(vid.textTracks).forEach(t => {
+                t.mode = (subLang !== 'off' && t.language === subLang) ? 'showing' : 'hidden';
+            });
+        };
+        apply();
+        vid.addEventListener('loadedmetadata', apply);
+        return () => vid.removeEventListener('loadedmetadata', apply);
+    }, [subLang, subtitles]);
+
+    const changeQuality = (q: string | null) => {
+        if (q === quality) return;
         if (videoRef.current && !videoRef.current.paused) {
-            lastPositionRef.current = videoRef.current.currentTime;
-            isSwitchingRef.current = true;
+            lastPos.current = videoRef.current.currentTime;
+            isSwitching.current = true;
         }
-        setCurrentQuality(newQuality);
+        setQuality(q);
     };
 
-    // --- 3. PLAYER LOGIC ---
+    // --- PLAYER LOGIC ---
     useEffect(() => {
-        if (!isPlayerReady || !videoRef.current) return;
-
-        const video = videoRef.current;
+        if (!isReady || !videoRef.current) return;
+        const vid = videoRef.current;
         if (hlsRef.current) hlsRef.current.destroy();
 
-        const baseUrl = `${API_BASE_URL}/video/${movieId}/playlist/`;
-        const src = currentQuality ? `${baseUrl}?res=${currentQuality}` : baseUrl;
+        const base = `${API_BASE_URL}/video/${movieId}/playlist/`;
+        const src = quality ? `${base}?res=${quality}` : base;
 
         if (Hls.isSupported()) {
             const hls = new Hls(hlsConfig);
             hlsRef.current = hls;
-
             hls.loadSource(src);
-            hls.attachMedia(video);
+            hls.attachMedia(vid);
 
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                if (isSwitchingRef.current && lastPositionRef.current > 0) {
-                    video.currentTime = lastPositionRef.current;
-                    isSwitchingRef.current = false;
+                if (isSwitching.current && lastPos.current > 0) {
+                    vid.currentTime = lastPos.current;
+                    isSwitching.current = false;
                 }
-                video.play().catch(() => {});
+                vid.play().catch(() => {});
             });
 
-            hls.on(Hls.Events.ERROR, (_event, data) => {
+            hls.on(Hls.Events.ERROR, (_, data) => {
                 if (data.fatal) {
-                    switch (data.type) {
-                        case Hls.ErrorTypes.NETWORK_ERROR:
-                            hls.startLoad();
-                            break;
-                        case Hls.ErrorTypes.MEDIA_ERROR:
-                            hls.recoverMediaError();
-                            break;
-                        default:
-                            hls.recoverMediaError();
-                            break;
-                    }
+                    data.type === Hls.ErrorTypes.NETWORK_ERROR ? hls.startLoad() : hls.recoverMediaError();
                 }
             });
         } 
-        else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            video.src = src;
-            if (isSwitchingRef.current) {
-                video.addEventListener('loadedmetadata', () => {
-                    video.currentTime = lastPositionRef.current;
-                    video.play();
-                }, { once: true });
-            }
+        else if (vid.canPlayType('application/vnd.apple.mpegurl')) {
+            vid.src = src;
+            const onMeta = () => {
+                if (isSwitching.current) vid.currentTime = lastPos.current;
+                vid.play();
+            };
+            vid.addEventListener('loadedmetadata', onMeta, { once: true });
         }
-
-        return () => {
-            if (hlsRef.current) hlsRef.current.destroy();
-        };
-    }, [isPlayerReady, currentQuality, movieId, hlsConfig]);
-
-    if (error) return (
-        <Box sx={{ p: 4, bgcolor: '#220000', color: '#ffaaaa', borderRadius: 2, textAlign: 'center' }}>
-            <Typography>{error}</Typography>
-            <Button variant="outlined" color="inherit" sx={{ mt: 2 }} onClick={() => window.location.reload()}>Reload</Button>
-        </Box>
-    );
+        return () => { if (hlsRef.current) hlsRef.current.destroy(); };
+    }, [isReady, quality, movieId, hlsConfig]);
 
     return (
         <Box sx={{ width: '100%', bgcolor: '#000', borderRadius: 2, overflow: 'hidden', boxShadow: 3 }}>
-            {!isPlayerReady && (
-                <Box sx={{ height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-                    <CircularProgress />
-                    <Typography sx={{ ml: 2 }}>{statusMessage}</Typography>
+            {!isReady && (
+                <Box sx={{ height: '56.25vw', maxHeight: '600px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+                    <CircularProgress color="inherit" />
+                    <Typography sx={{ mt: 2, opacity: 0.7 }}>{msg}</Typography>
                 </Box>
             )}
 
-            <Box sx={{ position: 'relative', display: isPlayerReady ? 'block' : 'none' }}>
+            <Box sx={{ position: 'relative', display: isReady ? 'block' : 'none' }}>
                 <video 
-                    ref={videoRef} 
-                    controls 
-                    playsInline
+                    ref={videoRef} controls playsInline autoPlay muted
                     style={{ width: '100%', aspectRatio: '16/9', display: 'block', outline: 'none' }}
                     crossOrigin="anonymous"
-                    onTimeUpdate={(e) => {
-                        if (!isSwitchingRef.current) {
-                            lastPositionRef.current = e.currentTarget.currentTime;
-                        }
-                    }}
+                    onTimeUpdate={(e) => { if (!isSwitching.current) lastPos.current = e.currentTarget.currentTime; }}
                 >
-                    {subtitles.map((sub, idx) => (
-                        <track
-                            key={idx}
-                            kind="subtitles"
-                            label={sub.label || sub.language_name}
-                            srcLang={sub.language}
-                            src={sub.src?.startsWith('http') ? sub.src : `${API_HOST}${sub.src}`}
-                            default={sub.language === userLanguage} 
-                        />
+                    {subtitles.map((s, i) => (
+                        <track key={i} kind="subtitles" label={s.label||s.language_name} srcLang={s.language} 
+                               src={s.src?.startsWith('http') ? s.src : `${API_HOST}${s.src}`} default={s.language === subLang} />
                     ))}
                 </video>
 
-                <Box sx={{ p: 1.5, bgcolor: '#1a1a1a', display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                    <SettingsIcon sx={{ color: '#888' }} />
-                    <Stack direction="row" spacing={1}>
-                        <Button variant={currentQuality === null ? "contained" : "outlined"} size="small" onClick={() => handleQualityChange(null)}>Auto</Button>
-                        {qualities.map(q => (
-                            <Button key={q} variant={currentQuality === q ? "contained" : "outlined"} size="small" onClick={() => handleQualityChange(q)}>{q}</Button>
-                        ))}
-                    </Stack>
+                <Box sx={{ p: 1.5, bgcolor: '#1a1a1a', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+                    <Box display="flex" alignItems="center" gap={1}>
+                        <SettingsIcon sx={{ color: '#888' }} />
+                        <Stack direction="row" spacing={1}>
+                            <Button variant={quality===null?"contained":"outlined"} size="small" onClick={()=>changeQuality(null)}>Auto</Button>
+                            {qualities.map(q => (
+                                <Button key={q} variant={quality===q?"contained":"outlined"} size="small" onClick={()=>changeQuality(q)}>{q}</Button>
+                            ))}
+                        </Stack>
+                    </Box>
+
+                    <Box>
+                        <Button startIcon={<ClosedCaptionIcon />} onClick={(e)=>setAnchorSub(e.currentTarget)} 
+                                variant={subLang!=='off'?"contained":"outlined"} size="small">
+                            {subLang==='off'?'CC Off':subLang.toUpperCase()}
+                        </Button>
+                        <Menu anchorEl={anchorSub} open={Boolean(anchorSub)} onClose={()=>setAnchorSub(null)} PaperProps={{sx:{bgcolor:'#222',color:'white'}}}>
+                            <MenuItem onClick={()=>{setSubLang('off');setAnchorSub(null)}} selected={subLang==='off'}>Off</MenuItem>
+                            {subtitles.map(s => (
+                                <MenuItem key={s.language} onClick={()=>{setSubLang(s.language);setAnchorSub(null)}} selected={subLang===s.language}>
+                                    {s.language_name||s.label||s.language.toUpperCase()}
+                                </MenuItem>
+                            ))}
+                        </Menu>
+                    </Box>
                 </Box>
             </Box>
         </Box>
