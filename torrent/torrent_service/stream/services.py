@@ -53,10 +53,10 @@ class VideoService:
         # Split input into 4 streams (1080, 720, 480, 360)
         filter_complex = (
             "[0:v]split=4[v1][v2][v3][v4];"
-            "[v1]scale=-2:1080,format=yuv420p[1080out];"
-            "[v2]scale=-2:720,format=yuv420p[720out];"
-            "[v3]scale=-2:480,format=yuv420p[480out];"
-            "[v4]scale=-2:360,format=yuv420p[360out]"
+            "[v1]scale=-2:1080:flags=bicubic,format=yuv420p[1080out];"
+            "[v2]scale=-2:720:flags=bicubic,format=yuv420p[720out];"
+            "[v3]scale=-2:480:flags=bicubic,format=yuv420p[480out];"
+            "[v4]scale=-2:360:flags=bicubic,format=yuv420p[360out]"
         )
 
         cmd = [
@@ -70,10 +70,10 @@ class VideoService:
 
         # 3. Stream Configuration
         configs = [
-            ("1080p", "[1080out]", "4000k", "8000k"),
-            ("720p",  "[720out]",  "2000k", "4000k"),
-            ("480p",  "[480out]",  "1000k", "2000k"),
-            ("360p",  "[360out]",  "600k",  "1200k"),
+            ("1080p", "[1080out]", "5000k", "10000k"),
+            ("720p",  "[720out]",  "3000k", "6000k"),
+            ("480p",  "[480out]",  "1500k", "3000k"),
+            ("360p",  "[360out]",  "800k",  "1600k"),
         ]
 
         for res_name, map_label, bitrate, bufsize in configs:
@@ -83,9 +83,11 @@ class VideoService:
                 '-b:v', bitrate,
                 '-maxrate', bitrate,
                 '-bufsize', bufsize,
-                '-preset', 'ultrafast',  #  Lowest CPU usage possible
-                '-profile:v', 'main',
                 
+                '-preset', 'superfast',  # Much better quality than 'ultrafast', slightly more CPU
+                '-profile:v', 'high',    # Better compression efficiency (looks sharper)
+                '-level', '4.1',         # Broad compatibility
+                '-crf', '23',            # Quality target (helps static scenes look better)
                 # Audio
                 '-map', '0:a', '-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-ar', '44100',
                 
@@ -354,7 +356,7 @@ class SubtitleService:
         2. Download the file
         3. Convert to VTT format
         """
-        MAX_RETRIES = 3
+        MAX_RETRIES = 2
         
         try:
             payload = {"file_id": int(task['file_id'])}
