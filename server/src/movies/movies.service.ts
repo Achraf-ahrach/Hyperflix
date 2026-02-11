@@ -379,6 +379,13 @@ export class MoviesService {
         backdrop_image: tmdbMetadata.backdropUrl,
         // Ensure torrents are preserved
         torrents: normalizedYTS.torrents,
+        director: tmdbMetadata.director,
+        writer: tmdbMetadata.writer,
+        actors: tmdbMetadata.actors,
+        production: tmdbMetadata.production,
+        country: tmdbMetadata.country,
+        language: tmdbMetadata.language,
+        awards: tmdbMetadata.awards,
       };
     }
 
@@ -846,6 +853,13 @@ export class MoviesService {
             size: parseInt(res.size) || 0,
           },
         ],
+        director: tmdbMetadata.director,
+        writer: tmdbMetadata.writer,
+        actors: tmdbMetadata.actors,
+        production: tmdbMetadata.production,
+        country: tmdbMetadata.country,
+        language: tmdbMetadata.language,
+        awards: tmdbMetadata.awards,
       };
     }
 
