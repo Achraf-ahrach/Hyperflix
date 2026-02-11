@@ -117,8 +117,28 @@ def process_video_thread(video_id):
 
         # 2. WAIT FOR METADATA
         attempts = 0
+        last_log = 0
+        last_stats = {}
         while not handle.has_metadata():
-            if attempts > 120: raise Exception("Metadata timeout")
+            status = handle.status()
+            seeds = getattr(status, 'num_seeds', 0)
+            peers = getattr(status, 'num_peers', 0)
+            down_kbps = (getattr(status, 'download_rate', 0) / 1000.0)
+            last_stats = {"seeds": seeds, "peers": peers, "down_kbps": down_kbps}
+
+            # Log once per second to observe swarm health
+            now = time.time()
+            if now - last_log >= 1:
+                logger.info(
+                    f"[metadata-wait] movie={movie_file.id} seeds={seeds} peers={peers} down={down_kbps:.1f} kB/s attempt={attempts}"
+                )
+                last_log = now
+
+            if attempts > 120:
+                logger.error(
+                    f"Metadata timeout for movie={movie_file.id} seeds={seeds} peers={peers} down={down_kbps:.1f} kB/s"
+                )
+                raise Exception("Metadata timeout")
             time.sleep(1)
             attempts += 1
 
@@ -150,6 +170,14 @@ def process_video_thread(video_id):
             status = handle.status()
             progress = status.progress * 100
             movie_file.download_progress = progress
+            # Periodic swarm stats to diagnose slowness
+            if int(time.time()) % 5 == 0:
+                seeds = getattr(status, 'num_seeds', 0)
+                peers = getattr(status, 'num_peers', 0)
+                down_kbps = (getattr(status, 'download_rate', 0) / 1000.0)
+                logger.info(
+                    f"[dl] movie={movie_file.id} progress={progress:.2f}% seeds={seeds} peers={peers} down={down_kbps:.1f} kB/s"
+                )
             
             if not conversion_started:
                 dur = service.get_video_duration(downloaded_path)
