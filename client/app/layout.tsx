@@ -1,26 +1,9 @@
-// "use client";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/shared/theme-provider";
 import QueryProvider from "@/components/providers/QueryProvider";
 import ReduxProviders from "@/lib/store/ReduxProviders";
 import { UserProvider } from "@/lib/contexts/UserContext";
-// import { Toaster } from "@/components/ui/sonner";
-// import { Toaster } from "sonner";
-// import { Toaster } from "@/components/ui/sonner"
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-  preload: false,
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-  preload: false,
-});
 
 export const metadata: Metadata = {
   title: "Hyperflix",
@@ -34,10 +17,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.className} ${geistMono.className} ${geistSans.variable} ${geistMono.variable} antialiased`}
-        suppressHydrationWarning
-      >
+      <body className="antialiased" suppressHydrationWarning>
         <QueryProvider>
           <UserProvider>
             <ThemeProvider
@@ -46,7 +26,7 @@ export default function RootLayout({
               enableSystem={false}
               storageKey="theme"
               disableTransitionOnChange
-              >
+            >
               <ReduxProviders>{children}</ReduxProviders>
             </ThemeProvider>
           </UserProvider>
